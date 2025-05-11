@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Bell, Moon, Sun } from "lucide-react"
@@ -16,13 +15,6 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-4 sm:px-6">
-        <div className="flex flex-col items-start">
-          <div className="flex items-center">
-            <Image src="/images/logo.jpg" alt="Logo" width={40} height={40} className="mr-2" />
-            <span className="text-lg font-semibold">今湛貿易 ERP 系統</span>
-          </div>
-          <span className="text-xs text-muted-foreground ml-1">alpha ver.: v0.1</span>
-        </div>
         <div className="ml-auto flex items-center space-x-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

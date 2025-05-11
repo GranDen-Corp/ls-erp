@@ -1,10 +1,11 @@
 "use client"
 
 import type React from "react"
-
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { useSidebar } from "@/contexts/sidebar-context"
 import {
   BarChart3,
   ClipboardList,
@@ -21,12 +22,17 @@ import {
   PieChart,
   LineChart,
   BarChart,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export default function Sidebar({ className }: SidebarProps = {}) {
   const pathname = usePathname()
+  const { collapsed, toggleSidebar } = useSidebar()
 
   const routes = [
     {
@@ -159,24 +165,66 @@ export default function Sidebar({ className }: SidebarProps = {}) {
   ]
 
   return (
-    <div className={cn("pb-12", className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">今湛貿易 ERP 系統</h2>
-          <div className="space-y-1">
+    <TooltipProvider>
+      <div
+        className={cn(
+          "relative flex flex-col h-full border-r transition-all duration-300",
+          collapsed ? "w-16" : "w-64",
+          className,
+        )}
+      >
+        <div className="flex items-center p-6 border-b">
+          {!collapsed && (
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <Image src="/images/new-logo.png" alt="Logo" width={64} height={64} className="rounded-sm" />
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm">今湛貿易 ERP 系統</span>
+                <span className="text-xs text-muted-foreground">alpha ver.: v0.1</span>
+              </div>
+            </div>
+          )}
+          {collapsed && (
+            <div className="mx-auto my-2">
+              <Image src="/images/new-logo.png" alt="Logo" width={64} height={64} className="rounded-sm" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto py-2">
+          <nav className="space-y-1 px-2">
             {routes.map((route) => (
               <div key={route.href}>
-                <Link
-                  href={route.href}
-                  className={cn(
-                    "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                    route.active ? "bg-accent text-accent-foreground" : "transparent",
-                  )}
-                >
-                  <route.icon className="mr-2 h-4 w-4" />
-                  {route.label}
-                </Link>
-                {route.subItems && route.active && (
+                {collapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={route.href}
+                        className={cn(
+                          "flex justify-center items-center h-10 w-10 rounded-md mx-auto my-1",
+                          route.active
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        )}
+                      >
+                        <route.icon className="h-5 w-5" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{route.label}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Link
+                    href={route.href}
+                    className={cn(
+                      "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                      route.active ? "bg-accent text-accent-foreground" : "transparent",
+                    )}
+                  >
+                    <route.icon className="mr-2 h-4 w-4" />
+                    {route.label}
+                  </Link>
+                )}
+
+                {route.subItems && route.active && !collapsed && (
                   <div className="ml-6 mt-1 space-y-1">
                     {route.subItems.map((subItem) => (
                       <Link
@@ -195,9 +243,18 @@ export default function Sidebar({ className }: SidebarProps = {}) {
                 )}
               </div>
             ))}
-          </div>
+          </nav>
         </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute -right-3 top-20 h-6 w-6 rounded-full border bg-background shadow-md"
+          onClick={toggleSidebar}
+        >
+          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+        </Button>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
