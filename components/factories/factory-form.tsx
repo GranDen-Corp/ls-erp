@@ -13,52 +13,71 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
-import { Checkbox } from "@/components/ui/checkbox"
+import { supabaseClient } from "@/lib/supabase-client"
+import { AlertCircle, Loader2 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // 表單驗證 schema
 const factoryFormSchema = z.object({
-  name: z.string().min(1, { message: "工廠名稱不能為空" }),
-  contactPerson: z.string().min(1, { message: "聯絡人不能為空" }),
-  email: z.string().email({ message: "請輸入有效的電子郵件地址" }),
-  phone: z.string().min(1, { message: "電話不能為空" }),
-  address: z.string().min(1, { message: "地址不能為空" }),
-  country: z.string().min(1, { message: "國家/地區不能為空" }),
-  type: z.enum(["assembly", "production", "parts"]),
-  status: z.enum(["active", "inactive"]),
-  taxId: z.string().optional(),
+  factory_id: z.string().min(1, { message: "供應商ID不能為空" }),
+  factory_name: z.string().min(1, { message: "供應商名稱不能為空" }),
+  factory_full_name: z.string().min(1, { message: "供應商全名不能為空" }),
+  factory_address: z.string().optional(),
+  factory_phone: z.string().optional(),
+  factory_fax: z.string().optional(),
+  tax_id: z.string().optional(),
+  supplier_type: z.string().optional(),
+  category1: z.string().optional(),
+  category2: z.string().optional(),
+  category3: z.string().optional(),
+  iso9001_certified: z.string().optional(),
+  iatf16949_certified: z.string().optional(),
+  iso17025_certified: z.string().optional(),
+  cqi9_certified: z.string().optional(),
+  cqi11_certified: z.string().optional(),
+  cqi12_certified: z.string().optional(),
+  contact_person: z.string().optional(),
+  contact_phone: z.string().optional(),
+  contact_email: z.string().email({ message: "請輸入有效的電子郵件地址" }).optional().or(z.literal("")),
   website: z.string().url({ message: "請輸入有效的網址" }).optional().or(z.literal("")),
-  capacity: z.string().optional(),
-  certifications: z.array(z.string()).optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
+  postal_code: z.string().optional(),
   notes: z.string().optional(),
+  status: z.string().optional(),
 })
 
 type FactoryFormValues = z.infer<typeof factoryFormSchema>
 
 // 預設值
 const defaultValues: Partial<FactoryFormValues> = {
-  name: "",
-  contactPerson: "",
-  email: "",
-  phone: "",
-  address: "",
-  country: "台灣",
-  type: "assembly",
-  status: "active",
-  taxId: "",
+  factory_id: "",
+  factory_name: "",
+  factory_full_name: "",
+  factory_address: "",
+  factory_phone: "",
+  factory_fax: "",
+  tax_id: "",
+  supplier_type: "assembly",
+  category1: "",
+  category2: "",
+  category3: "",
+  iso9001_certified: "否",
+  iatf16949_certified: "否",
+  iso17025_certified: "否",
+  cqi9_certified: "否",
+  cqi11_certified: "否",
+  cqi12_certified: "否",
+  contact_person: "",
+  contact_phone: "",
+  contact_email: "",
   website: "",
-  capacity: "",
-  certifications: [],
+  country: "台灣",
+  city: "",
+  postal_code: "",
   notes: "",
+  status: "active",
 }
-
-// 認證選項
-const certificationOptions = [
-  { id: "iso9001", label: "ISO 9001" },
-  { id: "iso14001", label: "ISO 14001" },
-  { id: "iso45001", label: "ISO 45001" },
-  { id: "iatf16949", label: "IATF 16949" },
-  { id: "as9100", label: "AS9100" },
-]
 
 interface FactoryFormProps {
   factory?: any
@@ -68,6 +87,7 @@ export function FactoryForm({ factory }: FactoryFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // 初始化表單
   const form = useForm<FactoryFormValues>({
@@ -78,23 +98,50 @@ export function FactoryForm({ factory }: FactoryFormProps) {
   // 表單提交處理
   async function onSubmit(data: FactoryFormValues) {
     setIsLoading(true)
+    setError(null)
 
     try {
-      // 模擬API請求
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // 檢查供應商ID是否已存在
+      if (!factory) {
+        const { data: existingFactory, error: checkError } = await supabaseClient
+          .from("suppliers")
+          .select("factory_id")
+          .eq("factory_id", data.factory_id)
+          .single()
+
+        if (checkError && checkError.code !== "PGRST116") {
+          throw new Error(`檢查供應商ID時出錯: ${checkError.message}`)
+        }
+
+        if (existingFactory) {
+          throw new Error(`供應商ID ${data.factory_id} 已存在，請使用其他ID`)
+        }
+      }
+
+      // 插入或更新供應商資料
+      const { error: saveError } = factory
+        ? await supabaseClient.from("suppliers").update(data).eq("factory_id", factory.factory_id)
+        : await supabaseClient.from("suppliers").insert(data)
+
+      if (saveError) {
+        throw new Error(`保存供應商資料時出錯: ${saveError.message}`)
+      }
 
       // 顯示成功訊息
       toast({
-        title: factory ? "工廠已更新" : "工廠已建立",
-        description: `工廠 ${data.name} 已成功${factory ? "更新" : "建立"}`,
+        title: factory ? "供應商已更新" : "供應商已建立",
+        description: `供應商 ${data.factory_name} 已成功${factory ? "更新" : "建立"}`,
       })
 
-      // 導航回工廠列表或詳情頁面
-      router.push(factory ? `/factories/${factory.id}` : "/factories")
-    } catch (error) {
+      // 導航回供應商列表
+      router.push("/factories")
+      router.refresh()
+    } catch (err) {
+      console.error("保存供應商資料時出錯:", err)
+      setError(err instanceof Error ? err.message : "保存供應商資料時出錯")
       toast({
         title: "操作失敗",
-        description: "無法保存工廠資料，請稍後再試",
+        description: err instanceof Error ? err.message : "保存供應商資料時出錯",
         variant: "destructive",
       })
     } finally {
@@ -105,10 +152,18 @@ export function FactoryForm({ factory }: FactoryFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>錯誤</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">基本資訊</TabsTrigger>
-            <TabsTrigger value="production">生產資訊</TabsTrigger>
+            <TabsTrigger value="certification">認證資訊</TabsTrigger>
             <TabsTrigger value="additional">其他資訊</TabsTrigger>
           </TabsList>
 
@@ -116,19 +171,20 @@ export function FactoryForm({ factory }: FactoryFormProps) {
             <Card>
               <CardHeader>
                 <CardTitle>基本資訊</CardTitle>
-                <CardDescription>輸入工廠的基本聯絡資訊</CardDescription>
+                <CardDescription>輸入供應商的基本聯絡資訊</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="factory_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>工廠名稱 *</FormLabel>
+                        <FormLabel>供應商ID *</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入工廠名稱" {...field} />
+                          <Input placeholder="輸入供應商ID" {...field} disabled={!!factory} />
                         </FormControl>
+                        <FormDescription>{factory ? "供應商ID不可修改" : "請輸入唯一的供應商識別碼"}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -136,7 +192,7 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="taxId"
+                    name="tax_id"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>統一編號</FormLabel>
@@ -152,10 +208,40 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="contactPerson"
+                    name="factory_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>聯絡人 *</FormLabel>
+                        <FormLabel>供應商名稱 *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入供應商名稱" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="factory_full_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>供應商全名 *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入供應商全名" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="contact_person"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>聯絡人</FormLabel>
                         <FormControl>
                           <Input placeholder="輸入聯絡人姓名" {...field} />
                         </FormControl>
@@ -166,12 +252,12 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="contact_phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>電子郵件 *</FormLabel>
+                        <FormLabel>聯絡人電話</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入電子郵件" {...field} />
+                          <Input placeholder="輸入聯絡人電話" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -179,15 +265,29 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                   />
                 </div>
 
+                <FormField
+                  control={form.control}
+                  name="contact_email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>聯絡人電子郵件</FormLabel>
+                      <FormControl>
+                        <Input placeholder="輸入聯絡人電子郵件" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="phone"
+                    name="factory_phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>電話 *</FormLabel>
+                        <FormLabel>公司電話</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入電話號碼" {...field} />
+                          <Input placeholder="輸入公司電話" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -196,12 +296,12 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="website"
+                    name="factory_fax"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>網站</FormLabel>
+                        <FormLabel>公司傳真</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入網站網址" {...field} />
+                          <Input placeholder="輸入公司傳真" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -209,13 +309,41 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>網站</FormLabel>
+                      <FormControl>
+                        <Input placeholder="輸入網站網址" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="factory_address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>地址</FormLabel>
+                      <FormControl>
+                        <Input placeholder="輸入完整地址" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="country"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>國家/地區 *</FormLabel>
+                        <FormLabel>國家/地區</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -237,10 +365,65 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
                   <FormField
                     control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>城市</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入城市" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="postal_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>郵遞區號</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入郵遞區號" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="supplier_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>供應商類型</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇供應商類型" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="assembly">組裝廠</SelectItem>
+                            <SelectItem value="production">生產廠</SelectItem>
+                            <SelectItem value="parts">零件廠</SelectItem>
+                            <SelectItem value="material">材料供應商</SelectItem>
+                            <SelectItem value="service">服務供應商</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>狀態 *</FormLabel>
+                        <FormLabel>狀態</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -257,48 +440,34 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>地址 *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="輸入完整地址" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="production">
+          <TabsContent value="certification">
             <Card>
               <CardHeader>
-                <CardTitle>生產資訊</CardTitle>
-                <CardDescription>設定工廠的生產相關資訊</CardDescription>
+                <CardTitle>認證資訊</CardTitle>
+                <CardDescription>設定供應商的認證相關資訊</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="type"
+                    name="iso9001_certified"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>工廠類型 *</FormLabel>
+                        <FormLabel>ISO 9001認證</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="選擇工廠類型" />
+                              <SelectValue placeholder="選擇認證狀態" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="assembly">組裝廠</SelectItem>
-                            <SelectItem value="production">生產廠</SelectItem>
-                            <SelectItem value="parts">零件廠</SelectItem>
+                            <SelectItem value="是">已認證</SelectItem>
+                            <SelectItem value="否">未認證</SelectItem>
+                            <SelectItem value="審核中">審核中</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -308,62 +477,167 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="capacity"
+                    name="iatf16949_certified"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>產能</FormLabel>
-                        <FormControl>
-                          <Input placeholder="例如：每月5000單位" {...field} />
-                        </FormControl>
+                        <FormLabel>IATF 16949認證</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇認證狀態" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="是">已認證</SelectItem>
+                            <SelectItem value="否">未認證</SelectItem>
+                            <SelectItem value="審核中">審核中</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="certifications"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel>認證</FormLabel>
-                        <FormDescription>選擇工廠擁有的認證</FormDescription>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {certificationOptions.map((certification) => (
-                          <FormField
-                            key={certification.id}
-                            control={form.control}
-                            name="certifications"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={certification.id}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(certification.label)}
-                                      onCheckedChange={(checked) => {
-                                        const current = field.value || []
-                                        return checked
-                                          ? field.onChange([...current, certification.label])
-                                          : field.onChange(current.filter((value) => value !== certification.label))
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">{certification.label}</FormLabel>
-                                </FormItem>
-                              )
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="iso17025_certified"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ISO 17025認證</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇認證狀態" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="是">已認證</SelectItem>
+                            <SelectItem value="否">未認證</SelectItem>
+                            <SelectItem value="審核中">審核中</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cqi9_certified"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CQI-9認證</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇認證狀態" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="是">已認證</SelectItem>
+                            <SelectItem value="否">未認證</SelectItem>
+                            <SelectItem value="審核中">審核中</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cqi11_certified"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CQI-11認證</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇認證狀態" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="是">已認證</SelectItem>
+                            <SelectItem value="否">未認證</SelectItem>
+                            <SelectItem value="審核中">審核中</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cqi12_certified"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CQI-12認證</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇認證狀態" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="是">已認證</SelectItem>
+                            <SelectItem value="否">未認證</SelectItem>
+                            <SelectItem value="審核中">審核中</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="category1"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>類別1</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入類別1" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="category2"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>類別2</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入類別2" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="category3"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>類別3</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入類別3" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -382,7 +656,7 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                     <FormItem>
                       <FormLabel>備註</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="輸入工廠相關備註" className="min-h-[150px]" {...field} />
+                        <Textarea placeholder="輸入供應商相關備註" className="min-h-[150px]" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -394,15 +668,20 @@ export function FactoryForm({ factory }: FactoryFormProps) {
         </Tabs>
 
         <div className="flex justify-end gap-2 mt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push(factory ? `/factories/${factory.id}` : "/factories")}
-          >
+          <Button type="button" variant="outline" onClick={() => router.push("/factories")} disabled={isLoading}>
             取消
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "處理中..." : factory ? "更新工廠" : "建立工廠"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                處理中...
+              </>
+            ) : factory ? (
+              "更新供應商"
+            ) : (
+              "創建供應商"
+            )}
           </Button>
         </div>
       </form>

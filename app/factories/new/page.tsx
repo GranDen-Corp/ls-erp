@@ -12,7 +12,7 @@ export default function NewFactoryPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">新增工廠</h1>
+        <h1 className="text-2xl font-bold">新增供應商</h1>
       </div>
       <FactoryForm />
     </div>

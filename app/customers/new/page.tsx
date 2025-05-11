@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import CustomerForm from "@/components/customers/customer-form"
+import { CustomerForm } from "@/components/customers/customer-form"
 
 export const metadata: Metadata = {
   title: "新增客戶",

@@ -11,14 +11,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { FileText, Plus, X } from "lucide-react"
+import { FileText, Plus, X, Loader2 } from "lucide-react"
 import type { ProductComponent } from "@/types/assembly-product"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { saveProduct } from "@/app/actions/product-actions"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 // 自定義表格樣式組件
 const TableContainer = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
@@ -110,6 +111,20 @@ interface ProcessRecord {
   report: string
 }
 
+// 客戶類型
+interface Customer {
+  id: string
+  name: string
+  code: string
+}
+
+// 供應商類型
+interface Supplier {
+  id: string
+  name: string
+  code: string
+}
+
 // This is the component implementation
 function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductFormProps) {
   // All the existing component code...
@@ -120,16 +135,8 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
         specification: "15吋高清",
         customsCode: "8471.60.00",
         endCustomer: "台灣汽車",
-        customerName: {
-          id: "1",
-          name: "台灣電子",
-          code: "TE",
-        },
-        factoryName: {
-          id: "1",
-          name: "深圳電子廠",
-          code: "SZE",
-        },
+        customerName: { id: "", name: "", code: "" },
+        factoryName: { id: "", name: "", code: "" },
         productType: "面板",
         partNo: "LCD-15-HD-001",
         classificationCode: "EL-001",
@@ -467,6 +474,7 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
 
   // 添加在 useState 聲明後
   const [product, setProduct] = useState(initialProduct)
+
   // 添加這段代碼
   useEffect(() => {
     // 初始化訂單和採購單要求
@@ -523,25 +531,6 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
   // 新符合性法規名稱輸入
   const [newComplianceName, setNewComplianceName] = useState("")
 
-  // 模擬客戶和工廠數據
-  const customers = [
-    { id: "1", name: "台灣電子", code: "TE" },
-    { id: "2", name: "新竹科技", code: "HT" },
-    { id: "3", name: "台北工業", code: "TI" },
-    { id: "4", name: "高雄製造", code: "KM" },
-    { id: "5", name: "台中電子", code: "TC" },
-  ]
-
-  const factories = [
-    { id: "1", name: "深圳電子廠", code: "SZE" },
-    { id: "2", name: "上海科技廠", code: "SHT" },
-    { id: "3", name: "東莞工業廠", code: "DGI" },
-    { id: "4", name: "廣州製造廠", code: "GZM" },
-    { id: "5", name: "蘇州電子廠", code: "SZE" },
-  ]
-
-  const productTypes = ["面板", "電子元件", "IC晶片", "PCB", "連接器", "組裝產品", "其他"]
-
   // 模擬可用的組件產品
   const availableComponents = [
     { id: "1", pn: "LCD-15-HD", name: "15吋 HD LCD面板", factoryId: "1", factoryName: "深圳電子廠", unitPrice: 40.5 },
@@ -554,26 +543,6 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
 
   const handleInputChange = (field: string, value: any) => {
     setProduct((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleCustomerChange = (customerId: string) => {
-    const selectedCustomer = customers.find((c) => c.id === customerId)
-    if (selectedCustomer) {
-      setProduct((prev) => ({
-        ...prev,
-        customerName: selectedCustomer,
-      }))
-    }
-  }
-
-  const handleFactoryChange = (factoryId: string) => {
-    const selectedFactory = factories.find((f) => f.id === factoryId)
-    if (selectedFactory) {
-      setProduct((prev) => ({
-        ...prev,
-        factoryName: selectedFactory,
-      }))
-    }
   }
 
   const handleAddSpecification = () => {
@@ -1169,6 +1138,7 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
         specialRequirements: [
           ...prev.specialRequirements,
           {
+            id: `req_${Date.now()}`,
             content: newSpecialReq.content,
             date: date,
             user: newSpecialReq.user,
@@ -1257,6 +1227,409 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
     })
   }
 
+  // 渲染備註對話框
+  const renderNoteDialog = () => (
+    <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加編輯備註</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="note-content" className="text-right">
+              備註內容
+            </Label>
+            <Textarea
+              id="note-content"
+              value={newNote.content}
+              onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
+              className="col-span-3"
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="note-date" className="text-right">
+              日期
+            </Label>
+            <Input
+              id="note-date"
+              type="date"
+              value={newNote.date}
+              onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
+              className="col-span-3"
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="note-user" className="text-right">
+              使用者
+            </Label>
+            <Input
+              id="note-user"
+              value={newNote.user}
+              onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" onClick={handleAddEditNote} disabled={!newNote.content || !newNote.user}>
+            添加
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // 渲染製程對話框
+  const renderProcessDialog = () => (
+    <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>添加製程資料</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-name" className="text-right">
+              製程
+            </Label>
+            <Input
+              id="process-name"
+              value={newProcess.process}
+              onChange={(e) => setNewProcess({ ...newProcess, process: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-vendor" className="text-right">
+              廠商
+            </Label>
+            <Input
+              id="process-vendor"
+              value={newProcess.vendor}
+              onChange={(e) => setNewProcess({ ...newProcess, vendor: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-capacity" className="text-right">
+              產能(SH)
+            </Label>
+            <Input
+              id="process-capacity"
+              value={newProcess.capacity}
+              onChange={(e) => setNewProcess({ ...newProcess, capacity: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-requirements" className="text-right">
+              要求
+            </Label>
+            <Input
+              id="process-requirements"
+              value={newProcess.requirements}
+              onChange={(e) => setNewProcess({ ...newProcess, requirements: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-report" className="text-right">
+              報告
+            </Label>
+            <Input
+              id="process-report"
+              value={newProcess.report}
+              onChange={(e) => setNewProcess({ ...newProcess, report: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" onClick={handleAddProcess} disabled={!newProcess.process}>
+            添加
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // 渲染特殊要求對話框
+  const renderSpecialReqDialog = () => (
+    <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加特殊要求/測試</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="special-req-content" className="text-right">
+              要求內容
+            </Label>
+            <Textarea
+              id="special-req-content"
+              value={newSpecialReq.content}
+              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
+              className="col-span-3"
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="special-req-date" className="text-right">
+              日期
+            </Label>
+            <Input
+              id="special-req-date"
+              type="date"
+              value={newSpecialReq.date}
+              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
+              className="col-span-3"
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="special-req-user" className="text-right">
+              使用者
+            </Label>
+            <Input
+              id="special-req-user"
+              value={newSpecialReq.user}
+              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" onClick={handleAddSpecialReq} disabled={!newSpecialReq.content || newSpecialReq.user}>
+            添加
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // 渲染製程備註對話框
+  const renderProcessNoteDialog = () => (
+    <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加製程備註</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-note-content" className="text-right">
+              備註內容
+            </Label>
+            <Textarea
+              id="process-note-content"
+              value={newProcessNote.content}
+              onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
+              className="col-span-3"
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-note-date" className="text-right">
+              日期
+            </Label>
+            <Input
+              id="process-note-date"
+              type="date"
+              value={newProcessNote.date}
+              onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
+              className="col-span-3"
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="process-note-user" className="text-right">
+              使用者
+            </Label>
+            <Input
+              id="process-note-user"
+              value={newProcessNote.user}
+              onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            onClick={handleAddProcessNote}
+            disabled={!newProcessNote.content || newProcessNote.user}
+          >
+            添加
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // 渲染履歷備註對話框
+  const renderResumeNoteDialog = () => (
+    <Dialog open={isResumeNoteDialogOpen} onOpenChange={setIsResumeNoteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加履歷備註</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="resume-note-content" className="text-right">
+              備註內容
+            </Label>
+            <Textarea
+              id="resume-note-content"
+              value={newResumeNote.content}
+              onChange={(e) => setNewResumeNote({ ...newResumeNote, content: e.target.value })}
+              className="col-span-3"
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="resume-note-date" className="text-right">
+              日期
+            </Label>
+            <Input
+              id="resume-note-date"
+              type="date"
+              value={newResumeNote.date}
+              onChange={(e) => setNewResumeNote({ ...newResumeNote, date: e.target.value })}
+              className="col-span-3"
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="resume-note-user" className="text-right">
+              使用者
+            </Label>
+            <Input
+              id="resume-note-user"
+              value={newResumeNote.user}
+              onChange={(e) => setNewResumeNote({ ...newResumeNote, user: e.target.value })}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" onClick={handleAddResumeNote} disabled={!newResumeNote.content || newResumeNote.user}>
+            添加
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // 在ProductForm組件內部，在return語句之前添加以下代碼
+  const supabase = createClientComponentClient()
+  const [customersData, setCustomersData] = useState<{ id: string; name: string; code: string }[]>([])
+  const [factories, setFactories] = useState<{ id: string; name: string; code: string }[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+  const [dataError, setDataError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchOptions() {
+      setDataLoading(true)
+      setDataError(null)
+
+      try {
+        // 獲取客戶數據
+        const { data: customers, error: customersError } = await supabase
+          .from("customers")
+          .select("customer_id, customer_short_name")
+          .order("customer_id")
+
+        if (customersError) throw new Error(`獲取客戶數據失敗: ${customersError.message}`)
+
+        // 將數據轉換為組件需要的格式
+        const formattedCustomers =
+          customers?.map((customer) => ({
+            id: customer.customer_id,
+            name: customer.customer_short_name,
+            code: customer.customer_id || "",
+          })) || []
+
+        // 獲取供應商數據
+        const { data: factoriesData, error: factoriesError } = await supabase
+          .from("factories")
+          .select("factory_id, factory_name")
+          .order("factory_id")
+
+        if (factoriesError) throw new Error(`獲取供應商數據失敗: ${factoriesError.message}`)
+
+        // 將數據轉換為組件需要的格式
+        const formattedFactories =
+          factoriesData?.map((factory) => ({
+            id: factory.factory_id,
+            name: factory.factory_name,
+            code: factory.factory_id || "",
+          })) || []
+
+        setCustomersData(formattedCustomers)
+        setFactories(formattedFactories)
+      } catch (err) {
+        console.error("獲取選項數據失敗:", err)
+        setDataError(err instanceof Error ? err.message : "獲取數據時發生未知錯誤")
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
+    fetchOptions()
+  }, [])
+
+  const handleRetry = () => {
+    setDataLoading(true)
+    setDataError(null)
+
+    // 重新獲取數據的函數
+    const fetchOptions = async () => {
+      try {
+        // 獲取客戶數據
+        const { data: customers, error: customersError } = await supabase
+          .from("customers")
+          .select("id, name, code")
+          .order("code")
+
+        if (customersError) throw new Error(`獲取客戶數據失敗: ${customersError.message}`)
+
+        // 將數據轉換為組件需要的格式
+        const formattedCustomers =
+          customers?.map((customer) => ({
+            id: customer.id,
+            name: customer.name,
+            code: customer.code || "",
+          })) || []
+
+        // 獲取供應商數據
+        const { data: factoriesData, error: factoriesError } = await supabase
+          .from("factories")
+          .select("id, name, code")
+          .order("code")
+
+        if (factoriesError) throw new Error(`獲取供應商數據失敗: ${factoriesError.message}`)
+
+        // 將數據轉換為組件需要的格式
+        const formattedFactories =
+          factoriesData?.map((factory) => ({
+            id: factory.id,
+            name: factory.name,
+            code: factory.code || "",
+          })) || []
+
+        setCustomersData(formattedCustomers)
+        setFactories(formattedFactories)
+        setDataLoading(false)
+      } catch (err) {
+        console.error("重試獲取選項數據失敗:", err)
+        setDataError(err instanceof Error ? err.message : "重試獲取數據時發生未知錯誤")
+        setDataLoading(false)
+      }
+    }
+
+    fetchOptions()
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1313,25 +1686,48 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                     <TableCell label="客戶名稱">
                       <div className="grid grid-cols-2">
                         <div className="p-2 border-r">
-                          <Select value={product.customerName.id} onValueChange={handleCustomerChange}>
-                            <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                              <SelectValue placeholder="選擇客戶" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {customers.map((customer) => (
-                                <SelectItem key={customer.id} value={customer.id}>
-                                  {customer.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {dataLoading ? (
+                            <div className="flex items-center justify-center h-8">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                            </div>
+                          ) : dataError ? (
+                            <div className="text-red-500 text-sm">{dataError}</div>
+                          ) : (
+                            <Select
+                              value={product.customerName.id}
+                              onValueChange={(value) => {
+                                const selectedCustomer = customersData.find((c) => c.id === value)
+                                if (selectedCustomer) {
+                                  setProduct((prev) => ({
+                                    ...prev,
+                                    customerName: {
+                                      id: selectedCustomer.id,
+                                      name: selectedCustomer.name,
+                                      code: selectedCustomer.code,
+                                    },
+                                  }))
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
+                                <SelectValue placeholder="選擇客戶代碼" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {customersData.map((customer) => (
+                                  <SelectItem key={customer.id} value={customer.id}>
+                                    {customer.code}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                         <div className="p-2 bg-gray-50">
                           <Input
-                            value={product.customerName.code}
+                            value={product.customerName.name}
                             readOnly
                             className="border-0 shadow-none bg-gray-50 h-8"
-                            placeholder="客戶代碼"
+                            placeholder="客戶名稱"
                           />
                         </div>
                       </div>
@@ -1339,25 +1735,48 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                     <TableCell label="工廠名稱">
                       <div className="grid grid-cols-2">
                         <div className="p-2 border-r">
-                          <Select value={product.factoryName.id} onValueChange={handleFactoryChange}>
-                            <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                              <SelectValue placeholder="選擇工廠" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {factories.map((factory) => (
-                                <SelectItem key={factory.id} value={factory.id}>
-                                  {factory.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {dataLoading ? (
+                            <div className="flex items-center justify-center h-8">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                            </div>
+                          ) : dataError ? (
+                            <div className="text-red-500 text-sm">{dataError}</div>
+                          ) : (
+                            <Select
+                              value={product.factoryName.id}
+                              onValueChange={(value) => {
+                                const selectedFactory = factories.find((f) => f.id === value)
+                                if (selectedFactory) {
+                                  setProduct((prev) => ({
+                                    ...prev,
+                                    factoryName: {
+                                      id: selectedFactory.id,
+                                      name: selectedFactory.name,
+                                      code: selectedFactory.code,
+                                    },
+                                  }))
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
+                                <SelectValue placeholder="選擇工廠代碼" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {factories.map((factory) => (
+                                  <SelectItem key={factory.id} value={factory.id}>
+                                    {factory.code}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                         <div className="p-2 bg-gray-50">
                           <Input
-                            value={product.factoryName.code}
+                            value={product.factoryName.name}
                             readOnly
                             className="border-0 shadow-none bg-gray-50 h-8"
-                            placeholder="工廠代碼"
+                            placeholder="工廠名稱"
                           />
                         </div>
                       </div>
@@ -1371,21 +1790,13 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                 <TableContainer>
                   <TableRow>
                     <TableCell label="產品型別">
-                      <Select
+                      <Input
+                        id="productType"
                         value={product.productType}
-                        onValueChange={(value) => handleInputChange("productType", value)}
-                      >
-                        <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                          <SelectValue placeholder="選擇類別" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(e) => handleInputChange("productType", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                        placeholder="輸入產品型別"
+                      />
                     </TableCell>
                     <TableCell label="Part No.">
                       <Input
@@ -2323,7 +2734,7 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                       <div className="p-2">
                         <Checkbox
                           checked={product.moldReturned}
-                          onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
+                          onChange={(checked) => handleInputChange("moldReturned", checked === true)}
                         />
                       </div>
                     </div>
@@ -2389,16 +2800,6 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                   <TableHeader>
                     <div className="flex items-center justify-between px-4">
                       <span>訂單歷史</span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2"
-                        onClick={() => setIsOrderHistoryDialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        新增訂單
-                      </Button>
                     </div>
                   </TableHeader>
                   <div className="grid grid-cols-2 border-b">
@@ -2495,6 +2896,16 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
         </Button>
         <Button type="submit">保存產品</Button>
       </div>
+
+      {/* 渲染對話框 */}
+      {renderNoteDialog()}
+      {renderProcessDialog()}
+      {renderSpecialReqDialog()}
+      {renderProcessNoteDialog()}
+      {renderResumeNoteDialog()}
+      {renderAddCustomFieldDialog("importantDocuments")}
+      {renderAddCustomFieldDialog("partManagement")}
+      {renderAddCustomFieldDialog("compliance")}
     </form>
   )
 }
