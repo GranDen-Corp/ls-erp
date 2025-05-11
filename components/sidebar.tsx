@@ -108,7 +108,7 @@ export default function Sidebar({ className }: SidebarProps = {}) {
       active: pathname === "/customers" || pathname?.startsWith("/customers/"),
     },
     {
-      label: "工廠管理",
+      label: "供應商管理",
       icon: Factory,
       href: "/factories",
       active: pathname === "/factories" || pathname?.startsWith("/factories/"),
@@ -164,7 +164,7 @@ export default function Sidebar({ className }: SidebarProps = {}) {
       active: pathname === "/settings" || pathname?.startsWith("/settings/"),
     },
     {
-      label: "Local資料表",
+      label: "SBTest資料表",
       icon: Database,
       href: "/local-data",
       active: pathname === "/local-data" || pathname?.startsWith("/local-data/"),

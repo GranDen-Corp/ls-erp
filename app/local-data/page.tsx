@@ -16,8 +16,8 @@ export default function LocalDataPage() {
     <div className="container mx-auto py-4">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Local資料表</h1>
-          <p className="text-muted-foreground">管理本地資料表，包含產品、客戶和供應商資料</p>
+          <h1 className="text-3xl font-bold tracking-tight">SBTest資料表</h1>
+          <p className="text-muted-foreground">管理Supabase資料表，包含產品、客戶和供應商資料</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">

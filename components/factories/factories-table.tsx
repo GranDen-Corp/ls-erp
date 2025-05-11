@@ -114,16 +114,16 @@ export function FactoriesTable() {
   const handleDeleteFactory = (factoryId: string) => {
     // 實際應用中，這裡會調用API刪除工廠
     toast({
-      title: "工廠已刪除",
-      description: `工廠ID: ${factoryId} 已成功刪除`,
+      title: "供應商已刪除",
+      description: `供應商ID: ${factoryId} 已成功刪除`,
     })
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>工廠列表</CardTitle>
-        <CardDescription>管理您的所有工廠資料</CardDescription>
+        <CardTitle>供應商列表</CardTitle>
+        <CardDescription>管理您的所有供應商資料</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between mb-4">
@@ -132,7 +132,7 @@ export function FactoriesTable() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="搜尋工廠..."
+                placeholder="搜尋供應商..."
                 className="pl-8 w-[250px]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -173,10 +173,10 @@ export function FactoriesTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">工廠ID</TableHead>
+                <TableHead className="w-[100px]">供應商ID</TableHead>
                 <TableHead>
                   <div className="flex items-center">
-                    工廠名稱
+                    供應商名稱
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
@@ -191,7 +191,7 @@ export function FactoriesTable() {
               {filteredFactories.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    沒有找到符合條件的工廠
+                    沒有找到符合條件的供應商
                   </TableCell>
                 </TableRow>
               ) : (
@@ -232,13 +232,13 @@ export function FactoriesTable() {
                           <DropdownMenuItem asChild>
                             <Link href={`/factories/${factory.id}/edit`}>
                               <FileEdit className="mr-2 h-4 w-4" />
-                              編輯工廠
+                              編輯供應商
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteFactory(factory.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
-                            刪除工廠
+                            刪除供應商
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -252,7 +252,7 @@ export function FactoriesTable() {
       </CardContent>
       <CardFooter className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          顯示 {filteredFactories.length} 個工廠中的 1-{filteredFactories.length} 個
+          顯示 {filteredFactories.length} 個供應商中的 1-{filteredFactories.length} 個
         </div>
         <Pagination>
           <PaginationContent>
