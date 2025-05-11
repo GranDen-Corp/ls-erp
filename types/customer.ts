@@ -10,7 +10,7 @@ export interface Customer {
   creditLimit: number
   currency: string
   status: "active" | "inactive"
-  groupTag?: string // 新增集團標籤字段
+  groupTag?: string
   notes?: string
   createdAt: string
   updatedAt: string
@@ -27,6 +27,6 @@ export interface CustomerFormData {
   creditLimit: number
   currency: string
   status: "active" | "inactive"
-  groupTag?: string // 新增集團標籤字段
+  groupTag?: string
   notes?: string
 }

@@ -24,6 +24,7 @@ import {
   BarChart,
   ChevronLeft,
   ChevronRight,
+  Database,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -64,6 +65,12 @@ export default function Sidebar({ className }: SidebarProps = {}) {
           icon: Zap,
         },
       ],
+    },
+    {
+      label: "Local資料表資料",
+      icon: Database,
+      href: "/local-data",
+      active: pathname === "/local-data" || pathname?.startsWith("/local-data/"),
     },
     {
       label: "採購單",
