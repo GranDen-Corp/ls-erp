@@ -1,131 +1,151 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MoreHorizontal, Search, FileEdit, Trash2, Eye, Tag } from "lucide-react"
-import type { Customer } from "@/types/customer"
+import { MoreHorizontal, Search, FileEdit, Trash2, Eye, Tag, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { supabaseClient } from "@/lib/supabase-client"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
 
-// 模擬客戶數據
-const mockCustomers: Customer[] = [
-  {
-    id: "cust-001",
-    name: "全球貿易有限公司",
-    contactPerson: "張小明",
-    email: "contact@globaltrade.com",
-    phone: "+886 2 1234 5678",
-    address: "台北市信義區信義路五段7號",
-    country: "台灣",
-    paymentTerms: "T/T 30天",
-    creditLimit: 500000,
-    currency: "TWD",
-    status: "active",
-    groupTag: "A集團",
-    createdAt: "2023-01-15T08:30:00Z",
-    updatedAt: "2023-06-20T14:45:00Z",
-  },
-  {
-    id: "cust-002",
-    name: "美國進口商集團",
-    contactPerson: "John Smith",
-    email: "john@usimporters.com",
-    phone: "+1 212 555 1234",
-    address: "123 Broadway, New York, NY 10001",
-    country: "美國",
-    paymentTerms: "L/C 60天",
-    creditLimit: 1000000,
-    currency: "USD",
-    status: "active",
-    groupTag: "B集團",
-    createdAt: "2023-02-10T10:15:00Z",
-    updatedAt: "2023-07-05T09:20:00Z",
-  },
-  {
-    id: "cust-003",
-    name: "歐洲配銷中心",
-    contactPerson: "Marie Dupont",
-    email: "marie@eurodist.eu",
-    phone: "+33 1 23 45 67 89",
-    address: "25 Rue de la Paix, 75002 Paris",
-    country: "法國",
-    paymentTerms: "D/P 45天",
-    creditLimit: 750000,
-    currency: "EUR",
-    status: "inactive",
-    groupTag: "A集團",
-    notes: "暫停交易中，等待信用評估",
-    createdAt: "2023-03-05T14:20:00Z",
-    updatedAt: "2023-08-12T11:30:00Z",
-  },
-  {
-    id: "cust-004",
-    name: "A1芝加哥分部",
-    contactPerson: "Mike Johnson",
-    email: "mike@agroup.com",
-    phone: "+1 312 555 6789",
-    address: "456 Michigan Ave, Chicago, IL 60601",
-    country: "美國",
-    paymentTerms: "T/T 45天",
-    creditLimit: 800000,
-    currency: "USD",
-    status: "active",
-    groupTag: "A集團",
-    createdAt: "2023-04-20T09:15:00Z",
-    updatedAt: "2023-09-01T16:30:00Z",
-  },
-  {
-    id: "cust-005",
-    name: "A2底特律分部",
-    contactPerson: "Sarah Williams",
-    email: "sarah@agroup.com",
-    phone: "+1 313 555 4321",
-    address: "789 Woodward Ave, Detroit, MI 48226",
-    country: "美國",
-    paymentTerms: "T/T 45天",
-    creditLimit: 600000,
-    currency: "USD",
-    status: "active",
-    groupTag: "A集團",
-    createdAt: "2023-05-12T11:45:00Z",
-    updatedAt: "2023-09-15T10:20:00Z",
-  },
-]
+// 客戶資料類型
+interface Customer {
+  customer_id: string
+  customer_short_name: string
+  customer_full_name: string
+  currency: string
+  customer_address?: string
+  customer_phone?: string
+  customer_fax?: string
+  payment_due_date?: string
+  division_location?: string
+  sales_representative?: string
+  group_code?: string
+  invoice_email?: string
+  report_email?: string
+  require_report?: boolean
+  report_type?: string
+  exchange_rate?: number
+  acceptance_percent?: number
+  use_group_setting?: boolean
+  max_carton_weight?: number
+  customer_packaging?: string
+  order_packaging_display?: string
+}
 
 export default function CustomersTable() {
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [groupFilter, setGroupFilter] = useState<string>("")
-  const [customers] = useState<Customer[]>(mockCustomers)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
+
+  // 從Supabase獲取客戶資料
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        const { data, error } = await supabaseClient.from("customers").select("*")
+
+        if (error) {
+          throw new Error(`獲取客戶資料時出錯: ${error.message}`)
+        }
+
+        setCustomers(data || [])
+      } catch (err) {
+        console.error("獲取客戶資料時出錯:", err)
+        setError(err instanceof Error ? err.message : "獲取客戶資料時出錯")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchCustomers()
+  }, [])
 
   // 提取所有唯一的集團標籤
-  const uniqueGroups = useMemo(() => {
-    const groups = new Set<string>()
-    customers.forEach((customer) => {
-      if (customer.groupTag) {
-        groups.add(customer.groupTag)
-      }
-    })
-    return Array.from(groups)
-  }, [customers])
+  const uniqueGroups = Array.from(new Set(customers.map((customer) => customer.group_code).filter(Boolean)))
 
   // 根據搜索詞和集團過濾客戶
-  const filteredCustomers = useMemo(() => {
-    return customers.filter((customer) => {
-      const matchesSearch =
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.country.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCustomers = customers.filter((customer) => {
+    // 先檢查是否符合搜尋條件
+    const matchesSearch =
+      customer.customer_short_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.customer_full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.customer_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.division_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false
 
-      const matchesGroup = !groupFilter || customer.groupTag === groupFilter
+    // 再檢查是否符合集團篩選條件
+    const matchesGroup = !groupFilter || customer.group_code === groupFilter
 
-      return matchesSearch && matchesGroup
-    })
-  }, [customers, searchTerm, groupFilter])
+    return matchesSearch && matchesGroup
+  })
+
+  // 處理刪除客戶
+  const handleDeleteCustomer = async (customerId: string) => {
+    try {
+      const { error } = await supabaseClient.from("customers").delete().eq("customer_id", customerId)
+
+      if (error) {
+        throw new Error(`刪除客戶時出錯: ${error.message}`)
+      }
+
+      // 更新本地狀態
+      setCustomers(customers.filter((customer) => customer.customer_id !== customerId))
+
+      toast({
+        title: "客戶已刪除",
+        description: `客戶ID: ${customerId} 已成功刪除`,
+      })
+    } catch (err) {
+      console.error("刪除客戶時出錯:", err)
+      toast({
+        title: "刪除失敗",
+        description: err instanceof Error ? err.message : "刪除客戶時出錯",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>客戶管理</CardTitle>
+          <CardDescription>載入中...</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center items-center h-64">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin mb-2" />
+            <p>載入客戶資料中...</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>客戶管理</CardTitle>
+          <CardDescription>發生錯誤</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center items-center h-64">
+          <p className="text-red-500">錯誤: {error}</p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -161,12 +181,12 @@ export default function CustomersTable() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>客戶ID</TableHead>
               <TableHead>客戶名稱</TableHead>
-              <TableHead>聯絡人</TableHead>
               <TableHead>集團</TableHead>
-              <TableHead>國家</TableHead>
+              <TableHead>國家/地區</TableHead>
               <TableHead>付款條件</TableHead>
-              <TableHead>狀態</TableHead>
+              <TableHead>幣別</TableHead>
               <TableHead className="w-[100px]">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -179,27 +199,23 @@ export default function CustomersTable() {
               </TableRow>
             ) : (
               filteredCustomers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
+                <TableRow key={customer.customer_id}>
+                  <TableCell className="font-medium">{customer.customer_id}</TableCell>
                   <TableCell>
-                    <div>{customer.contactPerson}</div>
-                    <div className="text-sm text-muted-foreground">{customer.email}</div>
+                    <div>{customer.customer_short_name}</div>
+                    <div className="text-sm text-muted-foreground">{customer.customer_full_name}</div>
                   </TableCell>
                   <TableCell>
-                    {customer.groupTag && (
+                    {customer.group_code && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Tag className="h-3 w-3" />
-                        {customer.groupTag}
+                        {customer.group_code}
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>{customer.country}</TableCell>
-                  <TableCell>{customer.paymentTerms}</TableCell>
-                  <TableCell>
-                    <Badge variant={customer.status === "active" ? "default" : "secondary"}>
-                      {customer.status === "active" ? "活躍" : "非活躍"}
-                    </Badge>
-                  </TableCell>
+                  <TableCell>{customer.division_location || "-"}</TableCell>
+                  <TableCell>{customer.payment_due_date ? `${customer.payment_due_date}天` : "-"}</TableCell>
+                  <TableCell>{customer.currency || "-"}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -209,19 +225,22 @@ export default function CustomersTable() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <Link href={`/customers/${customer.id}`}>
+                        <Link href={`/customers/${customer.customer_id}`}>
                           <DropdownMenuItem>
                             <Eye className="mr-2 h-4 w-4" />
                             查看詳情
                           </DropdownMenuItem>
                         </Link>
-                        <Link href={`/customers/${customer.id}/edit`}>
+                        <Link href={`/customers/${customer.customer_id}/edit`}>
                           <DropdownMenuItem>
                             <FileEdit className="mr-2 h-4 w-4" />
                             編輯
                           </DropdownMenuItem>
                         </Link>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDeleteCustomer(customer.customer_id)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           刪除
                         </DropdownMenuItem>

@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -21,6 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
+import * as XLSX from "xlsx"
 
 // 通用資料類型
 type DataItem = Record<string, any>
@@ -71,6 +72,8 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
   // 匯入相關狀態
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importFormat, setImportFormat] = useState<string>("csv")
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 從Supabase獲取資料
   useEffect(() => {
@@ -150,17 +153,300 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
   }
 
   // 處理匯出功能
-  const handleExport = () => {
-    // 這裡實現匯出功能
-    console.log(`匯出${title}，格式:`, exportFormat, "選項:", exportOption)
-    setIsExportDialogOpen(false)
+  const handleExport = async () => {
+    try {
+      // 決定要匯出的資料
+      let dataToExport = data
+      if (exportOption === "visible") {
+        dataToExport = filteredData
+      } else if (exportOption === "selected" && selectedItem) {
+        dataToExport = [selectedItem]
+      }
+
+      if (dataToExport.length === 0) {
+        toast({
+          title: "匯出失敗",
+          description: "沒有資料可匯出",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // 根據選擇的格式匯出資料
+      if (exportFormat === "csv") {
+        exportToCSV(dataToExport, `${tableName}_export`)
+      } else if (exportFormat === "excel") {
+        exportToExcel(dataToExport, `${tableName}_export`)
+      } else if (exportFormat === "json") {
+        exportToJSON(dataToExport, `${tableName}_export`)
+      }
+
+      toast({
+        title: "匯出成功",
+        description: `已成功匯出 ${dataToExport.length} 筆資料`,
+      })
+    } catch (err) {
+      console.error("匯出資料時出錯:", err)
+      toast({
+        title: "匯出失敗",
+        description: err instanceof Error ? err.message : "匯出資料時發生錯誤",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExportDialogOpen(false)
+    }
+  }
+
+  // 匯出為CSV
+  const exportToCSV = (data: DataItem[], filename: string) => {
+    // 準備CSV內容
+    const headers = columns.map((col) => col.title).join(",")
+    const rows = data.map((item) => {
+      return columns
+        .map((col) => {
+          const value = item[col.key]
+          // 處理包含逗號的字串
+          if (typeof value === "string" && value.includes(",")) {
+            return `"${value}"`
+          }
+          return value !== undefined && value !== null ? value : ""
+        })
+        .join(",")
+    })
+    const csvContent = [headers, ...rows].join("\n")
+
+    // 創建Blob並下載
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `${filename}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // 匯出為Excel
+  const exportToExcel = (data: DataItem[], filename: string) => {
+    // 準備Excel工作表資料
+    const wsData = [
+      columns.map((col) => col.title),
+      ...data.map((item) =>
+        columns.map((col) => (item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : "")),
+      ),
+    ]
+
+    // 創建工作表
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+
+    // 創建工作簿
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1")
+
+    // 寫入檔案並下載
+    XLSX.writeFile(wb, `${filename}.xlsx`)
+  }
+
+  // 匯出為JSON
+  const exportToJSON = (data: DataItem[], filename: string) => {
+    const jsonContent = JSON.stringify(data, null, 2)
+    const blob = new Blob([jsonContent], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `${filename}.json`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // 處理檔案選擇
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setImportFile(e.target.files[0])
+    }
   }
 
   // 處理匯入功能
-  const handleImport = () => {
-    // 這裡實現匯入功能
-    console.log(`匯入${title}，格式:`, importFormat)
-    setIsImportDialogOpen(false)
+  const handleImport = async () => {
+    if (!importFile) {
+      toast({
+        title: "匯入失敗",
+        description: "請選擇要匯入的檔案",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      let importedData: DataItem[] = []
+
+      // 根據檔案類型解析資料
+      if (importFormat === "csv") {
+        importedData = await parseCSV(importFile)
+      } else if (importFormat === "excel") {
+        importedData = await parseExcel(importFile)
+      } else if (importFormat === "json") {
+        importedData = await parseJSON(importFile)
+      }
+
+      if (importedData.length === 0) {
+        throw new Error("匯入的檔案不包含有效資料")
+      }
+
+      // 將資料寫入Supabase
+      const { error } = await supabaseClient.from(tableName).upsert(importedData)
+
+      if (error) {
+        throw new Error(`寫入資料時出錯: ${error.message}`)
+      }
+
+      // 重新載入資料
+      await fetchData()
+
+      toast({
+        title: "匯入成功",
+        description: `已成功匯入 ${importedData.length} 筆資料`,
+      })
+    } catch (err) {
+      console.error("匯入資料時出錯:", err)
+      toast({
+        title: "匯入失敗",
+        description: err instanceof Error ? err.message : "匯入資料時發生錯誤",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setIsImportDialogOpen(false)
+      setImportFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
+  // 解析CSV檔案
+  const parseCSV = (file: File): Promise<DataItem[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string
+          const lines = text.split("\n")
+          const headers = lines[0].split(",").map((h) => h.trim().replace(/^"(.*)"$/, "$1"))
+
+          const result: DataItem[] = []
+          for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue
+
+            // 處理CSV中的引號和逗號
+            const values: string[] = []
+            let currentValue = ""
+            let inQuotes = false
+
+            for (let j = 0; j < lines[i].length; j++) {
+              const char = lines[i][j]
+
+              if (char === '"') {
+                inQuotes = !inQuotes
+              } else if (char === "," && !inQuotes) {
+                values.push(currentValue.replace(/^"(.*)"$/, "$1"))
+                currentValue = ""
+              } else {
+                currentValue += char
+              }
+            }
+            values.push(currentValue.replace(/^"(.*)"$/, "$1"))
+
+            const row: DataItem = {}
+            for (let j = 0; j < headers.length; j++) {
+              if (headers[j]) {
+                row[headers[j]] = values[j] || null
+              }
+            }
+            result.push(row)
+          }
+
+          resolve(result)
+        } catch (err) {
+          reject(err)
+        }
+      }
+      reader.onerror = () => reject(new Error("讀取檔案時出錯"))
+      reader.readAsText(file)
+    })
+  }
+
+  // 解析Excel檔案
+  const parseExcel = (file: File): Promise<DataItem[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer)
+          const workbook = XLSX.read(data, { type: "array" })
+
+          // 假設我們只讀取第一個工作表
+          const firstSheetName = workbook.SheetNames[0]
+          const worksheet = workbook.Sheets[firstSheetName]
+
+          // 將工作表轉換為JSON
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+          if (jsonData.length < 2) {
+            throw new Error("Excel檔案格式不正確或沒有資料")
+          }
+
+          const headers = jsonData[0] as string[]
+          const result: DataItem[] = []
+
+          for (let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i] as any[]
+            const item: DataItem = {}
+
+            for (let j = 0; j < headers.length; j++) {
+              if (headers[j]) {
+                item[headers[j]] = row[j] !== undefined ? row[j] : null
+              }
+            }
+
+            result.push(item)
+          }
+
+          resolve(result)
+        } catch (err) {
+          reject(err)
+        }
+      }
+      reader.onerror = () => reject(new Error("讀取檔案時出錯"))
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  // 解析JSON檔案
+  const parseJSON = (file: File): Promise<DataItem[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string
+          const data = JSON.parse(text)
+
+          if (!Array.isArray(data)) {
+            throw new Error("JSON檔案必須包含資料陣列")
+          }
+
+          resolve(data)
+        } catch (err) {
+          reject(err)
+        }
+      }
+      reader.onerror = () => reject(new Error("讀取檔案時出錯"))
+      reader.readAsText(file)
+    })
   }
 
   // 渲染詳情對話框
@@ -289,6 +575,7 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
                   onClick={() => setExportOption("selected")}
                   size="sm"
                   className="justify-start"
+                  disabled={!selectedItem}
                 >
                   選取的資料
                 </Button>
@@ -344,16 +631,31 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
               <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
                 <Upload className="mx-auto h-8 w-8 text-gray-400" />
                 <div className="mt-2">
-                  <Button variant="outline" size="sm">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept={importFormat === "csv" ? ".csv" : importFormat === "excel" ? ".xlsx,.xls" : ".json"}
+                    className="hidden"
+                  />
+                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                     選擇檔案
                   </Button>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">支援 .csv, .xlsx, .json 格式</p>
+                <p className="mt-2 text-xs text-gray-500">
+                  {importFile
+                    ? `已選擇: ${importFile.name}`
+                    : `支援 ${
+                        importFormat === "csv" ? ".csv" : importFormat === "excel" ? ".xlsx, .xls" : ".json"
+                      } 格式`}
+                </p>
               </div>
             </div>
           </div>
           <div className="flex justify-end">
-            <Button onClick={handleImport}>匯入</Button>
+            <Button onClick={handleImport} disabled={!importFile}>
+              匯入
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -431,7 +733,7 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
                         <SelectValue placeholder="全部" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="non-empty-string">全部</SelectItem>
+                        <SelectItem value="not-empty">全部</SelectItem>
                         {filter.options.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}

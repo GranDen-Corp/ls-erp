@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { MoreHorizontal, ArrowUpDown, Search, FileEdit, Trash2, Eye } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Search, FileEdit, Trash2, Eye, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -26,98 +26,138 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { useToast } from "@/components/ui/use-toast"
+import { supabaseClient } from "@/lib/supabase-client"
 
-// 模擬工廠數據
-const factories = [
-  {
-    id: "FAC001",
-    name: "台灣精密製造廠",
-    contactPerson: "王大明",
-    email: "contact@twprecision.com",
-    phone: "04-2345-6789",
-    address: "台中市西屯區工業區路123號",
-    country: "台灣",
-    type: "assembly",
-    status: "active",
-    createdAt: "2023-01-10",
-  },
-  {
-    id: "FAC002",
-    name: "深圳電子組裝廠",
-    contactPerson: "李小華",
-    email: "contact@szassembly.com",
-    phone: "+86-755-1234-5678",
-    address: "廣東省深圳市寶安區工業園B區",
-    country: "中國",
-    type: "assembly",
-    status: "active",
-    createdAt: "2023-02-15",
-  },
-  {
-    id: "FAC003",
-    name: "越南製造中心",
-    contactPerson: "Nguyen Van A",
-    email: "contact@vnmanufacturing.com",
-    phone: "+84-28-1234-5678",
-    address: "Ho Chi Minh City, District 9, Industrial Zone",
-    country: "越南",
-    type: "production",
-    status: "active",
-    createdAt: "2023-03-20",
-  },
-  {
-    id: "FAC004",
-    name: "馬來西亞電子廠",
-    contactPerson: "Ahmad Bin Abdullah",
-    email: "contact@myelectronics.com",
-    phone: "+60-3-1234-5678",
-    address: "Penang, Bayan Lepas Industrial Zone",
-    country: "馬來西亞",
-    type: "production",
-    status: "inactive",
-    createdAt: "2023-04-25",
-  },
-  {
-    id: "FAC005",
-    name: "台南零件製造廠",
-    contactPerson: "陳小華",
-    email: "contact@tnparts.com",
-    phone: "06-2345-6789",
-    address: "台南市安南區工業二路45號",
-    country: "台灣",
-    type: "parts",
-    status: "active",
-    createdAt: "2023-05-30",
-  },
-]
+// 供應商資料類型
+interface Supplier {
+  factory_id: string
+  factory_name: string
+  factory_full_name: string
+  supplier_type: string
+  factory_address?: string
+  factory_phone?: string
+  factory_fax?: string
+  tax_id?: string
+  category1?: string
+  category2?: string
+  category3?: string
+  iso9001_certified?: string
+  iatf16949_certified?: string
+  iso17025_certified?: string
+  cqi9_certified?: string
+  cqi11_certified?: string
+  cqi12_certified?: string
+  status?: string
+}
 
 export function FactoriesTable() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  // 過濾工廠數據
-  const filteredFactories = factories.filter((factory) => {
+  // 從Supabase獲取供應商資料
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        const { data, error } = await supabaseClient.from("suppliers").select("*")
+
+        if (error) {
+          throw new Error(`獲取供應商資料時出錯: ${error.message}`)
+        }
+
+        setSuppliers(data || [])
+      } catch (err) {
+        console.error("獲取供應商資料時出錯:", err)
+        setError(err instanceof Error ? err.message : "獲取供應商資料時出錯")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSuppliers()
+  }, [])
+
+  // 過濾供應商數據
+  const filteredSuppliers = suppliers.filter((supplier) => {
     const matchesSearch =
-      factory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      factory.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      factory.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())
+      supplier.factory_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.factory_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.factory_full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false
 
-    const matchesStatus = statusFilter === "all" || factory.status === statusFilter
+    const matchesStatus = statusFilter === "all" || supplier.status === statusFilter
 
-    const matchesType = typeFilter === "all" || factory.type === typeFilter
+    const matchesType = typeFilter === "all" || supplier.supplier_type === typeFilter
 
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const handleDeleteFactory = (factoryId: string) => {
-    // 實際應用中，這裡會調用API刪除工廠
-    toast({
-      title: "供應商已刪除",
-      description: `供應商ID: ${factoryId} 已成功刪除`,
-    })
+  // 處理刪除供應商
+  const handleDeleteSupplier = async (supplierId: string) => {
+    try {
+      const { error } = await supabaseClient.from("suppliers").delete().eq("factory_id", supplierId)
+
+      if (error) {
+        throw new Error(`刪除供應商時出錯: ${error.message}`)
+      }
+
+      // 更新本地狀態
+      setSuppliers(suppliers.filter((supplier) => supplier.factory_id !== supplierId))
+
+      toast({
+        title: "供應商已刪除",
+        description: `供應商ID: ${supplierId} 已成功刪除`,
+      })
+    } catch (err) {
+      console.error("刪除供應商時出錯:", err)
+      toast({
+        title: "刪除失敗",
+        description: err instanceof Error ? err.message : "刪除供應商時出錯",
+        variant: "destructive",
+      })
+    }
   }
+
+  if (isLoading) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>供應商列表</CardTitle>
+          <CardDescription>載入中...</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center items-center h-64">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin mb-2" />
+            <p>載入供應商資料中...</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>供應商列表</CardTitle>
+          <CardDescription>發生錯誤</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center items-center h-64">
+          <p className="text-red-500">錯誤: {error}</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // 獲取唯一的供應商類型
+  const supplierTypes = Array.from(new Set(suppliers.map((supplier) => supplier.supplier_type).filter(Boolean)))
 
   return (
     <Card>
@@ -154,19 +194,13 @@ export function FactoriesTable() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">所有類型</SelectItem>
-                <SelectItem value="assembly">組裝廠</SelectItem>
-                <SelectItem value="production">生產廠</SelectItem>
-                <SelectItem value="parts">零件廠</SelectItem>
+                {supplierTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              匯出
-            </Button>
-            <Button variant="outline" size="sm">
-              匯入
-            </Button>
           </div>
         </div>
         <div className="rounded-md border">
@@ -180,37 +214,52 @@ export function FactoriesTable() {
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead>聯絡人</TableHead>
-                <TableHead>電話</TableHead>
                 <TableHead>類型</TableHead>
-                <TableHead>狀態</TableHead>
+                <TableHead>電話</TableHead>
+                <TableHead>ISO認證</TableHead>
+                <TableHead>IATF認證</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFactories.length === 0 ? (
+              {filteredSuppliers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
                     沒有找到符合條件的供應商
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredFactories.map((factory) => (
-                  <TableRow key={factory.id}>
-                    <TableCell className="font-medium">{factory.id}</TableCell>
-                    <TableCell>{factory.name}</TableCell>
-                    <TableCell>{factory.contactPerson}</TableCell>
-                    <TableCell>{factory.phone}</TableCell>
+                filteredSuppliers.map((supplier) => (
+                  <TableRow key={supplier.factory_id}>
+                    <TableCell className="font-medium">{supplier.factory_id}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {factory.type === "assembly" && "組裝廠"}
-                        {factory.type === "production" && "生產廠"}
-                        {factory.type === "parts" && "零件廠"}
+                      <div>{supplier.factory_name}</div>
+                      <div className="text-sm text-muted-foreground">{supplier.factory_full_name}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{supplier.supplier_type || "-"}</Badge>
+                    </TableCell>
+                    <TableCell>{supplier.factory_phone || "-"}</TableCell>
+                    <TableCell>
+                      <Badge variant={supplier.iso9001_certified === "是" ? "default" : "secondary"}>
+                        {supplier.iso9001_certified === "是" ? "已認證" : "未認證"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={factory.status === "active" ? "default" : "secondary"}>
-                        {factory.status === "active" ? "啟用" : "停用"}
+                      <Badge
+                        variant={
+                          supplier.iatf16949_certified === "是"
+                            ? "default"
+                            : supplier.iatf16949_certified === "審核中"
+                              ? "outline"
+                              : "secondary"
+                        }
+                      >
+                        {supplier.iatf16949_certified === "是"
+                          ? "已認證"
+                          : supplier.iatf16949_certified === "審核中"
+                            ? "審核中"
+                            : "未認證"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -224,19 +273,22 @@ export function FactoriesTable() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>操作</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/factories/${factory.id}`}>
+                            <Link href={`/factories/${supplier.factory_id}`}>
                               <Eye className="mr-2 h-4 w-4" />
                               查看詳情
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/factories/${factory.id}/edit`}>
+                            <Link href={`/factories/${supplier.factory_id}/edit`}>
                               <FileEdit className="mr-2 h-4 w-4" />
                               編輯供應商
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteFactory(factory.id)}>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDeleteSupplier(supplier.factory_id)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             刪除供應商
                           </DropdownMenuItem>
@@ -252,7 +304,7 @@ export function FactoriesTable() {
       </CardContent>
       <CardFooter className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          顯示 {filteredFactories.length} 個供應商中的 1-{filteredFactories.length} 個
+          顯示 {filteredSuppliers.length} 個供應商中的 1-{filteredSuppliers.length} 個
         </div>
         <Pagination>
           <PaginationContent>
