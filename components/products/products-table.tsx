@@ -244,7 +244,7 @@ export function ProductsTable({ category, status, customer }: ProductsTableProps
           <TableHeader>
             <TableRow>
               <TableHead className="w-12"></TableHead>
-              <TableHead>產品編號</TableHead>
+              <TableHead>Part No.</TableHead>
               <TableHead>產品名稱</TableHead>
               <TableHead>客戶</TableHead>
               <TableHead>工廠</TableHead>

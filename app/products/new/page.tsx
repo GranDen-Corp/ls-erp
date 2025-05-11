@@ -59,7 +59,12 @@ export default function NewProductPage() {
           <CardTitle>{cloneId ? "複製現有產品" : "填寫產品資訊"}</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProductForm productId={cloneId || undefined} isClone={!!cloneId} onSubmit={handleSubmit} />
+          <ProductForm
+            productId={cloneId || undefined}
+            isClone={!!cloneId}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+          />
         </CardContent>
       </Card>
     </div>

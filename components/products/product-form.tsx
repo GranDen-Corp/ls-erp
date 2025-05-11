@@ -342,7 +342,6 @@ function ProductFormComponent({
   const [customDocuments, setCustomDocuments] = useState<DocumentRecord[]>([])
   // 零件特性記錄狀態
   const [customPartFeatures, setCustomPartFeatures] = useState<PartFeatureRecord[]>([])
-  // 符合性記錄狀態
   const [customCompliances, setCustomCompliances] = useState<ComplianceRecord[]>([])
   // 新文件名稱輸入
   const [newDocumentName, setNewDocumentName] = useState("")
@@ -1549,7 +1548,7 @@ function ProductFormComponent({
                               }}
                             >
                               <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                                <SelectValue placeholder="選擇客戶代碼" />
+                                <SelectValue placeholder="" />
                               </SelectTrigger>
                               <SelectContent>
                                 {customersData.map((customer) => (
@@ -1586,7 +1585,7 @@ function ProductFormComponent({
                               }}
                             >
                               <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8 bg-gray-50">
-                                <SelectValue placeholder="選擇客戶名稱" />
+                                <SelectValue placeholder="" />
                               </SelectTrigger>
                               <SelectContent>
                                 {customersData.map((customer) => (
@@ -1627,7 +1626,7 @@ function ProductFormComponent({
                               }}
                             >
                               <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                                <SelectValue placeholder="選擇工廠代碼" />
+                                <SelectValue placeholder="" />
                               </SelectTrigger>
                               <SelectContent>
                                 {factories.map((factory) => (
@@ -1664,7 +1663,7 @@ function ProductFormComponent({
                               }}
                             >
                               <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8 bg-gray-50">
-                                <SelectValue placeholder="選擇工廠名稱" />
+                                <SelectValue placeholder="" />
                               </SelectTrigger>
                               <SelectContent>
                                 {factories.map((factory) => (
@@ -1770,6 +1769,16 @@ function ProductFormComponent({
         {/* 其他TabsContent保持不變 */}
       </Tabs>
 
+      {/* 渲染對話框 */}
+      {renderNoteDialog()}
+      {renderProcessDialog()}
+      {renderSpecialReqDialog()}
+      {renderProcessNoteDialog()}
+      {renderResumeNoteDialog()}
+      {renderAddCustomFieldDialog("importantDocuments")}
+      {renderAddCustomFieldDialog("partManagement")}
+      {renderAddCustomFieldDialog("compliance")}
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline">
           取消
@@ -1785,16 +1794,6 @@ function ProductFormComponent({
           )}
         </Button>
       </div>
-
-      {/* 渲染對話框 */}
-      {renderNoteDialog()}
-      {renderProcessDialog()}
-      {renderSpecialReqDialog()}
-      {renderProcessNoteDialog()}
-      {renderResumeNoteDialog()}
-      {renderAddCustomFieldDialog("importantDocuments")}
-      {renderAddCustomFieldDialog("partManagement")}
-      {renderAddCustomFieldDialog("compliance")}
     </form>
   )
 }

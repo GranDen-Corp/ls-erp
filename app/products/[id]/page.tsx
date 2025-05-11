@@ -189,7 +189,7 @@ export default function ProductPage({ params }: ProductPageProps) {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">產品編號</p>
+                <p className="text-sm font-medium text-muted-foreground">Part No.</p>
                 <p>{product.part_no}</p>
               </div>
               <div>
