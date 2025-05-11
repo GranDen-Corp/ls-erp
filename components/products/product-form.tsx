@@ -16,6 +16,9 @@ import type { ProductComponent } from "@/types/assembly-product"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { saveProduct } from "@/app/actions/product-actions"
+import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 
 // 自定義表格樣式組件
 const TableContainer = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
@@ -1022,7 +1025,9 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter()
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // 將自定義欄位和記錄添加到提交數據中
@@ -1036,7 +1041,37 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
       customCompliances,
     }
 
-    onSubmit(submitData)
+    try {
+      // 使用 Server Action 保存產品
+      const result = await saveProduct(submitData)
+
+      if (result.success) {
+        toast({
+          title: "產品保存成功",
+          description: `產品 ${product.partNo} 已成功保存到資料庫`,
+        })
+
+        // 如果是從新增產品頁面提交，則導航到產品列表
+        if (onSubmit) {
+          onSubmit(submitData)
+        } else {
+          router.push("/products")
+        }
+      } else {
+        toast({
+          title: "錯誤",
+          description: `保存產品失敗: ${result.error}`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("保存產品時出錯:", error)
+      toast({
+        title: "錯誤",
+        description: "保存產品時出錯，請稍後再試",
+        variant: "destructive",
+      })
+    }
   }
 
   // 添加生成訂單和採購單要求的函數
