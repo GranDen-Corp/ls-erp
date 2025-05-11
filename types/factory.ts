@@ -1,32 +1,41 @@
 export interface Factory {
-  id: string
-  name: string
-  contactPerson: string
-  email: string
-  phone: string
-  address: string
-  country: string
-  specialization: string[]
-  capacity: number
-  capacityUnit: string
-  qualityRating: number
-  status: "active" | "inactive"
-  notes?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface FactoryFormData {
-  name: string
-  contactPerson: string
-  email: string
-  phone: string
-  address: string
-  country: string
-  specialization: string[]
-  capacity: number
-  capacityUnit: string
-  qualityRating: number
-  status: "active" | "inactive"
-  notes?: string
+  factory_id: string
+  factory_name: string
+  iso9001_expiry: string
+  po_reminder_note: string
+  factory_full_name: string
+  iso17025_certified: string
+  factory_address: string
+  iso17025_expiry: string
+  factory_phone: string
+  cqi9_certified: string
+  factory_fax: string
+  cqi9_expiry: string
+  tax_id: string
+  cqi11_certified: string
+  category1: string
+  cqi11_expiry: string
+  category2: string
+  cqi12_certified: string
+  category3: string
+  cqi12_expiry: string
+  invoice_address: string
+  direct_relation_3yrs: string
+  supplier_type: string
+  disabled_reason: string
+  iatf16949_certified: string
+  approval_note: string
+  iatf16949_expiry: string
+  quality_contact1: string
+  iso9001_certified: string
+  quality_contact2: string
+  legacy_notes: string
+  rohs_compliance: string
+  pfas_compliance: string
+  reach_compliance: string
+  cmrt_provided: string
+  tsca_compliance: string
+  emrt_provided: string
+  cp65_compliance: string
+  eu_pop_compliance: string
 }
