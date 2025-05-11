@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useTheme } from "next-themes"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Bell, Moon, Sun } from "lucide-react"
@@ -15,6 +16,9 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-4 sm:px-6">
+        <div className="flex items-center">
+          <Image src="/images/logo.jpg" alt="LOCKSURE INC." width={150} height={40} className="mr-4" />
+        </div>
         <div className="ml-auto flex items-center space-x-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
