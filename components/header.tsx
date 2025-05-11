@@ -18,7 +18,7 @@ export default function Header() {
       <div className="flex h-16 items-center px-4 sm:px-6">
         <div className="flex flex-col items-start">
           <div className="flex items-center">
-            <Image src="/images/logo.jpg" alt="LOCKSURE INC." width={150} height={40} className="mr-4" />
+            <Image src="/images/logo.jpg" alt="今湛貿易 ERP 系統" width={150} height={40} className="mr-4" />
           </div>
           <span className="text-xs text-muted-foreground ml-1">alpha ver.: v0.1</span>
         </div>
