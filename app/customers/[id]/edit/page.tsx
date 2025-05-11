@@ -3,28 +3,29 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import CustomerForm from "@/components/customers/customer-form"
-import type { CustomerFormData } from "@/types/customer"
+import { supabaseClient } from "@/lib/supabase-client"
+import { notFound } from "next/navigation"
 
 export const metadata: Metadata = {
   title: "編輯客戶",
   description: "編輯客戶資料",
 }
 
-// 模擬獲取客戶數據的函數
-async function getCustomer(id: string): Promise<CustomerFormData> {
-  // 在實際應用中，這裡會從API獲取數據
-  return {
-    name: "全球貿易有限公司",
-    contactPerson: "張小明",
-    email: "contact@globaltrade.com",
-    phone: "+886 2 1234 5678",
-    address: "台北市信義區信義路五段7號",
-    country: "台灣",
-    paymentTerms: "T/T 30天",
-    creditLimit: 500000,
-    currency: "TWD",
-    status: "active",
-    notes: "",
+// 從資料庫獲取客戶數據
+async function getCustomer(id: string) {
+  try {
+    const { data, error } = await supabaseClient.from("customers").select("*").eq("customer_id", id).single()
+
+    if (error) {
+      console.error("獲取客戶數據錯誤:", error)
+      return null
+    }
+
+    console.log("獲取到的客戶數據:", data) // 添加日誌以便調試
+    return data
+  } catch (error) {
+    console.error("獲取客戶數據異常:", error)
+    return null
   }
 }
 
@@ -34,6 +35,10 @@ export default async function EditCustomerPage({
   params: { id: string }
 }) {
   const customerData = await getCustomer(params.id)
+
+  if (!customerData) {
+    notFound()
+  }
 
   return (
     <div className="flex flex-col space-y-6 p-6">

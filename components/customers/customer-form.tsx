@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,8 +11,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { toast } from "@/hooks/use-toast"
+import { supabaseClient } from "@/lib/supabase-client"
+import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
 
 interface CustomerFormProps {
@@ -22,46 +22,80 @@ interface CustomerFormProps {
 
 export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
 
   // 基本資訊
-  const [customerCode, setCustomerCode] = useState(initialData?.customer_code || "")
-  const [customerName, setCustomerName] = useState(initialData?.customer_name || "")
-  const [shortName, setShortName] = useState(initialData?.short_name || "")
-  const [customerType, setCustomerType] = useState(initialData?.customer_type || "")
-  const [status, setStatus] = useState(initialData?.status || "active")
+  const [customerCode, setCustomerCode] = useState("")
+  const [customerName, setCustomerName] = useState("")
+  const [shortName, setShortName] = useState("")
+  const [customerType, setCustomerType] = useState("")
+  const [status, setStatus] = useState("active")
 
   // 聯絡資訊
-  const [contactPerson, setContactPerson] = useState(initialData?.contact_person || "")
-  const [email, setEmail] = useState(initialData?.email || "")
-  const [phone, setPhone] = useState(initialData?.phone || "")
-  const [fax, setFax] = useState(initialData?.fax || "")
-  const [address, setAddress] = useState(initialData?.address || "")
-  const [country, setCountry] = useState(initialData?.country || "")
-  const [website, setWebsite] = useState(initialData?.website || "")
+  const [contactPerson, setContactPerson] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [fax, setFax] = useState("")
+  const [address, setAddress] = useState("")
+  const [country, setCountry] = useState("")
+  const [website, setWebsite] = useState("")
 
   // 財務資訊
-  const [taxId, setTaxId] = useState(initialData?.tax_id || "")
-  const [paymentTerms, setPaymentTerms] = useState(initialData?.payment_terms || "")
-  const [creditLimit, setCreditLimit] = useState(initialData?.credit_limit || 0)
-  const [currency, setCurrency] = useState(initialData?.currency || "TWD")
-  const [bankName, setBankName] = useState(initialData?.bank_name || "")
-  const [bankAccount, setBankAccount] = useState(initialData?.bank_account || "")
+  const [taxId, setTaxId] = useState("")
+  const [paymentTerms, setPaymentTerms] = useState("")
+  const [creditLimit, setCreditLimit] = useState(0)
+  const [currency, setCurrency] = useState("TWD")
+  const [bankName, setBankName] = useState("")
+  const [bankAccount, setBankAccount] = useState("")
 
   // 其他資訊
-  const [groupTag, setGroupTag] = useState(initialData?.group_tag || "")
-  const [notes, setNotes] = useState(initialData?.notes || "")
-  const [createdAt] = useState(initialData?.created_at || new Date().toISOString())
-  const [updatedAt, setUpdatedAt] = useState(initialData?.updated_at || new Date().toISOString())
+  const [groupTag, setGroupTag] = useState("")
+  const [notes, setNotes] = useState("")
+  const [createdAt, setCreatedAt] = useState(new Date().toISOString())
+
+  // 當 initialData 變更時更新狀態
+  useEffect(() => {
+    console.log("初始數據:", initialData) // 添加日誌以便調試
+
+    if (initialData) {
+      // 基本資訊
+      setCustomerCode(initialData.customer_code || "")
+      setCustomerName(initialData.customer_name || "")
+      setShortName(initialData.short_name || "")
+      setCustomerType(initialData.customer_type || "")
+      setStatus(initialData.status || "active")
+
+      // 聯絡資訊
+      setContactPerson(initialData.contact_person || "")
+      setEmail(initialData.email || "")
+      setPhone(initialData.phone || "")
+      setFax(initialData.fax || "")
+      setAddress(initialData.address || "")
+      setCountry(initialData.country || "")
+      setWebsite(initialData.website || "")
+
+      // 財務資訊
+      setTaxId(initialData.tax_id || "")
+      setPaymentTerms(initialData.payment_terms || "")
+      setCreditLimit(initialData.credit_limit || 0)
+      setCurrency(initialData.currency || "TWD")
+      setBankName(initialData.bank_name || "")
+      setBankAccount(initialData.bank_account || "")
+
+      // 其他資訊
+      setGroupTag(initialData.group_tag || initialData.group_code || "")
+      setNotes(initialData.notes || "")
+      setCreatedAt(initialData.created_at || new Date().toISOString())
+    }
+  }, [initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      const supabase = createClientComponentClient()
-
       const customerData = {
         customer_code: customerCode,
         customer_name: customerName,
@@ -81,19 +115,21 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         currency,
         bank_name: bankName,
         bank_account: bankAccount,
-        group_tag: groupTag,
+        group_code: groupTag, // 注意：這裡使用 group_code 而不是 group_tag
         notes,
         updated_at: new Date().toISOString(),
       }
+
+      console.log("提交的客戶數據:", customerData) // 添加日誌以便調試
 
       let result
 
       if (customerId) {
         // 更新現有客戶
-        result = await supabase.from("customers").update(customerData).eq("customer_id", customerId)
+        result = await supabaseClient.from("customers").update(customerData).eq("customer_id", customerId)
       } else {
         // 新增客戶
-        result = await supabase.from("customers").insert([
+        result = await supabaseClient.from("customers").insert([
           {
             ...customerData,
             created_at: createdAt,

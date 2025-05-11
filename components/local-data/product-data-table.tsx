@@ -8,7 +8,7 @@ export function ProductDataTable() {
   const columns = [
     {
       key: "part_no",
-      title: "料號",
+      title: "Part No.",
       sortable: true,
     },
     {
@@ -17,15 +17,15 @@ export function ProductDataTable() {
       sortable: true,
     },
     {
-      key: "customer",
+      key: "customer_id",
       title: "客戶",
-      render: (value: any) => value?.customer_short_name || "-",
+      render: (value: any, row: any) => row?.customer?.customer_short_name || "-",
       sortable: true,
     },
     {
-      key: "factory",
-      title: "供應商",
-      render: (value: any) => value?.factory_name || "-",
+      key: "factory_id",
+      title: "工廠",
+      render: (value: any, row: any) => row?.factory?.factory_name || "-",
       sortable: true,
     },
     {
@@ -54,12 +54,20 @@ export function ProductDataTable() {
       id: "details",
       label: "基本資訊",
       fields: [
-        { label: "料號", key: "part_no" },
+        { label: "Part No.", key: "part_no" },
         { label: "產品名稱", key: "component_name" },
         { label: "規格", key: "specification" },
         { label: "產品類型", key: "product_type" },
-        { label: "客戶", key: "customer", render: (value: any) => value?.customer_short_name || "-" },
-        { label: "供應商", key: "factory", render: (value: any) => value?.factory_name || "-" },
+        {
+          label: "客戶",
+          key: "customer_id",
+          render: (value: any, row: any) => row?.customer?.customer_short_name || "-",
+        },
+        {
+          label: "工廠",
+          key: "factory_id",
+          render: (value: any, row: any) => row?.factory?.factory_name || "-",
+        },
         { label: "海關碼", key: "customs_code" },
         { label: "終端客戶", key: "end_customer" },
         { label: "分類碼", key: "classification_code" },

@@ -1,0 +1,106 @@
+import { NextResponse } from "next/server"
+import { createServerSupabaseClient } from "@/lib/supabase-client"
+
+export async function POST(request: Request) {
+  try {
+    const supabase = createServerSupabaseClient()
+    const data = await request.json()
+
+    // 準備要更新的資料
+    const productData = {
+      // 組合主鍵欄位
+      customer_id: data.customerName?.id || data.customer_id,
+      part_no: data.partNo,
+      factory_id: data.factoryName?.id || data.factory_id,
+
+      // 基本資訊
+      component_name: data.componentName,
+      specification: data.specification,
+      customs_code: data.customsCode,
+      end_customer: data.endCustomer,
+      product_type: data.productType,
+      classification_code: data.classificationCode,
+      vehicle_drawing_no: data.vehicleDrawingNo,
+      customer_drawing_no: data.customerDrawingNo,
+      product_period: data.productPeriod,
+      description: data.description,
+      status: data.status,
+      created_date: data.createdDate || new Date().toISOString().split("T")[0],
+      last_order_date: data.lastOrderDate,
+      last_price: data.lastPrice,
+      currency: data.currency,
+
+      // 產品規格
+      specifications: data.specifications,
+      sample_status: data.sampleStatus,
+      sample_date: data.sampleDate,
+
+      // 圖面資訊
+      original_drawing_version: data.originalDrawingVersion,
+      drawing_version: data.drawingVersion,
+      customer_original_drawing: data.customerOriginalDrawing,
+      jinzhan_drawing: data.jinzhanDrawing,
+      customer_drawing: data.customerDrawing,
+      factory_drawing: data.factoryDrawing,
+      customer_drawing_version: data.customerDrawingVersion,
+      factory_drawing_version: data.factoryDrawingVersion,
+
+      // 產品圖片
+      images: data.images,
+
+      // 組裝資訊
+      is_assembly: data.isAssembly,
+      components: data.components,
+      assembly_time: data.assemblyTime,
+      assembly_cost_per_hour: data.assemblyCostPerHour,
+      additional_costs: data.additionalCosts,
+
+      // 文件與認證
+      important_documents: data.importantDocuments,
+      part_management: data.partManagement,
+      compliance_status: data.complianceStatus,
+      edit_notes: data.editNotes,
+
+      // 製程資料
+      process_data: data.processData,
+      order_requirements: data.orderRequirements,
+      purchase_requirements: data.purchaseRequirements,
+      special_requirements: data.specialRequirements,
+      process_notes: data.processNotes,
+
+      // 履歷資料
+      has_mold: data.hasMold,
+      mold_cost: data.moldCost,
+      refundable_mold_quantity: data.refundableMoldQuantity,
+      mold_returned: data.moldReturned,
+      accounting_note: data.accountingNote,
+      quality_notes: data.qualityNotes,
+      order_history: data.orderHistory,
+      resume_notes: data.resumeNotes,
+
+      // 商業條款
+      moq: data.moq,
+      lead_time: data.leadTime,
+      packaging_requirements: data.packagingRequirements,
+    }
+
+    // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
+    const { data: result, error } = await supabase.from("products").upsert(productData, {
+      onConflict: "customer_id,part_no,factory_id",
+      returning: "minimal",
+    })
+
+    if (error) {
+      console.error("更新產品時出錯:", error)
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, data: result })
+  } catch (error) {
+    console.error("處理請求時出錯:", error)
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "更新產品時出錯" },
+      { status: 500 },
+    )
+  }
+}

@@ -315,17 +315,14 @@ export function ProductsTable({ category, status, customer }: ProductsTableProps
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>操作</DropdownMenuLabel>
                         <DropdownMenuItem>
-                          <Link
-                            href={`/products/${product.customer_id}/${product.part_no}/${product.factory_id}`}
-                            className="flex items-center"
-                          >
+                          <Link href={`/products/${encodeURIComponent(product.part_no)}`} className="flex items-center">
                             <Eye className="mr-2 h-4 w-4" />
                             查看詳情
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Link
-                            href={`/products/${product.customer_id}/${product.part_no}/${product.factory_id}/edit`}
+                            href={`/products/${encodeURIComponent(product.part_no)}/edit`}
                             className="flex items-center"
                           >
                             <Pencil className="mr-2 h-4 w-4" />
@@ -334,14 +331,17 @@ export function ProductsTable({ category, status, customer }: ProductsTableProps
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>
-                          <Link href={`/products/new?clone=${product.part_no}`} className="flex items-center">
+                          <Link
+                            href={`/products/new?clone=${encodeURIComponent(product.part_no)}`}
+                            className="flex items-center"
+                          >
                             <Copy className="mr-2 h-4 w-4" />
                             複製產品
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Link
-                            href={`/products/${product.customer_id}/${product.part_no}/${product.factory_id}/inquiry`}
+                            href={`/products/${encodeURIComponent(product.part_no)}/inquiry`}
                             className="flex items-center"
                           >
                             <FileText className="mr-2 h-4 w-4" />

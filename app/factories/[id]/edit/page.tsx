@@ -2,30 +2,22 @@ import { FactoryForm } from "@/components/factories/factory-form"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { supabaseClient } from "@/lib/supabase-client"
+import { notFound } from "next/navigation"
 
-// 模擬工廠數據獲取函數
-function getFactory(id: string) {
-  return {
-    id: "FAC001",
-    name: "台灣精密製造廠",
-    contactPerson: "王大明",
-    email: "contact@twprecision.com",
-    phone: "04-2345-6789",
-    address: "台中市西屯區工業區路123號",
-    country: "台灣",
-    type: "assembly",
-    status: "active",
-    createdAt: "2023-01-10",
-    taxId: "12345678",
-    website: "https://www.twprecision.com",
-    capacity: "每月5000單位",
-    certifications: ["ISO 9001", "ISO 14001"],
-    notes: "主要負責高精密零件組裝",
+export default async function EditFactoryPage({ params }: { params: { id: string } }) {
+  // 從資料庫獲取供應商資訊
+  const { data: factory, error } = await supabaseClient
+    .from("suppliers")
+    .select("*")
+    .eq("factory_id", params.id)
+    .single()
+
+  // 如果發生錯誤或找不到供應商，導向404頁面
+  if (error || !factory) {
+    console.error("獲取供應商資訊時出錯:", error?.message || "找不到供應商")
+    notFound()
   }
-}
-
-export default function EditFactoryPage({ params }: { params: { id: string } }) {
-  const factory = getFactory(params.id)
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,7 +27,7 @@ export default function EditFactoryPage({ params }: { params: { id: string } }) 
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">編輯工廠: {factory.name}</h1>
+        <h1 className="text-2xl font-bold">編輯供應商: {factory.factory_name}</h1>
       </div>
       <FactoryForm factory={factory} />
     </div>

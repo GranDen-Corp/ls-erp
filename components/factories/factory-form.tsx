@@ -101,7 +101,7 @@ export function FactoryForm({ factory }: FactoryFormProps) {
     setError(null)
 
     try {
-      // 檢查供應商ID是否已存在
+      // 檢查供應商ID是否已存在（僅在創建新供應商時檢查）
       if (!factory) {
         const { data: existingFactory, error: checkError } = await supabaseClient
           .from("suppliers")
@@ -656,7 +656,15 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                     <FormItem>
                       <FormLabel>備註</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="輸入供應商相關備註" className="min-h-[150px]" {...field} />
+                        <Textarea
+                          placeholder="輸入供應商相關備註"
+                          className="min-h-[150px]"
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

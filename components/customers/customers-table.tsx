@@ -59,6 +59,7 @@ export default function CustomersTable() {
           throw new Error(`獲取客戶資料時出錯: ${error.message}`)
         }
 
+        console.log("獲取到的客戶列表:", data) // 添加日誌以便調試
         setCustomers(data || [])
       } catch (err) {
         console.error("獲取客戶資料時出錯:", err)
