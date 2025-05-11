@@ -14,6 +14,8 @@ export const metadata: Metadata = {
 // 從資料庫獲取客戶數據
 async function getCustomer(id: string) {
   try {
+    console.log("正在獲取客戶數據，ID:", id) // 添加日誌以便調試
+
     const { data, error } = await supabaseClient.from("customers").select("*").eq("customer_id", id).single()
 
     if (error) {
@@ -39,6 +41,9 @@ export default async function EditCustomerPage({
   if (!customerData) {
     notFound()
   }
+
+  // 添加日誌以便調試
+  console.log("傳遞給表單的客戶數據:", JSON.stringify(customerData, null, 2))
 
   return (
     <div className="flex flex-col space-y-6 p-6">
