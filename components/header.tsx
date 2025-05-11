@@ -16,8 +16,11 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-10 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-4 sm:px-6">
-        <div className="flex items-center">
-          <Image src="/images/logo.jpg" alt="LOCKSURE INC." width={150} height={40} className="mr-4" />
+        <div className="flex flex-col items-start">
+          <div className="flex items-center">
+            <Image src="/images/logo.jpg" alt="LOCKSURE INC." width={150} height={40} className="mr-4" />
+          </div>
+          <span className="text-xs text-muted-foreground ml-1">alpha ver.: v0.1</span>
         </div>
         <div className="ml-auto flex items-center space-x-4">
           <DropdownMenu>
