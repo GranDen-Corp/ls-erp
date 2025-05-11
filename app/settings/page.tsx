@@ -4,6 +4,7 @@ import { OrderStatusSettings } from "@/components/settings/order-status-settings
 import { ExchangeRateSettings } from "@/components/settings/exchange-rate-settings"
 import { MaterialPriceSettings } from "@/components/settings/material-price-settings"
 import { TeamCustomerMatrix } from "@/components/settings/team-customer-matrix"
+import { InitLocksureDataButton } from "@/components/admin/init-locksure-data-button"
 
 export default function SettingsPage() {
   return (
@@ -66,6 +67,19 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <div className="mt-6">
+        <h3 className="text-lg font-medium">系統管理</h3>
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">初始化Locksure公司資料</p>
+              <p className="text-sm text-gray-500">清除現有訂單和採購單資料，並創建新的Locksure公司相關資料</p>
+            </div>
+            <InitLocksureDataButton />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
