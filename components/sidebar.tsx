@@ -67,12 +67,6 @@ export default function Sidebar({ className }: SidebarProps = {}) {
       ],
     },
     {
-      label: "Local資料表資料",
-      icon: Database,
-      href: "/local-data",
-      active: pathname === "/local-data" || pathname?.startsWith("/local-data/"),
-    },
-    {
       label: "採購單",
       icon: ShoppingCart,
       href: "/purchases",
@@ -168,6 +162,12 @@ export default function Sidebar({ className }: SidebarProps = {}) {
       icon: Settings,
       href: "/settings",
       active: pathname === "/settings" || pathname?.startsWith("/settings/"),
+    },
+    {
+      label: "Local資料表",
+      icon: Database,
+      href: "/local-data",
+      active: pathname === "/local-data" || pathname?.startsWith("/local-data/"),
     },
   ]
 

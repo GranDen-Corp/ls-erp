@@ -11,9 +11,9 @@ export interface Customer {
   currency: string
   status: "active" | "inactive"
   groupTag?: string
-  notes?: string
   createdAt: string
   updatedAt: string
+  notes?: string
 }
 
 export interface CustomerFormData {
