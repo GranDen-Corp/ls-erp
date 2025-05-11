@@ -444,7 +444,7 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
             vendor: "聖鼎",
             capacity: "",
             requirements: "50 PPM：泡料，總長",
-            report: "篩選報告",
+            report: "",
           },
         ],
         // 添加新欄位
@@ -1549,21 +1549,25 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
             code: customer.customer_id || "",
           })) || []
 
-        // 獲取供應商數據
-        const { data: factoriesData, error: factoriesError } = await supabase
-          .from("factories")
-          .select("factory_id, factory_name")
-          .order("factory_id")
+        // 嘗試獲取供應商數據
+        let formattedFactories = []
+        try {
+          const { data: factoriesData, error: factoriesError } = await supabase
+            .from("suppliers")
+            .select("factory_id, factory_name")
+            .order("factory_id")
 
-        if (factoriesError) throw new Error(`獲取供應商數據失敗: ${factoriesError.message}`)
-
-        // 將數據轉換為組件需要的格式
-        const formattedFactories =
-          factoriesData?.map((factory) => ({
-            id: factory.factory_id,
-            name: factory.factory_name,
-            code: factory.factory_id || "",
-          })) || []
+          if (!factoriesError && factoriesData) {
+            formattedFactories = factoriesData.map((supplier) => ({
+              id: supplier.factory_id,
+              name: supplier.factory_name,
+              code: supplier.factory_id || "",
+            }))
+          }
+        } catch (factoryError) {
+          console.warn("獲取工廠數據失敗，使用空數組作為後備:", factoryError)
+          // 使用空數組作為後備，允許應用繼續運行
+        }
 
         setCustomersData(formattedCustomers)
         setFactories(formattedFactories)
@@ -1603,18 +1607,18 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
 
         // 獲取供應商數據
         const { data: factoriesData, error: factoriesError } = await supabase
-          .from("factories")
-          .select("id, name, code")
-          .order("code")
+          .from("suppliers")
+          .select("supplier_id, supplier_name")
+          .order("supplier_id")
 
         if (factoriesError) throw new Error(`獲取供應商數據失敗: ${factoriesError.message}`)
 
         // 將數據轉換為組件需要的格式
         const formattedFactories =
-          factoriesData?.map((factory) => ({
-            id: factory.id,
-            name: factory.name,
-            code: factory.code || "",
+          factoriesData?.map((supplier) => ({
+            id: supplier.supplier_id,
+            name: supplier.supplier_name,
+            code: supplier.supplier_id || "",
           })) || []
 
         setCustomersData(formattedCustomers)
@@ -1683,7 +1687,7 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                         className="border-0 shadow-none focus-visible:ring-0 h-8"
                       />
                     </TableCell>
-                    <TableCell label="客戶名稱">
+                    <TableCell label="客戶代碼">
                       <div className="grid grid-cols-2">
                         <div className="p-2 border-r">
                           {dataLoading ? (
@@ -1723,16 +1727,45 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                           )}
                         </div>
                         <div className="p-2 bg-gray-50">
-                          <Input
-                            value={product.customerName.name}
-                            readOnly
-                            className="border-0 shadow-none bg-gray-50 h-8"
-                            placeholder="客戶名稱"
-                          />
+                          {dataLoading ? (
+                            <div className="flex items-center justify-center h-8">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                            </div>
+                          ) : dataError ? (
+                            <div className="text-red-500 text-sm">{dataError}</div>
+                          ) : (
+                            <Select
+                              value={product.customerName.name}
+                              onValueChange={(value) => {
+                                const selectedCustomer = customersData.find((c) => c.name === value)
+                                if (selectedCustomer) {
+                                  setProduct((prev) => ({
+                                    ...prev,
+                                    customerName: {
+                                      id: selectedCustomer.id,
+                                      name: selectedCustomer.name,
+                                      code: selectedCustomer.code,
+                                    },
+                                  }))
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8 bg-gray-50">
+                                <SelectValue placeholder="選擇客戶名稱" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {customersData.map((customer) => (
+                                  <SelectItem key={customer.id} value={customer.name}>
+                                    {customer.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell label="工廠名稱">
+                    <TableCell label="工廠代碼">
                       <div className="grid grid-cols-2">
                         <div className="p-2 border-r">
                           {dataLoading ? (
@@ -1772,12 +1805,41 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                           )}
                         </div>
                         <div className="p-2 bg-gray-50">
-                          <Input
-                            value={product.factoryName.name}
-                            readOnly
-                            className="border-0 shadow-none bg-gray-50 h-8"
-                            placeholder="工廠名稱"
-                          />
+                          {dataLoading ? (
+                            <div className="flex items-center justify-center h-8">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                            </div>
+                          ) : dataError ? (
+                            <div className="text-red-500 text-sm">{dataError}</div>
+                          ) : (
+                            <Select
+                              value={product.factoryName.name}
+                              onValueChange={(value) => {
+                                const selectedFactory = factories.find((f) => f.name === value)
+                                if (selectedFactory) {
+                                  setProduct((prev) => ({
+                                    ...prev,
+                                    factoryName: {
+                                      id: selectedFactory.id,
+                                      name: selectedFactory.name,
+                                      code: selectedFactory.code,
+                                    },
+                                  }))
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8 bg-gray-50">
+                                <SelectValue placeholder="選擇工廠名稱" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {factories.map((factory) => (
+                                  <SelectItem key={factory.id} value={factory.name}>
+                                    {factory.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                       </div>
                     </TableCell>
