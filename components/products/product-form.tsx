@@ -13,9 +13,49 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { FileText, Plus, X } from "lucide-react"
 import type { ProductComponent } from "@/types/assembly-product"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+
+// 自定義表格樣式組件
+const TableContainer = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`border rounded-md overflow-hidden ${className}`}>{children}</div>
+)
+
+const TableHeader = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`bg-gray-100 p-3 font-medium border-b ${className}`}>{children}</div>
+)
+
+const TableRow = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`grid grid-cols-1 ${className}`}>{children}</div>
+)
+
+const TableCell = ({
+  children,
+  label,
+  highlight = false,
+  className = "",
+}: {
+  children: React.ReactNode
+  label?: string
+  highlight?: boolean
+  className?: string
+}) => (
+  <div className="grid grid-cols-3 border-b">
+    {label && <div className="bg-gray-100 p-3 border-r font-medium">{label}</div>}
+    <div className={`${label ? "col-span-2" : "col-span-3"} p-2 ${highlight ? "bg-yellow-50" : ""} ${className}`}>
+      {children}
+    </div>
+  </div>
+)
+
+const TableGrid = ({
+  children,
+  cols = 1,
+  className = "",
+}: { children: React.ReactNode; cols?: number; className?: string }) => (
+  <div className={`grid grid-cols-${cols} ${className}`}>{children}</div>
+)
 
 interface ProductFormProps {
   productId?: string
@@ -1201,55 +1241,42 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
             <div className="grid grid-cols-2 gap-4">
               {/* 左欄 */}
               <div className="space-y-4">
-                <div className="border rounded-md">
-                  <div className="grid grid-cols-1 gap-0">
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">零件名稱</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="componentName"
-                          value={product.componentName}
-                          onChange={(e) => handleInputChange("componentName", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">規格</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="specification"
-                          value={product.specification}
-                          onChange={(e) => handleInputChange("specification", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">海關碼</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="customsCode"
-                          value={product.customsCode}
-                          onChange={(e) => handleInputChange("customsCode", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">終端客戶</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="endCustomer"
-                          value={product.endCustomer}
-                          onChange={(e) => handleInputChange("endCustomer", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">客戶名稱</div>
-                      <div className="col-span-2 grid grid-cols-2">
+                <TableContainer>
+                  <TableRow>
+                    <TableCell label="零件名稱">
+                      <Input
+                        id="componentName"
+                        value={product.componentName}
+                        onChange={(e) => handleInputChange("componentName", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="規格">
+                      <Input
+                        id="specification"
+                        value={product.specification}
+                        onChange={(e) => handleInputChange("specification", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="海關碼">
+                      <Input
+                        id="customsCode"
+                        value={product.customsCode}
+                        onChange={(e) => handleInputChange("customsCode", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="終端客戶">
+                      <Input
+                        id="endCustomer"
+                        value={product.endCustomer}
+                        onChange={(e) => handleInputChange("endCustomer", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="客戶名稱">
+                      <div className="grid grid-cols-2">
                         <div className="p-2 border-r">
                           <Select value={product.customerName.id} onValueChange={handleCustomerChange}>
                             <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
@@ -1273,10 +1300,9 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                           />
                         </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-3">
-                      <div className="bg-gray-100 p-3 border-r font-medium">工廠名稱</div>
-                      <div className="col-span-2 grid grid-cols-2">
+                    </TableCell>
+                    <TableCell label="工廠名稱">
+                      <div className="grid grid-cols-2">
                         <div className="p-2 border-r">
                           <Select value={product.factoryName.id} onValueChange={handleFactoryChange}>
                             <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
@@ -1300,92 +1326,74 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
                           />
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
+                    </TableCell>
+                  </TableRow>
+                </TableContainer>
               </div>
 
               {/* 右欄 */}
               <div className="space-y-4">
-                <div className="border rounded-md">
-                  <div className="grid grid-cols-1 gap-0">
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">產品型別</div>
-                      <div className="col-span-2 p-2">
-                        <Select
-                          value={product.productType}
-                          onValueChange={(value) => handleInputChange("productType", value)}
-                        >
-                          <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                            <SelectValue placeholder="選擇類別" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {productTypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">Part No.</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="partNo"
-                          value={product.partNo}
-                          onChange={(e) => handleInputChange("partNo", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">今湛分類碼</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="classificationCode"
-                          value={product.classificationCode}
-                          onChange={(e) => handleInputChange("classificationCode", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">車廠圖號</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="vehicleDrawingNo"
-                          value={product.vehicleDrawingNo}
-                          onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 border-b">
-                      <div className="bg-gray-100 p-3 border-r font-medium">客戶圖號</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="customerDrawingNo"
-                          value={product.customerDrawingNo}
-                          onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3">
-                      <div className="bg-gray-100 p-3 border-r font-medium">產品期稿</div>
-                      <div className="col-span-2 p-2">
-                        <Input
-                          id="productPeriod"
-                          value={product.productPeriod}
-                          onChange={(e) => handleInputChange("productPeriod", e.target.value)}
-                          className="border-0 shadow-none focus-visible:ring-0 h-8"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <TableContainer>
+                  <TableRow>
+                    <TableCell label="產品型別">
+                      <Select
+                        value={product.productType}
+                        onValueChange={(value) => handleInputChange("productType", value)}
+                      >
+                        <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
+                          <SelectValue placeholder="選擇類別" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {productTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell label="Part No.">
+                      <Input
+                        id="partNo"
+                        value={product.partNo}
+                        onChange={(e) => handleInputChange("partNo", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="今湛分類碼">
+                      <Input
+                        id="classificationCode"
+                        value={product.classificationCode}
+                        onChange={(e) => handleInputChange("classificationCode", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="車廠圖號">
+                      <Input
+                        id="vehicleDrawingNo"
+                        value={product.vehicleDrawingNo}
+                        onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="客戶圖號">
+                      <Input
+                        id="customerDrawingNo"
+                        value={product.customerDrawingNo}
+                        onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                    <TableCell label="產品期稿">
+                      <Input
+                        id="productPeriod"
+                        value={product.productPeriod}
+                        onChange={(e) => handleInputChange("productPeriod", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                      />
+                    </TableCell>
+                  </TableRow>
+                </TableContainer>
               </div>
             </div>
 
@@ -1422,159 +1430,147 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
             <CardContent className="pt-6">
               <div className="space-y-6">
                 {/* 第一個表格 - 原圖版次和客戶原圖 */}
-                <div className="border rounded-md overflow-hidden">
-                  <table className="w-full">
-                    <tbody>
-                      <tr>
-                        <td className="bg-gray-100 p-3 border-r border-b font-medium w-1/3">原圖版次</td>
-                        <td className="p-2 border-b bg-yellow-50">
-                          <Input
-                            value={product.originalDrawingVersion}
-                            onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            placeholder="輸入原圖版次"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="bg-gray-100 p-3 border-r font-medium">客戶原圖</td>
-                        <td className="p-2 bg-yellow-50">
-                          <div className="flex items-center gap-4">
-                            {product.customerOriginalDrawing.path ? (
-                              <div className="flex-shrink-0 w-16 h-16 bg-gray-100 border flex items-center justify-center">
-                                <FileText className="h-8 w-8 text-gray-400" />
-                              </div>
-                            ) : null}
-                            <div className="flex-1">
-                              <div className="truncate text-sm">
-                                {product.customerOriginalDrawing.filename || "未選擇圖面"}
-                              </div>
-                              {product.customerOriginalDrawing.path && (
-                                <div className="text-xs text-gray-500 truncate mt-1">
-                                  {product.customerOriginalDrawing.path}
-                                </div>
-                              )}
-                              <div className="mt-2">
-                                <label
-                                  htmlFor="customer-original-upload"
-                                  className="cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm flex items-center gap-1 inline-block"
-                                >
-                                  選擇圖面連結
-                                  <input
-                                    id="customer-original-upload"
-                                    type="file"
-                                    accept=".pdf,.dwg,.dxf"
-                                    className="hidden"
-                                    onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
-                                  />
-                                </label>
-                              </div>
-                            </div>
+                <TableContainer>
+                  <TableRow>
+                    <TableCell label="原圖版次" highlight={true}>
+                      <Input
+                        value={product.originalDrawingVersion}
+                        onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 h-8"
+                        placeholder="輸入原圖版次"
+                      />
+                    </TableCell>
+                    <TableCell label="客戶原圖" highlight={true}>
+                      <div className="flex items-center gap-4">
+                        {product.customerOriginalDrawing.path ? (
+                          <div className="flex-shrink-0 w-16 h-16 bg-gray-100 border flex items-center justify-center">
+                            <FileText className="h-8 w-8 text-gray-400" />
                           </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        ) : null}
+                        <div className="flex-1">
+                          <div className="truncate text-sm">
+                            {product.customerOriginalDrawing.filename || "未選擇圖面"}
+                          </div>
+                          {product.customerOriginalDrawing.path && (
+                            <div className="text-xs text-gray-500 truncate mt-1">
+                              {product.customerOriginalDrawing.path}
+                            </div>
+                          )}
+                          <div className="mt-2">
+                            <label
+                              htmlFor="customer-original-upload"
+                              className="cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm flex items-center gap-1 inline-block"
+                            >
+                              選擇圖面連結
+                              <input
+                                id="customer-original-upload"
+                                type="file"
+                                accept=".pdf,.dwg,.dxf"
+                                className="hidden"
+                                onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableContainer>
 
                 {/* 第二個表格 - 發單製作、客戶圖、工廠圖 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="w-1/3 bg-gray-100 p-2 text-left font-medium border-r border-b">發單製作</th>
-                        <th className="w-1/3 bg-gray-100 p-2 text-center border-r border-b">客戶圖</th>
-                        <th className="w-1/3 bg-gray-100 p-2 text-center border-b">工廠圖</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="bg-gray-100 p-3 border-r border-b font-medium">繪圖版次</td>
-                        <td className="p-2 border-r border-b">
-                          <Input
-                            value={product.customerDrawingVersion}
-                            onChange={(e) => handleInputChange("customerDrawingVersion", e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            placeholder="客戶圖版次"
-                          />
-                        </td>
-                        <td className="p-2 border-b">
-                          <Input
-                            value={product.factoryDrawingVersion}
-                            onChange={(e) => handleInputChange("factoryDrawingVersion", e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            placeholder="工廠圖版次"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="bg-gray-100 p-3 border-r font-medium">今湛繪圖</td>
-                        <td className="p-2 border-r bg-yellow-50">
-                          <div className="flex items-center gap-4">
-                            {product.customerDrawing.path ? (
-                              <div className="flex-shrink-0 w-16 h-16 bg-gray-100 border flex items-center justify-center">
-                                <FileText className="h-8 w-8 text-gray-400" />
-                              </div>
-                            ) : null}
-                            <div className="flex-1">
-                              <div className="truncate text-sm">{product.customerDrawing.filename || "未選擇圖面"}</div>
-                              {product.customerDrawing.path && (
-                                <div className="text-xs text-gray-500 truncate mt-1">
-                                  {product.customerDrawing.path}
-                                </div>
-                              )}
-                              <div className="mt-2">
-                                <label
-                                  htmlFor="customer-drawing-upload"
-                                  className="cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm flex items-center gap-1 inline-block"
-                                >
-                                  選擇圖面連結
-                                  <input
-                                    id="customer-drawing-upload"
-                                    type="file"
-                                    accept=".pdf,.dwg,.dxf"
-                                    className="hidden"
-                                    onChange={(e) => handleFileUpload(e, "customerDrawing")}
-                                  />
-                                </label>
-                              </div>
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="grid grid-cols-3">
+                      <div className="p-2 text-left border-r">發單製作</div>
+                      <div className="p-2 text-center border-r">客戶圖</div>
+                      <div className="p-2 text-center">工廠圖</div>
+                    </div>
+                  </TableHeader>
+                  <TableRow>
+                    <div className="grid grid-cols-3 border-b">
+                      <div className="bg-gray-100 p-3 border-r font-medium">繪圖版次</div>
+                      <div className="p-2 border-r">
+                        <Input
+                          value={product.customerDrawingVersion}
+                          onChange={(e) => handleInputChange("customerDrawingVersion", e.target.value)}
+                          className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          placeholder="客戶圖版次"
+                        />
+                      </div>
+                      <div className="p-2">
+                        <Input
+                          value={product.factoryDrawingVersion}
+                          onChange={(e) => handleInputChange("factoryDrawingVersion", e.target.value)}
+                          className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          placeholder="工廠圖版次"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <div className="bg-gray-100 p-3 border-r font-medium">今湛繪圖</div>
+                      <div className="p-2 border-r bg-yellow-50">
+                        <div className="flex items-center gap-4">
+                          {product.customerDrawing.path ? (
+                            <div className="flex-shrink-0 w-16 h-16 bg-gray-100 border flex items-center justify-center">
+                              <FileText className="h-8 w-8 text-gray-400" />
+                            </div>
+                          ) : null}
+                          <div className="flex-1">
+                            <div className="truncate text-sm">{product.customerDrawing.filename || "未選擇圖面"}</div>
+                            {product.customerDrawing.path && (
+                              <div className="text-xs text-gray-500 truncate mt-1">{product.customerDrawing.path}</div>
+                            )}
+                            <div className="mt-2">
+                              <label
+                                htmlFor="customer-drawing-upload"
+                                className="cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm flex items-center gap-1 inline-block"
+                              >
+                                選擇圖面連結
+                                <input
+                                  id="customer-drawing-upload"
+                                  type="file"
+                                  accept=".pdf,.dwg,.dxf"
+                                  className="hidden"
+                                  onChange={(e) => handleFileUpload(e, "customerDrawing")}
+                                />
+                              </label>
                             </div>
                           </div>
-                        </td>
-                        <td className="p-2 bg-yellow-50">
-                          <div className="flex items-center gap-4">
-                            {product.factoryDrawing.path ? (
-                              <div className="flex-shrink-0 w-16 h-16 bg-gray-100 border flex items-center justify-center">
-                                <FileText className="h-8 w-8 text-gray-400" />
-                              </div>
-                            ) : null}
-                            <div className="flex-1">
-                              <div className="truncate text-sm">{product.factoryDrawing.filename || "未選擇圖面"}</div>
-                              {product.factoryDrawing.path && (
-                                <div className="text-xs text-gray-500 truncate mt-1">{product.factoryDrawing.path}</div>
-                              )}
-                              <div className="mt-2">
-                                <label
-                                  htmlFor="factory-drawing-upload"
-                                  className="cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm flex items-center gap-1 inline-block"
-                                >
-                                  選擇圖面連結
-                                  <input
-                                    id="factory-drawing-upload"
-                                    type="file"
-                                    accept=".pdf,.dwg,.dxf"
-                                    className="hidden"
-                                    onChange={(e) => handleFileUpload(e, "factoryDrawing")}
-                                  />
-                                </label>
-                              </div>
+                        </div>
+                      </div>
+                      <div className="p-2 bg-yellow-50">
+                        <div className="flex items-center gap-4">
+                          {product.factoryDrawing.path ? (
+                            <div className="flex-shrink-0 w-16 h-16 bg-gray-100 border flex items-center justify-center">
+                              <FileText className="h-8 w-8 text-gray-400" />
+                            </div>
+                          ) : null}
+                          <div className="flex-1">
+                            <div className="truncate text-sm">{product.factoryDrawing.filename || "未選擇圖面"}</div>
+                            {product.factoryDrawing.path && (
+                              <div className="text-xs text-gray-500 truncate mt-1">{product.factoryDrawing.path}</div>
+                            )}
+                            <div className="mt-2">
+                              <label
+                                htmlFor="factory-drawing-upload"
+                                className="cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm flex items-center gap-1 inline-block"
+                              >
+                                選擇圖面連結
+                                <input
+                                  id="factory-drawing-upload"
+                                  type="file"
+                                  accept=".pdf,.dwg,.dxf"
+                                  className="hidden"
+                                  onChange={(e) => handleFileUpload(e, "factoryDrawing")}
+                                />
+                              </label>
                             </div>
                           </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TableRow>
+                </TableContainer>
 
                 {/* 文件預覽對話框 */}
                 {previewFile && (
@@ -1608,935 +1604,622 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
             <CardContent className="pt-6">
               <div className="space-y-6">
                 {/* 表格A - 重要文件 */}
-                <div className="border rounded-md overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="bg-gray-100 p-2 text-left font-medium border-b">
-                          <div className="flex items-center justify-between">
-                            <span>重要文件</span>
-                            <div className="flex items-center">
-                              <Input
-                                value={newDocumentName}
-                                onChange={(e) => setNewDocumentName(e.target.value)}
-                                placeholder="新文件名稱"
-                                className="h-7 mr-2 w-40 text-sm"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2"
-                                onClick={handleAddDocument}
-                                disabled={!newDocumentName}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </th>
-                        <th className="w-1/3 bg-gray-100 p-2 text-center font-medium border-b">文件</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>PPAP檔案資料夾</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <label htmlFor="ppap-upload" className="cursor-pointer text-blue-600 hover:underline">
+                <TableContainer>
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>重要文件</span>
+                      <div className="flex items-center">
+                        <Input
+                          value={newDocumentName}
+                          onChange={(e) => setNewDocumentName(e.target.value)}
+                          placeholder="新文件名稱"
+                          className="h-7 mr-2 w-40 text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={handleAddDocument}
+                          disabled={!newDocumentName}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-3 border-b bg-gray-100">
+                    <div className="col-span-2 p-2 text-left font-medium">文件名稱</div>
+                    <div className="p-2 text-center font-medium">文件</div>
+                  </div>
+                  <TableRow>
+                    <div className="grid grid-cols-3 border-b">
+                      <div className="col-span-2 p-2 border-r">
+                        <span>PPAP檔案資料夾</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <label htmlFor="ppap-upload" className="cursor-pointer text-blue-600 hover:underline">
+                          選擇文件連結
+                          <input
+                            id="ppap-upload"
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e, "PPAP")}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 border-b">
+                      <div className="col-span-2 p-2 border-r">
+                        <span>PSW回答</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <label htmlFor="psw-upload" className="cursor-pointer text-blue-600 hover:underline">
+                          選擇文件連結
+                          <input
+                            id="psw-upload"
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e, "PSW")}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 border-b">
+                      <div className="col-span-2 p-2 border-r">
+                        <span>產能分析表</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <label htmlFor="capacity-upload" className="cursor-pointer text-blue-600 hover:underline">
+                          選擇文件連結
+                          <input
+                            id="capacity-upload"
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    {customDocuments.map((doc) => (
+                      <div key={doc.id} className="grid grid-cols-3 border-b">
+                        <div className="col-span-2 p-2 border-r flex items-center justify-between">
+                          <span>{doc.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1 text-red-500"
+                            onClick={() => handleRemoveDocument(doc.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="p-2 text-center">
+                          <label
+                            htmlFor={`doc-${doc.id}-upload`}
+                            className="cursor-pointer text-blue-600 hover:underline"
+                          >
                             選擇文件連結
                             <input
-                              id="ppap-upload"
+                              id={`doc-${doc.id}-upload`}
                               type="file"
                               className="hidden"
-                              onChange={(e) => handleFileUpload(e, "PPAP")}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  handleCustomDocumentUpload(doc.id, e.target.files[0])
+                                }
+                              }}
                             />
                           </label>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>PSW回答</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <label htmlFor="psw-upload" className="cursor-pointer text-blue-600 hover:underline">
-                            選擇文件連結
-                            <input
-                              id="psw-upload"
-                              type="file"
-                              className="hidden"
-                              onChange={(e) => handleFileUpload(e, "PSW")}
-                            />
-                          </label>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>產能分析表</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <label htmlFor="capacity-upload" className="cursor-pointer text-blue-600 hover:underline">
-                            選擇文件連結
-                            <input
-                              id="capacity-upload"
-                              type="file"
-                              className="hidden"
-                              onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
-                            />
-                          </label>
-                        </td>
-                      </tr>
-                      {customDocuments.map((doc) => (
-                        <tr key={doc.id}>
-                          <td className="p-2 border-r border-b flex items-center justify-between">
-                            <span>{doc.name}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-1 text-red-500"
-                              onClick={() => handleRemoveDocument(doc.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </td>
-                          <td className="p-2 border-b text-center">
-                            <label
-                              htmlFor={`doc-${doc.id}-upload`}
-                              className="cursor-pointer text-blue-600 hover:underline"
-                            >
-                              選擇文件連結
-                              <input
-                                id={`doc-${doc.id}-upload`}
-                                type="file"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files.length > 0) {
-                                    handleCustomDocumentUpload(doc.id, e.target.files[0])
-                                  }
-                                }}
-                              />
-                            </label>
-                            {doc.filename && <div className="text-xs text-gray-500 mt-1">{doc.filename}</div>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          {doc.filename && <div className="text-xs text-gray-500 mt-1">{doc.filename}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </TableRow>
+                </TableContainer>
 
+                {/* 其他表格保持相同的修改模式，這裡只展示第一個表格的修改 */}
+                {/* 其餘表格的修改方式類似，將table結構替換為我們的自定義組件 */}
                 {/* 表格B - 零件管理特性 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="bg-gray-100 p-2 text-left font-medium border-b">
-                          <div className="flex items-center justify-between">
-                            <span>零件管理特性</span>
-                            <div className="flex items-center">
-                              <Input
-                                value={newPartFeatureName}
-                                onChange={(e) => setNewPartFeatureName(e.target.value)}
-                                placeholder="新特性名稱"
-                                className="h-7 mr-2 w-40 text-sm"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2"
-                                onClick={handleAddPartFeature}
-                                disabled={!newPartFeatureName}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </th>
-                        <th className="w-1/4 bg-gray-100 p-2 text-center font-medium border-b">狀態</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>安全件</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <Checkbox
-                            checked={product.partManagement.safetyPart}
-                            onCheckedChange={(checked) => handlePartManagementChange("safetyPart", checked === true)}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>汽車件</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <Checkbox
-                            checked={product.partManagement.automotivePart}
-                            onCheckedChange={(checked) =>
-                              handlePartManagementChange("automotivePart", checked === true)
-                            }
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>CBAM零件</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <Checkbox
-                            checked={product.partManagement.CBAMPart}
-                            onCheckedChange={(checked) => handlePartManagementChange("CBAMPart", checked === true)}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b">
-                          <span>時鐘地要求</span>
-                        </td>
-                        <td className="p-2 border-b text-center">
-                          <Checkbox
-                            checked={product.partManagement.clockRequirement}
-                            onCheckedChange={(checked) =>
-                              handlePartManagementChange("clockRequirement", checked === true)
-                            }
-                          />
-                        </td>
-                      </tr>
-                      {customPartFeatures.map((feature) => (
-                        <tr key={feature.id}>
-                          <td className="p-2 border-r border-b flex items-center justify-between">
-                            <span>{feature.name}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-1 text-red-500"
-                              onClick={() => handleRemovePartFeature(feature.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </td>
-                          <td className="p-2 border-b text-center">
-                            <Checkbox
-                              checked={feature.status}
-                              onCheckedChange={(checked) => handlePartFeatureStatusChange(feature.id, checked === true)}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 表格C - 符合性要求 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th colSpan={5} className="bg-gray-100 p-2 text-center font-medium border-b">
-                          <div className="flex items-center justify-center">
-                            <span>符合性要求</span>
-                            <div className="flex items-center ml-4">
-                              <Input
-                                value={newComplianceName}
-                                onChange={(e) => setNewComplianceName(e.target.value)}
-                                placeholder="新法規名稱"
-                                className="h-7 mr-2 w-40 text-sm"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2"
-                                onClick={handleAddCompliance}
-                                disabled={!newComplianceName}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </th>
-                      </tr>
-                      <tr>
-                        <th className="w-1/6 bg-gray-100 p-2 text-left font-medium border-r border-b">法規</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">零件狀態</th>
-                        <th className="w-1/4 bg-gray-100 p-2 text-left font-medium border-r border-b">含有物質</th>
-                        <th className="w-1/4 bg-gray-100 p-2 text-left font-medium border-r border-b">理由</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-b">文件</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {["RoHS", "REACh", "EUPOP", "TSCA", "CP65", "PFAS", "CMRT", "EMRT"].map((regulation) => (
-                        <tr key={regulation}>
-                          <td className="p-2 border-r border-b">{regulation}</td>
-                          <td className="p-2 border-r border-b">
-                            <div className="flex items-center justify-center gap-4">
-                              <div className="flex items-center gap-1">
-                                <RadioGroup
-                                  value={
-                                    product.complianceStatus[regulation as keyof typeof product.complianceStatus].status
-                                  }
-                                  onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
-                                  className="flex items-center gap-4"
-                                >
-                                  <div className="flex items-center gap-1">
-                                    <RadioGroupItem value="符合" id={`${regulation}-compliant`} />
-                                    <Label htmlFor={`${regulation}-compliant`}>符合</Label>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <RadioGroupItem value="不符" id={`${regulation}-non-compliant`} />
-                                    <Label htmlFor={`${regulation}-non-compliant`}>不符</Label>
-                                  </div>
-                                </RadioGroup>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={
-                                product.complianceStatus[regulation as keyof typeof product.complianceStatus].substances
-                              }
-                              onChange={(e) => handleComplianceFieldChange(regulation, "substances", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={
-                                product.complianceStatus[regulation as keyof typeof product.complianceStatus].reason
-                              }
-                              onChange={(e) => handleComplianceFieldChange(regulation, "reason", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-b text-center">
-                            <label
-                              htmlFor={`compliance-${regulation}-upload`}
-                              className="cursor-pointer text-blue-600 hover:underline"
-                            >
-                              選擇文件連結
-                              <input
-                                id={`compliance-${regulation}-upload`}
-                                type="file"
-                                className="hidden"
-                                onChange={(e) => handleFileUpload(e, `compliance_${regulation}`)}
-                              />
-                            </label>
-                          </td>
-                        </tr>
-                      ))}
-                      {customCompliances.map((compliance) => (
-                        <tr key={compliance.id}>
-                          <td className="p-2 border-r border-b flex items-center justify-between">
-                            <span>{compliance.regulation}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-1 text-red-500"
-                              onClick={() => handleRemoveCompliance(compliance.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <div className="flex items-center justify-center gap-4">
-                              <div className="flex items-center gap-1">
-                                <RadioGroup
-                                  value={compliance.status}
-                                  onValueChange={(value) =>
-                                    handleCustomComplianceChange(compliance.id, "status", value)
-                                  }
-                                  className="flex items-center gap-4"
-                                >
-                                  <div className="flex items-center gap-1">
-                                    <RadioGroupItem value="符合" id={`${compliance.id}-compliant`} />
-                                    <Label htmlFor={`${compliance.id}-compliant`}>符合</Label>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <RadioGroupItem value="不符" id={`${compliance.id}-non-compliant`} />
-                                    <Label htmlFor={`${compliance.id}-non-compliant`}>不符</Label>
-                                  </div>
-                                </RadioGroup>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={compliance.substances}
-                              onChange={(e) =>
-                                handleCustomComplianceChange(compliance.id, "substances", e.target.value)
-                              }
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={compliance.reason}
-                              onChange={(e) => handleCustomComplianceChange(compliance.id, "reason", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-b text-center">
-                            <label
-                              htmlFor={`compliance-${compliance.id}-upload`}
-                              className="cursor-pointer text-blue-600 hover:underline"
-                            >
-                              選擇文件連結
-                              <input
-                                id={`compliance-${compliance.id}-upload`}
-                                type="file"
-                                className="hidden"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files.length > 0) {
-                                    const file = e.target.files[0]
-                                    const fileData = {
-                                      path: URL.createObjectURL(file),
-                                      filename: file.name,
-                                    }
-                                    handleCustomComplianceChange(compliance.id, "document", fileData.path)
-                                    handleCustomComplianceChange(compliance.id, "filename", fileData.filename)
-                                  }
-                                }}
-                              />
-                            </label>
-                            {compliance.filename && (
-                              <div className="text-xs text-gray-500 mt-1">{compliance.filename}</div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 表格D - 編輯備註 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="w-2/3 bg-gray-100 p-2 text-left font-medium border-r border-b">
-                          <div className="flex items-center justify-between">
-                            <span>編輯備註</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2"
-                              onClick={() => setIsNoteDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">日期</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-b">使用者</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.editNotes.map((note, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-b">{note.content}</td>
-                          <td className="p-2 border-r border-b text-center">{note.date}</td>
-                          <td className="p-2 border-b text-center">{note.user}</td>
-                        </tr>
-                      ))}
-                      {product.editNotes.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-gray-500">
-                            尚未添加任何備註
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 添加備註對話框 */}
-                <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>添加編輯備註</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="note-content" className="text-right">
-                          備註內容
-                        </Label>
-                        <Textarea
-                          id="note-content"
-                          value={newNote.content}
-                          onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-                          className="col-span-3"
-                          rows={3}
-                          placeholder="輸入備註內容"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="note-date" className="text-right">
-                          日期
-                        </Label>
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>零件管理特性</span>
+                      <div className="flex items-center">
                         <Input
-                          id="note-date"
-                          value={newNote.date || new Date().toLocaleDateString("zh-TW")}
-                          onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
-                          className="col-span-3"
-                          placeholder="YYYY/MM/DD"
+                          value={newPartFeatureName}
+                          onChange={(e) => setNewPartFeatureName(e.target.value)}
+                          placeholder="新特性名稱"
+                          className="h-7 mr-2 w-40 text-sm"
                         />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={handleAddPartFeature}
+                          disabled={!newPartFeatureName}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="note-user" className="text-right">
-                          使用者
-                        </Label>
-                        <Input
-                          id="note-user"
-                          value={newNote.user}
-                          onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入使用者名稱"
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-4 border-b bg-gray-100">
+                    <div className="col-span-3 p-2 text-left font-medium">特性名稱</div>
+                    <div className="p-2 text-center font-medium">狀態</div>
+                  </div>
+                  <TableRow>
+                    <div className="grid grid-cols-4 border-b">
+                      <div className="col-span-3 p-2 border-r">
+                        <span>安全件</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <Checkbox
+                          checked={product.partManagement.safetyPart}
+                          onCheckedChange={(checked) => handlePartManagementChange("safetyPart", checked === true)}
                         />
                       </div>
                     </div>
-                    <DialogFooter>
+                    <div className="grid grid-cols-4 border-b">
+                      <div className="col-span-3 p-2 border-r">
+                        <span>汽車件</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <Checkbox
+                          checked={product.partManagement.automotivePart}
+                          onCheckedChange={(checked) => handlePartManagementChange("automotivePart", checked === true)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 border-b">
+                      <div className="col-span-3 p-2 border-r">
+                        <span>CBAM零件</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <Checkbox
+                          checked={product.partManagement.CBAMPart}
+                          onCheckedChange={(checked) => handlePartManagementChange("CBAMPart", checked === true)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 border-b">
+                      <div className="col-span-3 p-2 border-r">
+                        <span>時鐘地要求</span>
+                      </div>
+                      <div className="p-2 text-center">
+                        <Checkbox
+                          checked={product.partManagement.clockRequirement}
+                          onCheckedChange={(checked) =>
+                            handlePartManagementChange("clockRequirement", checked === true)
+                          }
+                        />
+                      </div>
+                    </div>
+                    {customPartFeatures.map((feature) => (
+                      <div key={feature.id} className="grid grid-cols-4 border-b">
+                        <div className="col-span-3 p-2 border-r flex items-center justify-between">
+                          <span>{feature.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1 text-red-500"
+                            onClick={() => handleRemovePartFeature(feature.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="p-2 text-center">
+                          <Checkbox
+                            checked={feature.status}
+                            onCheckedChange={(checked) => handlePartFeatureStatusChange(feature.id, checked === true)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </TableRow>
+                </TableContainer>
+
+                {/* 表格C - 符合性要求 */}
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-center">
+                      <span>符合性要求</span>
+                      <div className="flex items-center ml-4">
+                        <Input
+                          value={newComplianceName}
+                          onChange={(e) => setNewComplianceName(e.target.value)}
+                          placeholder="新法規名稱"
+                          className="h-7 mr-2 w-40 text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={handleAddCompliance}
+                          disabled={!newComplianceName}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-5 border-b bg-gray-100">
+                    <div className="p-2 text-left font-medium border-r">法規</div>
+                    <div className="p-2 text-center font-medium border-r">零件狀態</div>
+                    <div className="p-2 text-left font-medium border-r">含有物質</div>
+                    <div className="p-2 text-left font-medium border-r">理由</div>
+                    <div className="p-2 text-center font-medium">文件</div>
+                  </div>
+                  <TableRow>
+                    {["RoHS", "REACh", "EUPOP", "TSCA", "CP65", "PFAS", "CMRT", "EMRT"].map((regulation) => (
+                      <div key={regulation} className="grid grid-cols-5 border-b">
+                        <div className="p-2 border-r">{regulation}</div>
+                        <div className="p-2 border-r">
+                          <div className="flex items-center justify-center gap-4">
+                            <div className="flex items-center gap-1">
+                              <RadioGroup
+                                value={
+                                  product.complianceStatus[regulation as keyof typeof product.complianceStatus].status
+                                }
+                                onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
+                                className="flex items-center gap-4"
+                              >
+                                <div className="flex items-center gap-1">
+                                  <RadioGroupItem value="符合" id={`${regulation}-compliant`} />
+                                  <Label htmlFor={`${regulation}-compliant`}>符合</Label>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <RadioGroupItem value="不符" id={`${regulation}-non-compliant`} />
+                                  <Label htmlFor={`${regulation}-non-compliant`}>不符</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={
+                              product.complianceStatus[regulation as keyof typeof product.complianceStatus].substances
+                            }
+                            onChange={(e) => handleComplianceFieldChange(regulation, "substances", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={product.complianceStatus[regulation as keyof typeof product.complianceStatus].reason}
+                            onChange={(e) => handleComplianceFieldChange(regulation, "reason", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2 text-center">
+                          <label
+                            htmlFor={`compliance-${regulation}-upload`}
+                            className="cursor-pointer text-blue-600 hover:underline"
+                          >
+                            選擇文件連結
+                            <input
+                              id={`compliance-${regulation}-upload`}
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => handleFileUpload(e, `compliance_${regulation}`)}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                    {customCompliances.map((compliance) => (
+                      <div key={compliance.id} className="grid grid-cols-5 border-b">
+                        <div className="p-2 border-r flex items-center justify-between">
+                          <span>{compliance.regulation}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1 text-red-500"
+                            onClick={() => handleRemoveCompliance(compliance.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="p-2 border-r">
+                          <div className="flex items-center justify-center gap-4">
+                            <div className="flex items-center gap-1">
+                              <RadioGroup
+                                value={compliance.status}
+                                onValueChange={(value) => handleCustomComplianceChange(compliance.id, "status", value)}
+                                className="flex items-center gap-4"
+                              >
+                                <div className="flex items-center gap-1">
+                                  <RadioGroupItem value="符合" id={`${compliance.id}-compliant`} />
+                                  <Label htmlFor={`${compliance.id}-compliant`}>符合</Label>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <RadioGroupItem value="不符" id={`${compliance.id}-non-compliant`} />
+                                  <Label htmlFor={`${compliance.id}-non-compliant`}>不符</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={compliance.substances}
+                            onChange={(e) => handleCustomComplianceChange(compliance.id, "substances", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={compliance.reason}
+                            onChange={(e) => handleCustomComplianceChange(compliance.id, "reason", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2 text-center">
+                          <label
+                            htmlFor={`compliance-${compliance.id}-upload`}
+                            className="cursor-pointer text-blue-600 hover:underline"
+                          >
+                            選擇文件連結
+                            <input
+                              id={`compliance-${compliance.id}-upload`}
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  const file = e.target.files[0]
+                                  const fileData = {
+                                    path: URL.createObjectURL(file),
+                                    filename: file.name,
+                                  }
+                                  handleCustomComplianceChange(compliance.id, "document", fileData.path)
+                                  handleCustomComplianceChange(compliance.id, "filename", fileData.filename)
+                                }
+                              }}
+                            />
+                          </label>
+                          {compliance.filename && (
+                            <div className="text-xs text-gray-500 mt-1">{compliance.filename}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </TableRow>
+                </TableContainer>
+
+                {/* 表格D - 編輯備註 */}
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>編輯備註</span>
                       <Button
                         type="button"
-                        onClick={() => {
-                          if (
-                            newNote.content &&
-                            (newNote.date || new Date().toLocaleDateString("zh-TW")) &&
-                            newNote.user
-                          ) {
-                            const date = newNote.date || new Date().toLocaleDateString("zh-TW")
-                            setProduct((prev) => ({
-                              ...prev,
-                              editNotes: [
-                                ...prev.editNotes,
-                                {
-                                  content: newNote.content,
-                                  date: date,
-                                  user: newNote.user,
-                                },
-                              ],
-                            }))
-                            setNewNote({ content: "", date: "", user: "" })
-                            setIsNoteDialogOpen(false)
-                          }
-                        }}
-                        disabled={!newNote.content || !newNote.user}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => setIsNoteDialogOpen(true)}
                       >
-                        添加備註
+                        <Plus className="h-4 w-4" />
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-3 border-b bg-gray-100">
+                    <div className="col-span-1 p-2 text-left font-medium border-r">備註內容</div>
+                    <div className="p-2 text-center font-medium border-r">日期</div>
+                    <div className="p-2 text-center font-medium">使用者</div>
+                  </div>
+                  <TableRow>
+                    {product.editNotes.map((note, index) => (
+                      <div key={index} className="grid grid-cols-3 border-b">
+                        <div className="col-span-1 p-2 border-r">{note.content}</div>
+                        <div className="p-2 border-r text-center">{note.date}</div>
+                        <div className="p-2 text-center">{note.user}</div>
+                      </div>
+                    ))}
+                    {product.editNotes.length === 0 && (
+                      <div className="p-4 text-center text-gray-500 col-span-3">尚未添加任何備註</div>
+                    )}
+                  </TableRow>
+                </TableContainer>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* 新增製程資料頁 */}
         <TabsContent value="process" className="space-y-4 pt-4">
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-6">
-                <div className="border rounded-md overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th colSpan={5} className="bg-gray-100 p-2 text-center font-medium border-b">
-                          <div className="flex items-center justify-between px-4">
-                            <span>製程資料</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={() => setIsProcessDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              新增製程
-                            </Button>
-                          </div>
-                        </th>
-                      </tr>
-                      <tr>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">製程</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">廠商</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">產能(SH)</th>
-                        <th className="w-1/3 bg-gray-100 p-2 text-center font-medium border-r border-b">要求</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-b">報告</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.processData.map((proc) => (
-                        <tr key={proc.id} className={proc.id === "proc_1" ? "bg-yellow-50" : ""}>
-                          <td className="p-2 border-r border-b">
-                            <div className="flex items-center justify-between">
-                              <Input
-                                value={proc.process}
-                                onChange={(e) => handleProcessFieldChange(proc.id, "process", e.target.value)}
-                                className="border-0 shadow-none focus-visible:ring-0 h-8"
-                              />
-                              {proc.id !== "proc_1" &&
-                                proc.id !== "proc_2" &&
-                                proc.id !== "proc_3" &&
-                                proc.id !== "proc_4" &&
-                                proc.id !== "proc_5" &&
-                                proc.id !== "proc_6" && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-1 text-red-500 ml-1"
-                                    onClick={() => handleRemoveProcess(proc.id)}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                )}
-                            </div>
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={proc.vendor}
-                              onChange={(e) => handleProcessFieldChange(proc.id, "vendor", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={proc.capacity}
-                              onChange={(e) => handleProcessFieldChange(proc.id, "capacity", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-r border-b">
-                            <Input
-                              value={proc.requirements}
-                              onChange={(e) => handleProcessFieldChange(proc.id, "requirements", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                          <td className="p-2 border-b">
-                            <Input
-                              value={proc.report}
-                              onChange={(e) => handleProcessFieldChange(proc.id, "report", e.target.value)}
-                              className="border-0 shadow-none focus-visible:ring-0 h-8"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 添加製程對話框 */}
-                <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>添加製程資料</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-name" className="text-right">
-                          製程
-                        </Label>
-                        <Input
-                          id="process-name"
-                          value={newProcess.process}
-                          onChange={(e) => setNewProcess({ ...newProcess, process: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入製程名稱"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-vendor" className="text-right">
-                          廠商
-                        </Label>
-                        <Input
-                          id="process-vendor"
-                          value={newProcess.vendor}
-                          onChange={(e) => setNewProcess({ ...newProcess, vendor: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入廠商名稱"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-capacity" className="text-right">
-                          產能(SH)
-                        </Label>
-                        <Input
-                          id="process-capacity"
-                          value={newProcess.capacity}
-                          onChange={(e) => setNewProcess({ ...newProcess, capacity: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入產能"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-requirements" className="text-right">
-                          要求
-                        </Label>
-                        <Input
-                          id="process-requirements"
-                          value={newProcess.requirements}
-                          onChange={(e) => setNewProcess({ ...newProcess, requirements: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入要求"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-report" className="text-right">
-                          報告
-                        </Label>
-                        <Input
-                          id="process-report"
-                          value={newProcess.report}
-                          onChange={(e) => setNewProcess({ ...newProcess, report: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入報告"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" onClick={handleAddProcess} disabled={!newProcess.process}>
-                        添加製程
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {/* 在製程資料表格後添加訂單和採購單要求表格 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="w-1/2 bg-gray-100 p-2 text-center font-medium border-r border-b">
-                          訂單零件要求
-                        </th>
-                        <th className="w-1/2 bg-gray-100 p-2 text-center font-medium border-b">採購單零件要求</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-4 border-r align-top bg-yellow-50">
-                          <Textarea
-                            value={product.orderRequirements}
-                            onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 min-h-[200px] bg-transparent"
-                          />
-                        </td>
-                        <td className="p-4 align-top bg-yellow-50">
-                          <Textarea
-                            value={product.purchaseRequirements}
-                            onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 min-h-[200px] bg-transparent"
-                          />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                {/* 特殊要求/測試表格 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="w-2/3 bg-gray-100 p-2 text-left font-medium border-b">
-                          <div className="flex items-center justify-between">
-                            <span>特殊要求/測試</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2"
-                              onClick={() => setIsSpecialReqDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">日期</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-b">使用者</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.specialRequirements.map((req, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-b">{req.content}</td>
-                          <td className="p-2 border-r border-b text-center">{req.date}</td>
-                          <td className="p-2 border-b text-center">{req.user}</td>
-                        </tr>
-                      ))}
-                      {product.specialRequirements.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-gray-500">
-                            尚未添加任何特殊要求
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 添加特殊要求對話框 */}
-                <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>添加特殊要求/測試</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="special-req-content" className="text-right">
-                          要求內容
-                        </Label>
-                        <Textarea
-                          id="special-req-content"
-                          value={newSpecialReq.content}
-                          onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
-                          className="col-span-3"
-                          rows={3}
-                          placeholder="輸入特殊要求或測試內容"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="special-req-date" className="text-right">
-                          日期
-                        </Label>
-                        <Input
-                          id="special-req-date"
-                          value={newSpecialReq.date || new Date().toLocaleDateString("zh-TW")}
-                          onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
-                          className="col-span-3"
-                          placeholder="YYYY/MM/DD"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="special-req-user" className="text-right">
-                          使用者
-                        </Label>
-                        <Input
-                          id="special-req-user"
-                          value={newSpecialReq.user}
-                          onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入使用者名稱"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
+                <TableContainer>
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>製程資料</span>
                       <Button
                         type="button"
-                        onClick={handleAddSpecialReq}
-                        disabled={!newSpecialReq.content || !newSpecialReq.user}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={() => setIsProcessDialogOpen(true)}
                       >
-                        添加要求
+                        <Plus className="h-4 w-4 mr-1" />
+                        新增製程
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-5 border-b bg-gray-100">
+                    <div className="p-2 text-center font-medium border-r">製程</div>
+                    <div className="p-2 text-center font-medium border-r">廠商</div>
+                    <div className="p-2 text-center font-medium border-r">產能(SH)</div>
+                    <div className="p-2 text-center font-medium border-r">要求</div>
+                    <div className="p-2 text-center font-medium">報告</div>
+                  </div>
+                  <TableRow>
+                    {product.processData.map((proc) => (
+                      <div
+                        key={proc.id}
+                        className={`grid grid-cols-5 border-b ${proc.id === "proc_1" ? "bg-yellow-50" : ""}`}
+                      >
+                        <div className="p-2 border-r">
+                          <div className="flex items-center justify-between">
+                            <Input
+                              value={proc.process}
+                              onChange={(e) => handleProcessFieldChange(proc.id, "process", e.target.value)}
+                              className="border-0 shadow-none focus-visible:ring-0 h-8"
+                            />
+                            {proc.id !== "proc_1" &&
+                              proc.id !== "proc_2" &&
+                              proc.id !== "proc_3" &&
+                              proc.id !== "proc_4" &&
+                              proc.id !== "proc_5" &&
+                              proc.id !== "proc_6" && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1 text-red-500 ml-1"
+                                  onClick={() => handleRemoveProcess(proc.id)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                          </div>
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={proc.vendor}
+                            onChange={(e) => handleProcessFieldChange(proc.id, "vendor", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={proc.capacity}
+                            onChange={(e) => handleProcessFieldChange(proc.id, "capacity", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2 border-r">
+                          <Input
+                            value={proc.requirements}
+                            onChange={(e) => handleProcessFieldChange(proc.id, "requirements", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                        <div className="p-2">
+                          <Input
+                            value={proc.report}
+                            onChange={(e) => handleProcessFieldChange(proc.id, "report", e.target.value)}
+                            className="border-0 shadow-none focus-visible:ring-0 h-8"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </TableRow>
+                </TableContainer>
+
+                {/* 其他表格保持相同的修改模式 */}
+                {/* 在製程資料表格後添加訂單和採購單要求表格 */}
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="grid grid-cols-2">
+                      <div className="p-2 text-center font-medium border-r">訂單零件要求</div>
+                      <div className="p-2 text-center font-medium">採購單零件要求</div>
+                    </div>
+                  </TableHeader>
+                  <TableRow>
+                    <div className="grid grid-cols-2">
+                      <div className="p-4 border-r align-top bg-yellow-50">
+                        <Textarea
+                          value={product.orderRequirements}
+                          onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
+                          className="border-0 shadow-none focus-visible:ring-0 min-h-[200px] bg-transparent"
+                        />
+                      </div>
+                      <div className="p-4 align-top bg-yellow-50">
+                        <Textarea
+                          value={product.purchaseRequirements}
+                          onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
+                          className="border-0 shadow-none focus-visible:ring-0 min-h-[200px] bg-transparent"
+                        />
+                      </div>
+                    </div>
+                  </TableRow>
+                </TableContainer>
+
+                {/* 特殊要求/測試表格 */}
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>特殊要求/測試</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => setIsSpecialReqDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-3 border-b bg-gray-100">
+                    <div className="col-span-1 p-2 text-left font-medium border-r">要求內容</div>
+                    <div className="p-2 text-center font-medium border-r">日期</div>
+                    <div className="p-2 text-center font-medium">使用者</div>
+                  </div>
+                  <TableRow>
+                    {product.specialRequirements.map((req, index) => (
+                      <div key={index} className="grid grid-cols-3 border-b">
+                        <div className="col-span-1 p-2 border-r">{req.content}</div>
+                        <div className="p-2 border-r text-center">{req.date}</div>
+                        <div className="p-2 text-center">{req.user}</div>
+                      </div>
+                    ))}
+                    {product.specialRequirements.length === 0 && (
+                      <div className="p-4 text-center text-gray-500 col-span-3">尚未添加任何特殊要求</div>
+                    )}
+                  </TableRow>
+                </TableContainer>
 
                 {/* 編輯備註表格 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="w-2/3 bg-gray-100 p-2 text-left font-medium border-r border-b">
-                          <div className="flex items-center justify-between">
-                            <span>編輯備註</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2"
-                              onClick={() => setIsProcessNoteDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">日期</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-b">使用者</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.processNotes.map((note, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-b">{note.content}</td>
-                          <td className="p-2 border-r border-b text-center">{note.date}</td>
-                          <td className="p-2 border-b text-center">{note.user}</td>
-                        </tr>
-                      ))}
-                      {product.processNotes.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-gray-500">
-                            尚未添加任何備註
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 添加製程備註對話框 */}
-                <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>添加編輯備註</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-note-content" className="text-right">
-                          備註內容
-                        </Label>
-                        <Textarea
-                          id="process-note-content"
-                          value={newProcessNote.content}
-                          onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
-                          className="col-span-3"
-                          rows={3}
-                          placeholder="輸入備註內容"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-note-date" className="text-right">
-                          日期
-                        </Label>
-                        <Input
-                          id="process-note-date"
-                          value={newProcessNote.date || new Date().toLocaleDateString("zh-TW")}
-                          onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
-                          className="col-span-3"
-                          placeholder="YYYY/MM/DD"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="process-note-user" className="text-right">
-                          使用者
-                        </Label>
-                        <Input
-                          id="process-note-user"
-                          value={newProcessNote.user}
-                          onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入使用者名稱"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>編輯備註</span>
                       <Button
                         type="button"
-                        onClick={handleAddProcessNote}
-                        disabled={!newProcessNote.content || !newProcessNote.user}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => setIsProcessNoteDialogOpen(true)}
                       >
-                        添加備註
+                        <Plus className="h-4 w-4" />
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-3 border-b bg-gray-100">
+                    <div className="col-span-1 p-2 text-left font-medium border-r">備註內容</div>
+                    <div className="p-2 text-center font-medium border-r">日期</div>
+                    <div className="p-2 text-center font-medium">使用者</div>
+                  </div>
+                  <TableRow>
+                    {product.processNotes.map((note, index) => (
+                      <div key={index} className="grid grid-cols-3 border-b">
+                        <div className="col-span-1 p-2 border-r">{note.content}</div>
+                        <div className="p-2 border-r text-center">{note.date}</div>
+                        <div className="p-2 text-center">{note.user}</div>
+                      </div>
+                    ))}
+                    {product.processNotes.length === 0 && (
+                      <div className="p-4 text-center text-gray-500 col-span-3">尚未添加任何備註</div>
+                    )}
+                  </TableRow>
+                </TableContainer>
               </div>
             </CardContent>
           </Card>
@@ -2546,346 +2229,225 @@ function ProductFormComponent({ productId, isClone = false, onSubmit }: ProductF
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-6">
-                {/* 模具資訊表格 */}
-                <div className="border rounded-md overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="bg-gray-100 p-2 text-left font-medium border-b">模具資訊</th>
-                        <th className="bg-gray-100 p-2 text-center font-medium border-b"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-b bg-gray-50">有無開模具</td>
-                        <td className="p-2 border-b">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="has-mold-yes"
-                                checked={product.hasMold === true}
-                                onCheckedChange={(checked) => {
-                                  if (checked) handleInputChange("hasMold", true)
-                                }}
-                              />
-                              <Label htmlFor="has-mold-yes">有</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="has-mold-no"
-                                checked={product.hasMold === false}
-                                onCheckedChange={(checked) => {
-                                  if (checked) handleInputChange("hasMold", false)
-                                }}
-                              />
-                              <Label htmlFor="has-mold-no">無</Label>
-                            </div>
+                <TableContainer>
+                  <TableHeader>模具資訊</TableHeader>
+                  <TableRow>
+                    <div className="grid grid-cols-2 border-b">
+                      <div className="p-2 border-r bg-gray-50 font-medium">有無開模具</div>
+                      <div className="p-2">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="has-mold-yes"
+                              checked={product.hasMold === true}
+                              onCheckedChange={(checked) => {
+                                if (checked) handleInputChange("hasMold", true)
+                              }}
+                            />
+                            <Label htmlFor="has-mold-yes">有</Label>
                           </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b bg-gray-50">模具費</td>
-                        <td className="p-2 border-b">
-                          <Input
-                            type="number"
-                            value={product.moldCost || ""}
-                            onChange={(e) =>
-                              handleInputChange("moldCost", e.target.value ? Number(e.target.value) : "")
-                            }
-                            className="border-0 shadow-none focus-visible:ring-0 h-8"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r bg-gray-50">可退模具費數量</td>
-                        <td className="p-2">
-                          <Input
-                            type="number"
-                            value={product.refundableMoldQuantity || ""}
-                            onChange={(e) =>
-                              handleInputChange("refundableMoldQuantity", e.target.value ? Number(e.target.value) : "")
-                            }
-                            className="border-0 shadow-none focus-visible:ring-0 h-8"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b bg-gray-50">已退模</td>
-                        <td className="p-2 border-b">
-                          <Checkbox
-                            checked={product.moldReturned}
-                            onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r border-b bg-gray-50">會計註記</td>
-                        <td className="p-2 border-b">
-                          <Textarea
-                            value={product.accountingNote || ""}
-                            onChange={(e) => handleInputChange("accountingNote", e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 min-h-[80px]"
-                            placeholder="輸入會計相關註記..."
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border-r bg-gray-50">品質註記</td>
-                        <td className="p-2">
-                          <div className="space-y-2 min-h-[80px]">
-                            {product.qualityNotes && product.qualityNotes.length > 0 ? (
-                              product.qualityNotes.map((note) => (
-                                <div key={note.id} className="text-sm border-b pb-2">
-                                  <div className="flex justify-between">
-                                    <span className="font-medium">{note.title}</span>
-                                    <span
-                                      className={`px-2 py-0.5 rounded-full text-xs ${
-                                        note.status === "pending"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : note.status === "processing"
-                                            ? "bg-blue-100 text-blue-800"
-                                            : note.status === "resolved"
-                                              ? "bg-green-100 text-green-800"
-                                              : "bg-gray-100 text-gray-800"
-                                      }`}
-                                    >
-                                      {note.status === "pending"
-                                        ? "待處理"
-                                        : note.status === "processing"
-                                          ? "處理中"
-                                          : note.status === "resolved"
-                                            ? "已解決"
-                                            : note.status === "closed"
-                                              ? "已結案"
-                                              : note.status}
-                                    </span>
-                                  </div>
-                                  <div className="text-gray-500 text-xs mt-1">
-                                    客戶: {note.customer} | 日期: {note.date}
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="text-gray-500 text-sm">無相關客訴記錄</div>
-                            )}
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="has-mold-no"
+                              checked={product.hasMold === false}
+                              onCheckedChange={(checked) => {
+                                if (checked) handleInputChange("hasMold", false)
+                              }}
+                            />
+                            <Label htmlFor="has-mold-no">無</Label>
                           </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 訂單歷史表格 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th colSpan={2} className="bg-gray-100 p-2 text-center font-medium border-b">
-                          <div className="flex items-center justify-between px-4">
-                            <span>訂單歷史</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={() => setIsOrderHistoryDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              新增訂單
-                            </Button>
-                          </div>
-                        </th>
-                      </tr>
-                      <tr>
-                        <td className="w-1/2 bg-gray-100 p-2 text-left font-medium border-r border-b">已出貨數量</td>
-                        <td className="w-1/2 bg-gray-100 p-2 text-center font-medium border-b">
-                          {product.orderHistory ? product.orderHistory.length : 0}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="w-1/2 bg-gray-100 p-2 text-center font-medium border-r border-b">訂單號碼</th>
-                        <th className="w-1/2 bg-gray-100 p-2 text-center font-medium border-b">訂單數量</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.orderHistory && product.orderHistory.length > 0 ? (
-                        product.orderHistory.map((order, index) => (
-                          <tr key={index}>
-                            <td className="p-2 border-r border-b">
-                              <Input
-                                value={order.orderNumber}
-                                onChange={(e) => handleOrderHistoryChange(index, "orderNumber", e.target.value)}
-                                className="border-0 shadow-none focus-visible:ring-0 h-8"
-                              />
-                            </td>
-                            <td className="p-2 border-b">
-                              <div className="flex items-center">
-                                <Input
-                                  type="number"
-                                  value={order.quantity}
-                                  onChange={(e) => handleOrderHistoryChange(index, "quantity", Number(e.target.value))}
-                                  className="border-0 shadow-none focus-visible:ring-0 h-8"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-1 text-red-500 ml-1"
-                                  onClick={() => handleRemoveOrderHistory(index)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={2} className="p-4 text-center text-gray-500">
-                            尚未添加任何訂單歷史
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 添加訂單歷史對話框 */}
-                <Dialog open={isOrderHistoryDialogOpen} onOpenChange={setIsOrderHistoryDialogOpen}>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>添加訂單歷史</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="order-number" className="text-right">
-                          訂單號碼
-                        </Label>
-                        <Input
-                          id="order-number"
-                          value={newOrderHistory.orderNumber}
-                          onChange={(e) => setNewOrderHistory({ ...newOrderHistory, orderNumber: e.target.value })}
-                          className="col-span-3"
-                        />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="order-quantity" className="text-right">
-                          訂單數量
-                        </Label>
+                    </div>
+                    <div className="grid grid-cols-2 border-b">
+                      <div className="p-2 border-r bg-gray-50 font-medium">模具費</div>
+                      <div className="p-2">
                         <Input
-                          id="order-quantity"
                           type="number"
-                          value={newOrderHistory.quantity || ""}
-                          onChange={(e) => setNewOrderHistory({ ...newOrderHistory, quantity: Number(e.target.value) })}
-                          className="col-span-3"
+                          value={product.moldCost || ""}
+                          onChange={(e) => handleInputChange("moldCost", e.target.value ? Number(e.target.value) : "")}
+                          className="border-0 shadow-none focus-visible:ring-0 h-8"
                         />
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button type="button" onClick={handleAddOrderHistory}>
-                        添加訂單
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                {/* 編輯備註表格 */}
-                <div className="border rounded-md overflow-hidden mt-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="w-2/3 bg-gray-100 p-2 text-left font-medium border-r border-b">
-                          <div className="flex items-center justify-between">
-                            <span>編輯備註</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2"
-                              onClick={() => setIsResumeNoteDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-r border-b">日期</th>
-                        <th className="w-1/6 bg-gray-100 p-2 text-center font-medium border-b">使用者</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.resumeNotes.map((note, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-b">{note.content}</td>
-                          <td className="p-2 border-r border-b text-center">{note.date}</td>
-                          <td className="p-2 border-b text-center">{note.user}</td>
-                        </tr>
-                      ))}
-                      {product.resumeNotes.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-gray-500">
-                            尚未添加任何備註
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 添加履歷備註對話框 */}
-                <Dialog open={isResumeNoteDialogOpen} onOpenChange={setIsResumeNoteDialogOpen}>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>添加編輯備註</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="resume-note-content" className="text-right">
-                          備註內容
-                        </Label>
+                    <div className="grid grid-cols-2 border-b">
+                      <div className="p-2 border-r bg-gray-50 font-medium">可退模具費數量</div>
+                      <div className="p-2">
+                        <Input
+                          type="number"
+                          value={product.refundableMoldQuantity || ""}
+                          onChange={(e) =>
+                            handleInputChange("refundableMoldQuantity", e.target.value ? Number(e.target.value) : "")
+                          }
+                          className="border-0 shadow-none focus-visible:ring-0 h-8"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 border-b">
+                      <div className="p-2 border-r bg-gray-50 font-medium">已退模</div>
+                      <div className="p-2">
+                        <Checkbox
+                          checked={product.moldReturned}
+                          onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 border-b">
+                      <div className="p-2 border-r bg-gray-50 font-medium">會計註記</div>
+                      <div className="p-2">
                         <Textarea
-                          id="resume-note-content"
-                          value={newResumeNote.content}
-                          onChange={(e) => setNewResumeNote({ ...newResumeNote, content: e.target.value })}
-                          className="col-span-3"
-                          rows={3}
-                          placeholder="輸入備註內容"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="resume-note-date" className="text-right">
-                          日期
-                        </Label>
-                        <Input
-                          id="resume-note-date"
-                          value={newResumeNote.date || new Date().toLocaleDateString("zh-TW")}
-                          onChange={(e) => setNewResumeNote({ ...newResumeNote, date: e.target.value })}
-                          className="col-span-3"
-                          placeholder="YYYY/MM/DD"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="resume-note-user" className="text-right">
-                          使用者
-                        </Label>
-                        <Input
-                          id="resume-note-user"
-                          value={newResumeNote.user}
-                          onChange={(e) => setNewResumeNote({ ...newResumeNote, user: e.target.value })}
-                          className="col-span-3"
-                          placeholder="輸入使用者名稱"
+                          value={product.accountingNote || ""}
+                          onChange={(e) => handleInputChange("accountingNote", e.target.value)}
+                          className="border-0 shadow-none focus-visible:ring-0 min-h-[80px]"
+                          placeholder="輸入會計相關註記..."
                         />
                       </div>
                     </div>
-                    <DialogFooter>
+                    <div className="grid grid-cols-2">
+                      <div className="p-2 border-r bg-gray-50 font-medium">品質註記</div>
+                      <div className="p-2">
+                        <div className="space-y-2 min-h-[80px]">
+                          {product.qualityNotes && product.qualityNotes.length > 0 ? (
+                            product.qualityNotes.map((note) => (
+                              <div key={note.id} className="text-sm border-b pb-2">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">{note.title}</span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-xs ${
+                                      note.status === "pending"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : note.status === "processing"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : note.status === "resolved"
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-gray-100 text-gray-800"
+                                    }`}
+                                  >
+                                    {note.status === "pending"
+                                      ? "待處理"
+                                      : note.status === "processing"
+                                        ? "處理中"
+                                        : note.status === "resolved"
+                                          ? "已解決"
+                                          : note.status === "closed"
+                                            ? "已結案"
+                                            : note.status}
+                                  </span>
+                                </div>
+                                <div className="text-gray-500 text-xs mt-1">
+                                  客戶: {note.customer} | 日期: {note.date}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-gray-500 text-sm">無相關客訴記錄</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </TableRow>
+                </TableContainer>
+
+                {/* 其他表格保持相同的修改模式 */}
+                {/* 訂單歷史表格 */}
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>訂單歷史</span>
                       <Button
                         type="button"
-                        onClick={handleAddResumeNote}
-                        disabled={!newResumeNote.content || !newResumeNote.user}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={() => setIsOrderHistoryDialogOpen(true)}
                       >
-                        添加備註
+                        <Plus className="h-4 w-4 mr-1" />
+                        新增訂單
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-2 border-b">
+                    <div className="p-2 text-left font-medium border-r bg-gray-100">已出貨數量</div>
+                    <div className="p-2 text-center font-medium bg-gray-100">
+                      {product.orderHistory ? product.orderHistory.length : 0}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 border-b bg-gray-100">
+                    <div className="p-2 text-center font-medium border-r">訂單號碼</div>
+                    <div className="p-2 text-center font-medium">訂單數量</div>
+                  </div>
+                  <TableRow>
+                    {product.orderHistory && product.orderHistory.length > 0 ? (
+                      product.orderHistory.map((order, index) => (
+                        <div key={index} className="grid grid-cols-2 border-b">
+                          <div className="p-2 border-r">
+                            <Input
+                              value={order.orderNumber}
+                              onChange={(e) => handleOrderHistoryChange(index, "orderNumber", e.target.value)}
+                              className="border-0 shadow-none focus-visible:ring-0 h-8"
+                            />
+                          </div>
+                          <div className="p-2">
+                            <div className="flex items-center">
+                              <Input
+                                type="number"
+                                value={order.quantity}
+                                onChange={(e) => handleOrderHistoryChange(index, "quantity", Number(e.target.value))}
+                                className="border-0 shadow-none focus-visible:ring-0 h-8"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-1 text-red-500 ml-1"
+                                onClick={() => handleRemoveOrderHistory(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-gray-500 col-span-2">尚未添加任何訂單歷史</div>
+                    )}
+                  </TableRow>
+                </TableContainer>
+
+                {/* 編輯備註表格 */}
+                <TableContainer className="mt-6">
+                  <TableHeader>
+                    <div className="flex items-center justify-between px-4">
+                      <span>編輯備註</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => setIsResumeNoteDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableHeader>
+                  <div className="grid grid-cols-3 border-b bg-gray-100">
+                    <div className="col-span-1 p-2 text-left font-medium border-r">備註內容</div>
+                    <div className="p-2 text-center font-medium border-r">日期</div>
+                    <div className="p-2 text-center font-medium">使用者</div>
+                  </div>
+                  <TableRow>
+                    {product.resumeNotes.map((note, index) => (
+                      <div key={index} className="grid grid-cols-3 border-b">
+                        <div className="col-span-1 p-2 border-r">{note.content}</div>
+                        <div className="p-2 border-r text-center">{note.date}</div>
+                        <div className="p-2 text-center">{note.user}</div>
+                      </div>
+                    ))}
+                    {product.resumeNotes.length === 0 && (
+                      <div className="p-4 text-center text-gray-500 col-span-3">尚未添加任何備註</div>
+                    )}
+                  </TableRow>
+                </TableContainer>
               </div>
             </CardContent>
           </Card>
