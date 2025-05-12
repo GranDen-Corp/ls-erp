@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Plus, Upload, X } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,6 +16,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+
+// Add Dialog imports
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 // 產品表單屬性
 interface ProductFormProps {
@@ -253,6 +255,17 @@ export function ProductForm({
   const [isProcessNoteDialogOpen, setIsProcessNoteDialogOpen] = useState(false)
   const [isOrderHistoryDialogOpen, setIsOrderHistoryDialogOpen] = useState(false)
   const [isResumeNoteDialogOpen, setIsResumeNoteDialogOpen] = useState(false)
+  const [isPartManagementDialogOpen, setIsPartManagementDialogOpen] = useState(false)
+  const [isComplianceDialogOpen, setIsComplianceDialogOpen] = useState(false)
+  const [newPartManagement, setNewPartManagement] = useState({ name: "", value: false })
+  const [newCompliance, setNewCompliance] = useState({
+    regulation: "",
+    status: "",
+    substances: "",
+    reason: "",
+    document: "",
+    filename: "",
+  })
 
   // 資料載入狀態
   const [customersData, setCustomersData] = useState<Customer[]>([])
@@ -354,6 +367,391 @@ export function ProductForm({
 
     fetchOptions()
   }, [])
+
+  // Dialog components for popup forms
+  const EditNoteDialog = () => (
+    <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加編輯備註</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="noteContent">備註內容</Label>
+            <Textarea
+              id="noteContent"
+              value={newNote.content}
+              onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="noteUser">使用者</Label>
+            <Input
+              id="noteUser"
+              value={newNote.user}
+              onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="noteDate">日期 (選填)</Label>
+            <Input
+              id="noteDate"
+              value={newNote.date}
+              onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsNoteDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddEditNote}>
+            新增備註
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const ProcessDialog = () => (
+    <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
+      <DialogContent className="sm:max-w-[550px]">
+        <DialogHeader>
+          <DialogTitle>新增製程</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="processName">製程</Label>
+            <Input
+              id="processName"
+              value={newProcess.process}
+              onChange={(e) => setNewProcess({ ...newProcess, process: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="processVendor">廠商</Label>
+            <Input
+              id="processVendor"
+              value={newProcess.vendor}
+              onChange={(e) => setNewProcess({ ...newProcess, vendor: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="processCapacity">產能(SH)</Label>
+            <Input
+              id="processCapacity"
+              value={newProcess.capacity}
+              onChange={(e) => setNewProcess({ ...newProcess, capacity: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="processRequirements">要求</Label>
+            <Input
+              id="processRequirements"
+              value={newProcess.requirements}
+              onChange={(e) => setNewProcess({ ...newProcess, requirements: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="processReport">報告</Label>
+            <Input
+              id="processReport"
+              value={newProcess.report}
+              onChange={(e) => setNewProcess({ ...newProcess, report: e.target.value })}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsProcessDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddProcess}>
+            新增製程
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const SpecialReqDialog = () => (
+    <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加特殊要求</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="specialReqContent">要求內容</Label>
+            <Textarea
+              id="specialReqContent"
+              value={newSpecialReq.content}
+              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="specialReqUser">使用者</Label>
+            <Input
+              id="specialReqUser"
+              value={newSpecialReq.user}
+              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="specialReqDate">日期 (選填)</Label>
+            <Input
+              id="specialReqDate"
+              value={newSpecialReq.date}
+              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsSpecialReqDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddSpecialReq}>
+            新增特殊要求
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const ProcessNoteDialog = () => (
+    <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加製程備註</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="processNoteContent">備註內容</Label>
+            <Textarea
+              id="processNoteContent"
+              value={newProcessNote.content}
+              onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="processNoteUser">使用者</Label>
+            <Input
+              id="processNoteUser"
+              value={newProcessNote.user}
+              onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="processNoteDate">日期 (選填)</Label>
+            <Input
+              id="processNoteDate"
+              value={newProcessNote.date}
+              onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsProcessNoteDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddProcessNote}>
+            新增備註
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const OrderHistoryDialog = () => (
+    <Dialog open={isOrderHistoryDialogOpen} onOpenChange={setIsOrderHistoryDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加訂單記錄</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="orderNumber">訂單號碼</Label>
+            <Input
+              id="orderNumber"
+              value={newOrderHistory.orderNumber}
+              onChange={(e) => setNewOrderHistory({ ...newOrderHistory, orderNumber: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="orderQuantity">訂單數量</Label>
+            <Input
+              id="orderQuantity"
+              type="number"
+              value={newOrderHistory.quantity}
+              onChange={(e) =>
+                setNewOrderHistory({ ...newOrderHistory, quantity: Number.parseInt(e.target.value) || 0 })
+              }
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsOrderHistoryDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddOrderHistory}>
+            新增訂單記錄
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const ResumeNoteDialog = () => (
+    <Dialog open={isResumeNoteDialogOpen} onOpenChange={setIsResumeNoteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加履歷備註</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="resumeNoteContent">備註內容</Label>
+            <Textarea
+              id="resumeNoteContent"
+              value={newResumeNote.content}
+              onChange={(e) => setNewResumeNote({ ...newResumeNote, content: e.target.value })}
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="resumeNoteUser">使用者</Label>
+            <Input
+              id="resumeNoteUser"
+              value={newResumeNote.user}
+              onChange={(e) => setNewResumeNote({ ...newResumeNote, user: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="resumeNoteDate">日期 (選填)</Label>
+            <Input
+              id="resumeNoteDate"
+              value={newResumeNote.date}
+              onChange={(e) => setNewResumeNote({ ...newResumeNote, date: e.target.value })}
+              placeholder={new Date().toLocaleDateString("zh-TW")}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsResumeNoteDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddResumeNote}>
+            新增備註
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const PartManagementDialog = () => (
+    <Dialog open={isPartManagementDialogOpen} onOpenChange={setIsPartManagementDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>添加零件管理特性</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="partManagementName">特性名稱</Label>
+            <Input
+              id="partManagementName"
+              value={newPartManagement.name}
+              onChange={(e) => setNewPartManagement({ ...newPartManagement, name: e.target.value })}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="partManagementValue"
+              checked={newPartManagement.value}
+              onCheckedChange={(checked) => setNewPartManagement({ ...newPartManagement, value: checked === true })}
+            />
+            <Label htmlFor="partManagementValue">啟用</Label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsPartManagementDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddPartManagement}>
+            新增特性
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  const ComplianceDialog = () => (
+    <Dialog open={isComplianceDialogOpen} onOpenChange={setIsComplianceDialogOpen}>
+      <DialogContent className="sm:max-w-[550px]">
+        <DialogHeader>
+          <DialogTitle>添加符合性要求</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="complianceRegulation">法規名稱</Label>
+            <Input
+              id="complianceRegulation"
+              value={newCompliance.regulation}
+              onChange={(e) => setNewCompliance({ ...newCompliance, regulation: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="complianceStatus">符合狀態</Label>
+            <RadioGroup
+              value={newCompliance.status}
+              onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value })}
+              className="flex space-x-4"
+            >
+              <div className="flex items-center space-x-1">
+                <RadioGroupItem value="符合" id="comply" />
+                <Label htmlFor="comply" className="text-sm">
+                  符合
+                </Label>
+              </div>
+              <div className="flex items-center space-x-1">
+                <RadioGroupItem value="不符" id="not-comply" />
+                <Label htmlFor="not-comply" className="text-sm">
+                  不符
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="complianceSubstances">含有物質</Label>
+            <Input
+              id="complianceSubstances"
+              value={newCompliance.substances}
+              onChange={(e) => setNewCompliance({ ...newCompliance, substances: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="complianceReason">理由</Label>
+            <Input
+              id="complianceReason"
+              value={newCompliance.reason}
+              onChange={(e) => setNewCompliance({ ...newCompliance, reason: e.target.value })}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsComplianceDialogOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={handleAddCompliance}>
+            新增法規
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 
   // 處理輸入變更
   const handleInputChange = (field: string, value: any) => {
@@ -701,41 +1099,73 @@ export function ProductForm({
     }))
   }
 
-  // 生成訂單和採購單要求
+  // 處理添加零件管理特性
+  const handleAddPartManagement = () => {
+    if (newPartManagement.name) {
+      setProduct((prev) => ({
+        ...prev,
+        partManagement: {
+          ...(prev.partManagement || {}),
+          [newPartManagement.name]: newPartManagement.value,
+        },
+      }))
+      setNewPartManagement({ name: "", value: false })
+      setIsPartManagementDialogOpen(false)
+    }
+  }
+
+  // 處理添加符合性要求
+  const handleAddCompliance = () => {
+    if (newCompliance.regulation) {
+      setProduct((prev) => ({
+        ...prev,
+        complianceStatus: {
+          ...(prev.complianceStatus || {}),
+          [newCompliance.regulation]: {
+            status: newCompliance.status,
+            substances: newCompliance.substances,
+            reason: newCompliance.reason,
+            document: newCompliance.document,
+            filename: newCompliance.filename,
+          },
+        },
+      }))
+      setNewCompliance({
+        regulation: "",
+        status: "",
+        substances: "",
+        reason: "",
+        document: "",
+        filename: "",
+      })
+      setIsComplianceDialogOpen(false)
+    }
+  }
+
+  // 生成訂單和採購單要求的函數
   const generateRequirements = (processData: ProcessRecord[]) => {
-    // 訂單零件要求
+    // 訂單零件要求 - 所有製程的要求
     const orderReqs = processData
       .filter((proc) => proc.requirements)
       .map((proc) => `${proc.process}：${proc.requirements}`)
       .join("\n")
 
-    // 採購單零件要求
-    const materialProc = processData.find((proc) => proc.process === "材料")
-    const heatTreatmentProc = processData.find((proc) => proc.process === "熱處理")
-    const platingProc = processData.find((proc) => proc.process === "電鍍")
-    const screeningProc = processData.find((proc) => proc.process === "篩選")
+    // 採購單零件要求 - 特定製程的要求
+    const purchaseReqsMap = new Map<string, string>()
 
-    const purchaseReqs = []
+    // 收集所有製程的要求
+    processData.forEach((proc) => {
+      if (proc.requirements) {
+        purchaseReqsMap.set(proc.process, `${proc.process}：${proc.requirements}`)
+      }
+    })
 
-    if (materialProc && materialProc.requirements) {
-      purchaseReqs.push(`材料：${materialProc.requirements}`)
-    }
-
-    if (heatTreatmentProc && heatTreatmentProc.requirements) {
-      purchaseReqs.push(`熱處理：${heatTreatmentProc.requirements}`)
-    }
-
-    if (platingProc && platingProc.requirements) {
-      purchaseReqs.push(`電鍍：${platingProc.requirements}`)
-    }
-
-    if (screeningProc && screeningProc.requirements) {
-      purchaseReqs.push(`篩選：${screeningProc.requirements}`)
-    }
+    // 轉換為字符串
+    const purchaseReqs = Array.from(purchaseReqsMap.values()).join("\n")
 
     return {
       orderReqs,
-      purchaseReqs: purchaseReqs.join("\n"),
+      purchaseReqs,
     }
   }
 
@@ -743,12 +1173,43 @@ export function ProductForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!product.componentName || !product.partNo || !product.customerName.id || !product.factoryName.id) {
+    if (!product.componentName) {
       toast({
         title: "錯誤",
-        description: "請填寫必要欄位：零件名稱、Part No.、客戶代碼和工廠代碼",
+        description: "請填寫零件名稱",
         variant: "destructive",
       })
+      setActiveTab("basic")
+      return
+    }
+
+    if (!product.partNo) {
+      toast({
+        title: "錯誤",
+        description: "請填寫 Part No.",
+        variant: "destructive",
+      })
+      setActiveTab("basic")
+      return
+    }
+
+    if (!product.customerName.id) {
+      toast({
+        title: "錯誤",
+        description: "請選擇客戶編號",
+        variant: "destructive",
+      })
+      setActiveTab("basic")
+      return
+    }
+
+    if (!product.factoryName.id) {
+      toast({
+        title: "錯誤",
+        description: "請選擇供應商編號",
+        variant: "destructive",
+      })
+      setActiveTab("basic")
       return
     }
 
@@ -888,14 +1349,13 @@ export function ProductForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
           <TabsTrigger value="images">產品圖片</TabsTrigger>
           <TabsTrigger value="documents">文件與認證</TabsTrigger>
           <TabsTrigger value="process">製程資料</TabsTrigger>
           <TabsTrigger value="resume">履歷資料</TabsTrigger>
           <TabsTrigger value="commercial">商業條款</TabsTrigger>
-          <TabsTrigger value="assembly">組裝資訊</TabsTrigger>
         </TabsList>
 
         {/* 基本資訊頁籤 */}
@@ -905,7 +1365,9 @@ export function ProductForm({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="componentName">零件名稱</Label>
+                  <Label htmlFor="componentName" className="flex items-center">
+                    <span className="text-red-500 mr-1">*</span>零件名稱
+                  </Label>
                   <Input
                     id="componentName"
                     value={product.componentName || ""}
@@ -941,7 +1403,9 @@ export function ProductForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="customerCode">客戶代碼</Label>
+                  <Label htmlFor="customerCode" className="flex items-center">
+                    <span className="text-red-500 mr-1">*</span>客戶編號
+                  </Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Select
                       value={product.customerName?.id || ""}
@@ -960,7 +1424,7 @@ export function ProductForm({
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="選擇客戶代碼" />
+                        <SelectValue placeholder="選擇客戶編號" />
                       </SelectTrigger>
                       <SelectContent>
                         {customersData.map((customer) => (
@@ -1002,7 +1466,9 @@ export function ProductForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="factoryCode">工廠代碼</Label>
+                  <Label htmlFor="factoryCode" className="flex items-center">
+                    <span className="text-red-500 mr-1">*</span>供應商編號
+                  </Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Select
                       value={product.factoryName?.id || ""}
@@ -1021,7 +1487,7 @@ export function ProductForm({
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="選擇工廠代碼" />
+                        <SelectValue placeholder="選擇供應商編號" />
                       </SelectTrigger>
                       <SelectContent>
                         {factories.map((factory) => (
@@ -1049,7 +1515,7 @@ export function ProductForm({
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="選擇工廠名稱" />
+                        <SelectValue placeholder="選擇供應商名稱" />
                       </SelectTrigger>
                       <SelectContent>
                         {factories.map((factory) => (
@@ -1077,7 +1543,9 @@ export function ProductForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="partNo">Part No.</Label>
+                  <Label htmlFor="partNo" className="flex items-center">
+                    <span className="text-red-500 mr-1">*</span>Part No.
+                  </Label>
                   <Input
                     id="partNo"
                     value={product.partNo || ""}
@@ -1124,20 +1592,21 @@ export function ProductForm({
             </div>
           </div>
 
-          {/* 組裝產品開關 */}
-          <div className="space-y-2 pt-4">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="is-assembly"
-                checked={product.isAssembly || false}
-                onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
-              />
-              <Label htmlFor="is-assembly">這是一個組裝產品</Label>
-            </div>
-            <p className="text-sm text-gray-500">
-              組裝產品由多個組件組成，可能來自不同工廠。啟用此選項可以管理組件和計算組裝成本。
-            </p>
-          </div>
+          {/* 組裝產品開關 - Remove this section
+<div className="space-y-2 pt-4">
+  <div className="flex items-center space-x-2">
+    <Switch
+      id="is-assembly"
+      checked={product.isAssembly || false}
+      onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
+    />
+    <Label htmlFor="is-assembly">這是一個組裝產品</Label>
+  </div>
+  <p className="text-sm text-gray-500">
+    組裝產品由多個組件組成，可能來自不同工廠。啟用此選項可以管理組件和計算組裝成本。
+  </p>
+</div>
+*/}
 
           {/* 產品描述 */}
           <div className="space-y-2 pt-4">
@@ -1153,59 +1622,6 @@ export function ProductForm({
 
         {/* 產品圖片頁籤 */}
         <TabsContent value="images" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">產品圖片</h3>
-                    <Button type="button" size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加圖片
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    {product.images && product.images.length > 0 ? (
-                      product.images.map((image, index) => (
-                        <div key={index} className="relative border rounded-md overflow-hidden">
-                          <img
-                            src={image.url || "/placeholder.svg"}
-                            alt={image.alt || `產品圖片 ${index + 1}`}
-                            className="w-full h-40 object-cover"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-2 right-2 h-6 w-6"
-                            onClick={() => {
-                              setProduct((prev) => ({
-                                ...prev,
-                                images: prev.images.filter((_, i) => i !== index),
-                              }))
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-3 flex flex-col items-center justify-center border border-dashed rounded-md p-6">
-                        <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">尚未添加產品圖片</p>
-                        <p className="text-xs text-gray-400">點擊"添加圖片"按鈕上傳產品圖片</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* 文件與認證頁籤 */}
-        <TabsContent value="documents" className="space-y-4 pt-4">
           <div className="grid grid-cols-1 gap-6">
             {/* 圖面資訊 */}
             <Card>
@@ -1354,6 +1770,59 @@ export function ProductForm({
               </CardContent>
             </Card>
 
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">產品圖片</h3>
+                    <Button type="button" size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加圖片
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    {product.images && product.images.length > 0 ? (
+                      product.images.map((image, index) => (
+                        <div key={index} className="relative border rounded-md overflow-hidden">
+                          <img
+                            src={image.url || "/placeholder.svg"}
+                            alt={image.alt || `產品圖片 ${index + 1}`}
+                            className="w-full h-40 object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 h-6 w-6"
+                            onClick={() => {
+                              setProduct((prev) => ({
+                                ...prev,
+                                images: prev.images.filter((_, i) => i !== index),
+                              }))
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 flex flex-col items-center justify-center border border-dashed rounded-md p-6">
+                        <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">尚未添加產品圖片</p>
+                        <p className="text-xs text-gray-400">點擊"添加圖片"按鈕上傳產品圖片</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* 文件與認證頁籤 */}
+        <TabsContent value="documents" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
             {/* 重要文件 */}
             <Card>
               <CardContent className="p-6">
@@ -1429,6 +1898,15 @@ export function ProductForm({
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">零件管理特性</h3>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsPartManagementDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      新增特性
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
@@ -1505,6 +1983,10 @@ export function ProductForm({
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">符合性要求</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsComplianceDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      新增法規
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
@@ -2076,136 +2558,15 @@ export function ProductForm({
           </div>
         </TabsContent>
 
-        {/* 組裝資訊頁籤 */}
-        <TabsContent value="assembly" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">組裝資訊</h3>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="is-assembly-tab"
-                        checked={product.isAssembly || false}
-                        onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
-                      />
-                      <Label htmlFor="is-assembly-tab">這是一個組裝產品</Label>
-                    </div>
-                  </div>
-
-                  {product.isAssembly ? (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="assemblyTime">組裝時間 (分鐘)</Label>
-                          <Input
-                            id="assemblyTime"
-                            type="number"
-                            value={product.assemblyTime || 0}
-                            onChange={(e) => handleInputChange("assemblyTime", Number.parseInt(e.target.value) || 0)}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="assemblyCostPerHour">組裝人工成本 (每小時)</Label>
-                          <Input
-                            id="assemblyCostPerHour"
-                            type="number"
-                            value={product.assemblyCostPerHour || 0}
-                            onChange={(e) =>
-                              handleInputChange("assemblyCostPerHour", Number.parseFloat(e.target.value) || 0)
-                            }
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="additionalCosts">額外成本</Label>
-                          <Input
-                            id="additionalCosts"
-                            type="number"
-                            value={product.additionalCosts || 0}
-                            onChange={(e) =>
-                              handleInputChange("additionalCosts", Number.parseFloat(e.target.value) || 0)
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <Label>組件清單</Label>
-                          <Button type="button" variant="outline" size="sm">
-                            <Plus className="h-4 w-4 mr-2" />
-                            添加組件
-                          </Button>
-                        </div>
-
-                        {product.components && product.components.length > 0 ? (
-                          <div className="border rounded-md overflow-hidden">
-                            <div className="grid grid-cols-5 gap-4 bg-gray-100 p-2">
-                              <div>
-                                <Label>組件名稱</Label>
-                              </div>
-                              <div>
-                                <Label>Part No.</Label>
-                              </div>
-                              <div>
-                                <Label>工廠</Label>
-                              </div>
-                              <div className="text-center">
-                                <Label>數量</Label>
-                              </div>
-                              <div className="text-center">
-                                <Label>單價</Label>
-                              </div>
-                            </div>
-
-                            {product.components.map((component, index) => (
-                              <div key={index} className="grid grid-cols-5 gap-4 p-2 border-t">
-                                <div>
-                                  <p>{component.productName}</p>
-                                </div>
-                                <div>
-                                  <p>{component.productPN}</p>
-                                </div>
-                                <div>
-                                  <p>{component.factoryName}</p>
-                                </div>
-                                <div className="text-center">
-                                  <Input
-                                    type="number"
-                                    value={component.quantity}
-                                    onChange={(e) => {
-                                      const newComponents = [...product.components]
-                                      newComponents[index].quantity = Number.parseInt(e.target.value) || 1
-                                      handleInputChange("components", newComponents)
-                                    }}
-                                    className="w-20 mx-auto text-center"
-                                  />
-                                </div>
-                                <div className="text-center">
-                                  <p>{component.unitPrice.toFixed(2)}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 border rounded-md text-gray-500">尚未添加任何組件</div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
-                      <p>此產品未設定為組裝產品</p>
-                      <p className="text-sm">請開啟上方的組裝產品開關以啟用組裝資訊設定</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+        {/* Dialog Components */}
+        <EditNoteDialog />
+        <ProcessDialog />
+        <SpecialReqDialog />
+        <ProcessNoteDialog />
+        <OrderHistoryDialog />
+        <ResumeNoteDialog />
+        <PartManagementDialog />
+        <ComplianceDialog />
       </Tabs>
 
       <div className="flex justify-end space-x-2">
@@ -2225,44 +2586,6 @@ export function ProductForm({
       </div>
     </form>
   )
-}
-
-// 生成訂單和採購單要求的函數
-const generateRequirements = (processData: ProcessRecord[]) => {
-  // 訂單零件要求
-  const orderReqs = processData
-    .filter((proc) => proc.requirements)
-    .map((proc) => `${proc.process}：${proc.requirements}`)
-    .join("\n")
-
-  // 採購單零件要求
-  const materialProc = processData.find((proc) => proc.process === "材料")
-  const heatTreatmentProc = processData.find((proc) => proc.process === "熱處理")
-  const platingProc = processData.find((proc) => proc.process === "電鍍")
-  const screeningProc = processData.find((proc) => proc.process === "篩選")
-
-  const purchaseReqs = []
-
-  if (materialProc && materialProc.requirements) {
-    purchaseReqs.push(`材料：${materialProc.requirements}`)
-  }
-
-  if (heatTreatmentProc && heatTreatmentProc.requirements) {
-    purchaseReqs.push(`熱處理：${heatTreatmentProc.requirements}`)
-  }
-
-  if (platingProc && platingProc.requirements) {
-    purchaseReqs.push(`電鍍：${platingProc.requirements}`)
-  }
-
-  if (screeningProc && screeningProc.requirements) {
-    purchaseReqs.push(`篩選：${screeningProc.requirements}`)
-  }
-
-  return {
-    orderReqs,
-    purchaseReqs: purchaseReqs.join("\n"),
-  }
 }
 
 export default ProductForm

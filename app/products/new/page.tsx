@@ -12,9 +12,11 @@ import { toast } from "@/hooks/use-toast"
 export default function NewProductPage() {
   const searchParams = useSearchParams()
   const cloneId = searchParams.get("clone")
-  const productType = searchParams.get("type")
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Remove productType logic and simplify page title
+  const pageTitle = cloneId ? "複製產品" : "新增產品"
 
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true)
@@ -38,8 +40,6 @@ export default function NewProductPage() {
     }
   }
 
-  const pageTitle = cloneId ? "複製產品" : productType === "assembly" ? "新增組裝產品" : "新增產品"
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -55,15 +55,12 @@ export default function NewProductPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {cloneId ? "複製現有產品" : productType === "assembly" ? "填寫組裝產品資訊" : "填寫產品資訊"}
-          </CardTitle>
+          <CardTitle>{cloneId ? "複製現有產品" : "填寫產品資訊"}</CardTitle>
         </CardHeader>
         <CardContent>
           <ProductForm
             productId={cloneId || undefined}
             isClone={!!cloneId}
-            isAssembly={productType === "assembly"}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />
