@@ -25,6 +25,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  Plus,
+  FlaskConical,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -57,6 +59,13 @@ export default function Sidebar({ className }: SidebarProps = {}) {
           label: "新增訂單",
           href: "/orders/new",
           active: pathname === "/orders/new",
+          icon: Plus,
+        },
+        {
+          label: "新增訂單Test",
+          href: "/orders/new-test",
+          active: pathname === "/orders/new-test",
+          icon: FlaskConical,
         },
         {
           label: "快速建立訂單",

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Search, FileDown, Eye } from "lucide-react"
+import { Loader2, Search, FileDown, Eye, Layers } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabaseClient } from "@/lib/supabase-client"
 import { format } from "date-fns"
@@ -248,6 +248,11 @@ export function OrdersTable() {
     }
   }
 
+  // 檢查訂單是否包含組件產品
+  const hasAssemblyProduct = (order: any): boolean => {
+    return !!order.part_no_assembly
+  }
+
   // 獲取產品名稱
   const getProductName = (order: any) => {
     try {
@@ -421,12 +426,18 @@ export function OrdersTable() {
               <TableBody>
                 {filteredOrders.map((order, index) => {
                   const status = getOrderStatus(order)
+                  const isAssembly = hasAssemblyProduct(order)
                   return (
                     <TableRow key={order.id || order.order_id || index}>
                       <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
                       <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
                       <TableCell>{order.po_id || "-"}</TableCell>
-                      <TableCell>{getProductName(order)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          {getProductName(order)}
+                          {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
+                        </div>
+                      </TableCell>
                       <TableCell>{getOrderDate(order)}</TableCell>
                       <TableCell>
                         <Badge className={`${status.color} text-white`}>{status.text}</Badge>
