@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Plus, Upload, X } from "lucide-react"
+import { Loader2, Plus, X } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useRouter } from "next/navigation"
@@ -1765,54 +1765,6 @@ export function ProductForm({
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">產品圖片</h3>
-                    <Button type="button" size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加圖片
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    {product.images && product.images.length > 0 ? (
-                      product.images.map((image, index) => (
-                        <div key={index} className="relative border rounded-md overflow-hidden">
-                          <img
-                            src={image.url || "/placeholder.svg"}
-                            alt={image.alt || `產品圖片 ${index + 1}`}
-                            className="w-full h-40 object-cover"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-2 right-2 h-6 w-6"
-                            onClick={() => {
-                              setProduct((prev) => ({
-                                ...prev,
-                                images: prev.images.filter((_, i) => i !== index),
-                              }))
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-3 flex flex-col items-center justify-center border border-dashed rounded-md p-6">
-                        <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">尚未添加產品圖片</p>
-                        <p className="text-xs text-gray-400">點擊"添加圖片"按鈕上傳產品圖片</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </CardContent>

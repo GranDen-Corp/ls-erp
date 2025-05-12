@@ -1,121 +1,31 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Eye, FileText, Loader2, Search, FileEdit } from "lucide-react"
+import { Eye, FileText, Loader2, Search, MoreHorizontal, Pencil, Copy, Layers } from "lucide-react"
 import Link from "next/link"
 import { supabaseClient } from "@/lib/supabase-client"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { DataTable } from "@/components/ui/data-table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { ProductImagePreview } from "@/components/products/product-image-preview"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import type { Product } from "@/types/product"
-
-// 產品資料類型
-// interface Product {
-//   customer_id: string
-//   part_no: string
-//   factory_id: string
-//   component_name: string
-//   specification?: string
-//   customs_code?: string
-//   end_customer?: string
-//   product_type?: string
-//   classification_code?: string
-//   vehicle_drawing_no?: string
-//   customer_drawing_no?: string
-//   product_period?: string
-//   description?: string
-//   status?: string
-//   created_date?: string
-//   last_order_date?: string
-//   last_price?: number
-//   currency?: string
-//   is_assembly?: boolean
-//   images?: {
-//     id: string
-//     url: string
-//     alt: string
-//     isThumbnail: boolean
-//   }[]
-// }
 
 interface ProductsTableProps {
   category?: string
   status?: string
   customer?: string
 }
-
-// 定義表格列
-const columns = [
-  {
-    accessorKey: "part_no",
-    header: "產品編號",
-  },
-  {
-    accessorKey: "component_name",
-    header: "產品名稱",
-  },
-  {
-    accessorKey: "customer_id",
-    header: "客戶",
-  },
-  {
-    accessorKey: "factory_id",
-    header: "工廠",
-  },
-  {
-    accessorKey: "product_type",
-    header: "產品類型",
-  },
-  {
-    accessorKey: "status",
-    header: "狀態",
-  },
-  {
-    accessorKey: "last_price",
-    header: "最近價格",
-    cell: ({ row }) => {
-      const price = row.getValue("last_price")
-      const currency = row.original.currency || ""
-      return price ? `${price} ${currency}` : "-"
-    },
-  },
-  {
-    accessorKey: "last_order_date",
-    header: "最近訂單日期",
-    cell: ({ row }) => {
-      const date = row.getValue("last_order_date")
-      return date || "-"
-    },
-  },
-  {
-    id: "actions",
-    header: "操作",
-    cell: ({ row }) => {
-      const product = row.original as Product
-      return (
-        <div className="flex items-center gap-2">
-          <Link href={`/products/all/${encodeURIComponent(product.part_no)}`}>
-            <Button variant="ghost" size="icon">
-              <Eye className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href={`/products/all/${encodeURIComponent(product.part_no)}/edit`}>
-            <Button variant="ghost" size="icon">
-              <FileEdit className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href={`/products/all/${encodeURIComponent(product.part_no)}/inquiry`}>
-            <Button variant="ghost" size="icon">
-              <FileText className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      )
-    },
-  },
-]
 
 export function ProductsTable({ category, status, customer }: ProductsTableProps) {
   const [products, setProducts] = useState<Product[]>([])
@@ -301,7 +211,7 @@ export function ProductsTable({ category, status, customer }: ProductsTableProps
         </div>
       </div>
 
-      {/* <div className="rounded-md border">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -421,8 +331,7 @@ export function ProductsTable({ category, status, customer }: ProductsTableProps
             )}
           </TableBody>
         </Table>
-      </div> */}
-      <DataTable columns={columns} data={filteredProducts} />
+      </div>
     </div>
   )
 }

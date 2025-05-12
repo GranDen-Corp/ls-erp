@@ -35,10 +35,10 @@ export default function ProductEditPage({ params }: ProductEditPageProps) {
         const { data, error } = await supabaseClient
           .from("products")
           .select(`
-            *,
-            customer:customer_id(*),
-            factory:factory_id(*)
-          `)
+          *,
+          customer:customer_id(*),
+          factory:factory_id(*)
+        `)
           .eq("part_no", id)
           .single()
 
@@ -55,6 +55,10 @@ export default function ProductEditPage({ params }: ProductEditPageProps) {
         // 格式化資料以符合表單需求
         const formattedData = {
           ...data,
+          componentName: data.component_name || "",
+          specification: data.specification || "",
+          customsCode: data.customs_code || "",
+          endCustomer: data.end_customer || "",
           customerName: data.customer
             ? {
                 id: data.customer.customer_id || "",
@@ -69,6 +73,48 @@ export default function ProductEditPage({ params }: ProductEditPageProps) {
                 code: data.factory.factory_id || "",
               }
             : { id: "", name: "", code: "" },
+          productType: data.product_type || "",
+          partNo: data.part_no || "",
+          classificationCode: data.classification_code || "",
+          vehicleDrawingNo: data.vehicle_drawing_no || "",
+          customerDrawingNo: data.customer_drawing_no || "",
+          productPeriod: data.product_period || "",
+          description: data.description || "",
+          status: data.status || "active",
+          originalDrawingVersion: data.original_drawing_version || "",
+          drawingVersion: data.drawing_version || "",
+          customerOriginalDrawing: data.customer_original_drawing || { path: "", filename: "" },
+          jinzhanDrawing: data.jinzhan_drawing || { path: "", filename: "" },
+          customerDrawing: data.customer_drawing || { path: "", filename: "" },
+          factoryDrawing: data.factory_drawing || { path: "", filename: "" },
+          customerDrawingVersion: data.customer_drawing_version || "",
+          factoryDrawingVersion: data.factory_drawing_version || "",
+          images: data.images || [],
+          isAssembly: data.is_assembly || false,
+          components: data.components || [],
+          assemblyTime: data.assembly_time || 30,
+          assemblyCostPerHour: data.assembly_cost_per_hour || 10,
+          additionalCosts: data.additional_costs || 0,
+          complianceStatus: data.compliance_status || {},
+          importantDocuments: data.important_documents || {},
+          partManagement: data.part_management || {},
+          editNotes: data.edit_notes || [],
+          processData: data.process_data || [],
+          orderRequirements: data.order_requirements || "",
+          purchaseRequirements: data.purchase_requirements || "",
+          specialRequirements: data.special_requirements || [],
+          processNotes: data.process_notes || [],
+          moq: data.moq || 0,
+          leadTime: data.lead_time || "",
+          packagingRequirements: data.packaging_requirements || "",
+          hasMold: data.has_mold || false,
+          moldCost: data.mold_cost || "",
+          refundableMoldQuantity: data.refundable_mold_quantity || "",
+          moldReturned: data.mold_returned || false,
+          accountingNote: data.accounting_note || "",
+          qualityNotes: data.quality_notes || [],
+          resumeNotes: data.resume_notes || [],
+          orderHistory: data.order_history || [],
         }
 
         // 設置產品資料到表單
