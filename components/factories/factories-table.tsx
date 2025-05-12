@@ -173,7 +173,7 @@ export function FactoriesTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{renderSortButton("factory_id", "供應商ID")}</TableHead>
+              <TableHead>{renderSortButton("factory_id", "供應商編號")}</TableHead>
               <TableHead>{renderSortButton("factory_name", "供應商名稱")}</TableHead>
               <TableHead>{renderSortButton("supplier_type", "類型")}</TableHead>
               <TableHead>{renderSortButton("factory_phone", "電話")}</TableHead>
