@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 export default function NewProductPage() {
   const searchParams = useSearchParams()
   const cloneId = searchParams.get("clone")
+  const productType = searchParams.get("type")
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -25,11 +26,11 @@ export default function NewProductPage() {
       // 成功提示
       toast({
         title: "產品創建成功",
-        description: `產品 ${data.pn} 已成功創建`,
+        description: `產品 ${data.part_no} 已成功創建`,
       })
 
       // 導航到產品列表
-      router.push("/products")
+      router.push("/products/all")
     } catch (error) {
       toast({
         title: "錯誤",
@@ -41,27 +42,32 @@ export default function NewProductPage() {
     }
   }
 
+  const pageTitle = cloneId ? "複製產品" : productType === "assembly" ? "新增組裝產品" : "新增產品"
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/products">
+          <Link href="/products/all">
             <Button variant="outline" size="icon">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">{cloneId ? "複製產品" : "新增產品"}</h1>
+          <h1 className="text-2xl font-bold">{pageTitle}</h1>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{cloneId ? "複製現有產品" : "填寫產品資訊"}</CardTitle>
+          <CardTitle>
+            {cloneId ? "複製現有產品" : productType === "assembly" ? "填寫組裝產品資訊" : "填寫產品資訊"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ProductForm
             productId={cloneId || undefined}
             isClone={!!cloneId}
+            isAssembly={productType === "assembly"}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />

@@ -273,13 +273,13 @@ export function FactoriesTable() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>操作</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/factories/${supplier.factory_id}`}>
+                            <Link href={`/factories/all/${supplier.factory_id}`}>
                               <Eye className="mr-2 h-4 w-4" />
                               查看詳情
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/factories/${supplier.factory_id}/edit`}>
+                            <Link href={`/factories/all/${supplier.factory_id}/edit`}>
                               <FileEdit className="mr-2 h-4 w-4" />
                               編輯供應商
                             </Link>

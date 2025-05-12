@@ -230,15 +230,13 @@ export default function CustomersTable() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={() => {
-                            // 使用與 customer-data-table.tsx 中相同的詳情顯示方式
-                            // 這裡我們假設會打開一個模態框來顯示客戶詳情
-                            router.push(`/customers/${customer.customer_id}`)
+                            router.push(`/customers/all/${customer.customer_id}`)
                           }}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           查看詳情
                         </DropdownMenuItem>
-                        <Link href={`/customers/${customer.customer_id}/edit`}>
+                        <Link href={`/customers/all/${customer.customer_id}/edit`}>
                           <DropdownMenuItem>
                             <FileEdit className="mr-2 h-4 w-4" />
                             編輯

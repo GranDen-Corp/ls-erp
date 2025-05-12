@@ -27,7 +27,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [activeTab, setActiveTab] = useState("basic")
 
   // 基本資訊
-  const [customerID, setCustomerID] = useState("") // 客戶編號 (customer_id)
+  const [customerCode, setCustomerCode] = useState("")
   const [customerName, setCustomerName] = useState("")
   const [shortName, setShortName] = useState("")
   const [customerType, setCustomerType] = useState("")
@@ -58,28 +58,44 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   // 當 initialData 變更時更新狀態
   useEffect(() => {
     console.log("CustomerForm 接收到的初始數據:", initialData) // 添加日誌以便調試
-    console.log("CustomerForm 接收到的客戶ID:", customerId) // 添加日誌以便調試
 
     if (initialData) {
       // 檢查資料庫字段與表單字段的映射
       console.log("資料庫字段映射檢查:")
-      console.log("customer_id:", initialData.customer_id)
       console.log("customer_code:", initialData.customer_code)
       console.log("customer_name:", initialData.customer_name)
       console.log("customer_short_name:", initialData.customer_short_name)
+      console.log("short_name:", initialData.short_name)
       console.log("customer_type:", initialData.customer_type)
       console.log("status:", initialData.status)
+      console.log("contact_person:", initialData.contact_person)
+      console.log("email:", initialData.email)
+      console.log("phone:", initialData.phone)
+      console.log("fax:", initialData.fax)
+      console.log("address:", initialData.address)
+      console.log("country:", initialData.country)
+      console.log("website:", initialData.website)
+      console.log("tax_id:", initialData.tax_id)
+      console.log("payment_terms:", initialData.payment_terms)
+      console.log("credit_limit:", initialData.credit_limit)
+      console.log("currency:", initialData.currency)
+      console.log("bank_name:", initialData.bank_name)
+      console.log("bank_account:", initialData.bank_account)
+      console.log("group_code:", initialData.group_code)
+      console.log("group_tag:", initialData.group_tag)
+      console.log("notes:", initialData.notes)
+      console.log("created_at:", initialData.created_at)
 
       // 基本資訊
-      setCustomerID(initialData.customer_id || "") // 設置客戶編號
+      setCustomerCode(initialData.customer_code || "")
       setCustomerName(initialData.customer_name || initialData.customer_full_name || "")
-      setShortName(initialData.customer_short_name || initialData.short_name || "")
+      setShortName(initialData.short_name || initialData.customer_short_name || "")
       setCustomerType(initialData.customer_type || "")
       setStatus(initialData.status || "active")
 
       // 聯絡資訊
-      setContactPerson(initialData.contact_person || initialData.client_contact_person || "")
-      setEmail(initialData.email || initialData.report_email || initialData.invoice_email || "")
+      setContactPerson(initialData.contact_person || "")
+      setEmail(initialData.email || initialData.invoice_email || "")
       setPhone(initialData.phone || initialData.customer_phone || "")
       setFax(initialData.fax || initialData.customer_fax || "")
       setAddress(initialData.address || initialData.customer_address || "")
@@ -88,18 +104,28 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
       // 財務資訊
       setTaxId(initialData.tax_id || "")
-      setPaymentTerms(initialData.payment_terms || initialData.payment_term || initialData.payment_due_date || "")
+      setPaymentTerms(initialData.payment_terms || initialData.payment_due_date || "")
       setCreditLimit(initialData.credit_limit || 0)
       setCurrency(initialData.currency || "TWD")
       setBankName(initialData.bank_name || "")
       setBankAccount(initialData.bank_account || "")
 
       // 其他資訊
-      setGroupTag(initialData.group_code || initialData.group_tag || "")
+      setGroupTag(initialData.group_tag || initialData.group_code || "")
       setNotes(initialData.notes || "")
       setCreatedAt(initialData.created_at || new Date().toISOString())
+
+      // 設置完成後再次檢查表單狀態
+      setTimeout(() => {
+        console.log("表單狀態設置後檢查:")
+        console.log("customerCode:", customerCode)
+        console.log("customerName:", customerName)
+        console.log("shortName:", shortName)
+        console.log("customerType:", customerType)
+        console.log("status:", status)
+      }, 100)
     }
-  }, [initialData, customerId])
+  }, [initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,9 +133,9 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
     try {
       const customerData = {
-        customer_id: customerID, // 使用客戶編號
+        customer_code: customerCode,
         customer_name: customerName,
-        customer_short_name: shortName,
+        customer_short_name: shortName, // 注意這裡使用 customer_short_name 而不是 short_name
         customer_type: customerType,
         status,
         contact_person: contactPerson,
@@ -125,21 +151,18 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         currency,
         bank_name: bankName,
         bank_account: bankAccount,
-        group_code: groupTag,
+        group_code: groupTag, // 注意：這裡使用 group_code 而不是 group_tag
         notes,
         updated_at: new Date().toISOString(),
       }
 
       console.log("提交的客戶數據:", customerData) // 添加日誌以便調試
-      console.log("客戶ID:", customerId) // 添加日誌以便調試
 
       let result
 
       if (customerId) {
         // 更新現有客戶
         result = await supabaseClient.from("customers").update(customerData).eq("customer_id", customerId)
-
-        console.log("更新結果:", result) // 添加日誌以便調試
       } else {
         // 新增客戶
         result = await supabaseClient.from("customers").insert([
@@ -148,8 +171,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
             created_at: createdAt,
           },
         ])
-
-        console.log("插入結果:", result) // 添加日誌以便調試
       }
 
       if (result.error) {
@@ -161,18 +182,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         description: `客戶 ${customerName} 已${customerId ? "更新" : "創建"}`,
       })
 
-      // 更新後重定向到客戶詳情頁面，而不是客戶列表
-      if (customerId) {
-        router.push(`/customers/${customerId}`)
-      } else {
-        // 對於新創建的客戶，我們需要獲取新插入記錄的ID
-        if (result.data && result.data.length > 0 && result.data[0].customer_id) {
-          router.push(`/customers/${result.data[0].customer_id}`)
-        } else {
-          router.push("/customers")
-        }
-      }
-
+      router.push("/customers")
       router.refresh()
     } catch (error) {
       console.error("保存客戶時出錯:", error)
@@ -186,8 +196,40 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
     }
   }
 
+  // 添加一個調試按鈕，用於檢查當前表單狀態
+  const debugFormState = () => {
+    console.log("當前表單狀態:")
+    console.log("customerCode:", customerCode)
+    console.log("customerName:", customerName)
+    console.log("shortName:", shortName)
+    console.log("customerType:", customerType)
+    console.log("status:", status)
+    console.log("contactPerson:", contactPerson)
+    console.log("email:", email)
+    console.log("phone:", phone)
+    console.log("fax:", fax)
+    console.log("address:", address)
+    console.log("country:", country)
+    console.log("website:", website)
+    console.log("taxId:", taxId)
+    console.log("paymentTerms:", paymentTerms)
+    console.log("creditLimit:", creditLimit)
+    console.log("currency:", currency)
+    console.log("bankName:", bankName)
+    console.log("bankAccount:", bankAccount)
+    console.log("groupTag:", groupTag)
+    console.log("notes:", notes)
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* 添加調試按鈕，僅在開發環境中顯示 */}
+      {process.env.NODE_ENV === "development" && (
+        <Button type="button" onClick={debugFormState} variant="outline" size="sm">
+          調試表單狀態
+        </Button>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
@@ -204,8 +246,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customerID">客戶編號 *</Label>
-                  <Input id="customerID" value={customerID} onChange={(e) => setCustomerID(e.target.value)} required />
+                  <Label htmlFor="customerCode">客戶編號 *</Label>
+                  <Input
+                    id="customerCode"
+                    value={customerCode}
+                    onChange={(e) => setCustomerCode(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="customerName">客戶名稱 *</Label>
@@ -355,12 +402,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       </Tabs>
 
       <div className="flex justify-end space-x-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push(customerId ? `/customers/${customerId}` : "/customers")}
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="outline" onClick={() => router.push("/customers")} disabled={isSubmitting}>
           取消
         </Button>
         <Button type="submit" disabled={isSubmitting}>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Customer } from "@/types/customer"
 import { supabaseClient } from "@/lib/supabase-client"
+import { notFound } from "next/navigation"
 
 export const metadata: Metadata = {
   title: "客戶詳情",
@@ -22,6 +23,10 @@ async function getCustomer(id: string): Promise<Customer> {
     if (error) {
       console.error("獲取客戶資料時出錯:", error)
       throw new Error(error.message)
+    }
+
+    if (!data) {
+      notFound()
     }
 
     return {
@@ -42,22 +47,7 @@ async function getCustomer(id: string): Promise<Customer> {
     }
   } catch (error) {
     console.error("獲取客戶資料時出錯:", error)
-    // 返回一個模擬數據作為備用
-    return {
-      id: id,
-      name: "客戶資料載入失敗",
-      contactPerson: "",
-      email: "",
-      phone: "",
-      address: "",
-      country: "",
-      paymentTerms: "",
-      creditLimit: 0,
-      currency: "",
-      status: "active",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+    notFound()
   }
 }
 
@@ -88,7 +78,7 @@ export default async function CustomerDetailsPage({
     <div className="flex flex-col space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Link href="/customers">
+          <Link href="/customers/all">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               返回客戶列表
@@ -96,7 +86,7 @@ export default async function CustomerDetailsPage({
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">{customer.customer_short_name || customer.name}</h1>
           <div className="ml-2">
-            <Link href={`/customers/${customer.id}/edit`}>
+            <Link href={`/customers/all/${customer.id}/edit`}>
               <Button variant="outline" size="sm">
                 <FileEdit className="mr-2 h-4 w-4" />
                 編輯

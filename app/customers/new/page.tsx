@@ -13,7 +13,7 @@ export default function NewCustomerPage() {
   return (
     <div className="flex flex-col space-y-6 p-6">
       <div className="flex items-center space-x-2">
-        <Link href="/customers">
+        <Link href="/customers/all">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             返回客戶列表

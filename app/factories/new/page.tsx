@@ -7,7 +7,7 @@ export default function NewFactoryPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <Link href="/factories">
+        <Link href="/factories/all">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
