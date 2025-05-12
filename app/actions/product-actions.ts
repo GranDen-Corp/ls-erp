@@ -97,8 +97,8 @@ export async function saveProduct(formData: any) {
     }
 
     // 重新驗證路徑以更新資料
+    revalidatePath("/products/all")
     revalidatePath("/products")
-    revalidatePath("/local-data")
 
     return { success: true, data }
   } catch (error) {

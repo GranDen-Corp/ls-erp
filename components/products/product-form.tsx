@@ -10,94 +10,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { Loader2 } from "lucide-react"
-import type { ProductComponent } from "@/types/assembly-product"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { saveProduct } from "@/app/actions/product-actions"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Loader2, Plus, Upload, X } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
-// 自定義表格樣式組件
-const TableContainer = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`border rounded-md overflow-hidden ${className}`}>{children}</div>
-)
-
-const TableHeader = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-gray-100 p-3 font-medium border-b ${className}`}>{children}</div>
-)
-
-const TableRow = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`grid grid-cols-1 ${className}`}>{children}</div>
-)
-
-const TableCell = ({
-  children,
-  label,
-  highlight = false,
-  className = "",
-}: {
-  children: React.ReactNode
-  label?: string
-  highlight?: boolean
-  className?: string
-}) => (
-  <div className="grid grid-cols-3 border-b">
-    {label && <div className="bg-gray-100 p-3 border-r font-medium">{label}</div>}
-    <div className={`${label ? "col-span-2" : "col-span-3"} p-2 ${highlight ? "bg-yellow-50" : ""} ${className}`}>
-      {children}
-    </div>
-  </div>
-)
-
-const TableGrid = ({
-  children,
-  cols = 1,
-  className = "",
-}: { children: React.ReactNode; cols?: number; className?: string }) => (
-  <div className={`grid grid-cols-${cols} ${className}`}>{children}</div>
-)
-
+// 產品表單屬性
 interface ProductFormProps {
   productId?: string
   isClone?: boolean
-  onSubmit: (data: any) => void
+  onSubmit?: (data: any) => void
   initialValues?: any
   isSubmitting?: boolean
-}
-
-// 自定義欄位類型
-interface CustomField {
-  id: string
-  name: string
-  value: string
-  type: "text" | "file" | "checkbox"
-}
-
-// 文件記錄類型
-interface DocumentRecord {
-  id: string
-  name: string
-  document: string
-  filename: string
-}
-
-// 零件特性記錄類型
-interface PartFeatureRecord {
-  id: string
-  name: string
-  status: boolean
-}
-
-// 符合性記錄類型
-interface ComplianceRecord {
-  id: string
-  regulation: string
-  status: string
-  substances: string
-  reason: string
-  document: string
-  filename: string
+  isAssembly?: boolean
 }
 
 // 製程資料記錄類型
@@ -124,6 +52,40 @@ interface Supplier {
   code: string
 }
 
+// 文件記錄類型
+interface DocumentRecord {
+  document: string
+  filename: string
+}
+
+// 符合性狀態類型
+interface ComplianceStatus {
+  status: string
+  substances: string
+  reason: string
+  document: string
+  filename: string
+}
+
+// 備註類型
+interface Note {
+  content: string
+  date: string
+  user: string
+}
+
+// 訂單歷史記錄類型
+interface OrderHistoryRecord {
+  orderNumber: string
+  quantity: number
+}
+
+// 產品規格類型
+interface ProductSpecification {
+  name: string
+  value: string
+}
+
 // 默認的空文件對象
 const emptyFileObject = {
   path: "",
@@ -145,13 +107,13 @@ const emptyDocumentRecord = {
   filename: "",
 }
 
-// This is the component implementation
-function ProductFormComponent({
+export function ProductForm({
   productId,
   isClone = false,
   onSubmit,
   initialValues,
   isSubmitting = false,
+  isAssembly = false,
 }: ProductFormProps) {
   // 初始化默認產品數據
   const defaultProduct = {
@@ -176,15 +138,15 @@ function ProductFormComponent({
     jinzhanDrawing: emptyFileObject,
     customerDrawing: emptyFileObject,
     factoryDrawing: emptyFileObject,
+    customerDrawingVersion: "",
+    factoryDrawingVersion: "",
     images: [],
-    isAssembly: false,
+    isAssembly: isAssembly || false,
     components: [],
     assemblyTime: 30,
     assemblyCostPerHour: 10,
     additionalCosts: 0,
-    customerDrawingVersion: "",
-    factoryDrawingVersion: "",
-    // 新增符合性要求相關欄位
+    // 符合性要求相關欄位
     complianceStatus: {
       RoHS: emptyComplianceStatus,
       REACh: emptyComplianceStatus,
@@ -195,22 +157,22 @@ function ProductFormComponent({
       CMRT: emptyComplianceStatus,
       EMRT: emptyComplianceStatus,
     },
-    // 新增重要文件相關欄位
+    // 重要文件相關欄位
     importantDocuments: {
       PPAP: emptyDocumentRecord,
       PSW: emptyDocumentRecord,
       capacityAnalysis: emptyDocumentRecord,
     },
-    // 新增零件管理特性相關欄位
+    // 零件管理特性相關欄位
     partManagement: {
       safetyPart: false,
       automotivePart: false,
       CBAMPart: false,
       clockRequirement: false,
     },
-    // 新增編輯備註相關欄位
+    // 編輯備註相關欄位
     editNotes: [],
-    // 新增製程資料相關欄位
+    // 製程資料相關欄位
     processData: [
       {
         id: "proc_1",
@@ -221,15 +183,16 @@ function ProductFormComponent({
         report: "材證",
       },
     ],
-    // 添加新欄位
+    // 訂單和採購單要求
     orderRequirements: "",
     purchaseRequirements: "",
+    specialRequirements: [],
+    processNotes: [],
+    // 商業條款
     moq: 0,
     leadTime: "",
     packagingRequirements: "",
-    specialRequirements: [],
-    processNotes: [],
-    // 在 initialProduct 中添加這些欄位
+    // 履歷資料
     hasMold: false,
     moldCost: "",
     refundableMoldQuantity: "",
@@ -266,12 +229,43 @@ function ProductFormComponent({
     processData: initialProduct.processData || defaultProduct.processData,
   }
 
-  // 添加在 useState 聲明後
   const [product, setProduct] = useState(safeInitialProduct)
+  const [activeTab, setActiveTab] = useState("basic")
+  const [newNote, setNewNote] = useState({ content: "", date: "", user: "" })
+  const [newProcess, setNewProcess] = useState<ProcessRecord>({
+    id: "",
+    process: "",
+    vendor: "",
+    capacity: "",
+    requirements: "",
+    report: "",
+  })
+  const [newSpecialReq, setNewSpecialReq] = useState({ content: "", date: "", user: "" })
+  const [newProcessNote, setNewProcessNote] = useState({ content: "", date: "", user: "" })
+  const [newOrderHistory, setNewOrderHistory] = useState({ orderNumber: "", quantity: 0 })
+  const [newResumeNote, setNewResumeNote] = useState({ content: "", date: "", user: "" })
+  const [newSpec, setNewSpec] = useState<ProductSpecification>({ name: "", value: "" })
 
-  // 添加這段代碼
+  // 對話框狀態
+  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false)
+  const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false)
+  const [isSpecialReqDialogOpen, setIsSpecialReqDialogOpen] = useState(false)
+  const [isProcessNoteDialogOpen, setIsProcessNoteDialogOpen] = useState(false)
+  const [isOrderHistoryDialogOpen, setIsOrderHistoryDialogOpen] = useState(false)
+  const [isResumeNoteDialogOpen, setIsResumeNoteDialogOpen] = useState(false)
+
+  // 資料載入狀態
+  const [customersData, setCustomersData] = useState<Customer[]>([])
+  const [factories, setFactories] = useState<Supplier[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+
+  // 當initialValues變更時更新product
   useEffect(() => {
-    // 當initialValues變更時更新product
     if (initialValues) {
       const updatedProduct = {
         ...defaultProduct,
@@ -306,186 +300,64 @@ function ProductFormComponent({
     }
   }, [initialValues])
 
-  const [newSpec, setNewSpec] = useState({ name: "", value: "" })
-  const [activeTab, setActiveTab] = useState("basic")
-  const [dragOver, setDragOver] = useState(false)
-  const [selectedComponent, setSelectedComponent] = useState("")
-  const [previewFile, setPreviewFile] = useState<{ path: string; filename: string; type: string } | null>(null)
-  const [newNote, setNewNote] = useState({ content: "", date: "", user: "" })
-  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false)
-  const [newProcess, setNewProcess] = useState<ProcessRecord>({
-    id: "",
-    process: "",
-    vendor: "",
-    capacity: "",
-    requirements: "",
-    report: "",
-  })
-  const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false)
-  const [newSpecialReq, setNewSpecialReq] = useState({ content: "", date: "", user: "" })
-  const [isSpecialReqDialogOpen, setIsSpecialReqDialogOpen] = useState(false)
-  const [newProcessNote, setNewProcessNote] = useState({ content: "", date: "", user: "" })
-  const [isProcessNoteDialogOpen, setIsProcessNoteDialogOpen] = useState(false)
-  const [isOrderHistoryDialogOpen, setIsOrderHistoryDialogOpen] = useState(false)
-  const [newOrderHistory, setNewOrderHistory] = useState({ orderNumber: "", quantity: 0 })
-  const [newResumeNote, setNewResumeNote] = useState({ content: "", date: "", user: "" })
-  const [isResumeNoteDialogOpen, setIsResumeNoteDialogOpen] = useState(false)
+  // 載入客戶和供應商資料
+  useEffect(() => {
+    async function fetchOptions() {
+      setDataLoading(true)
+      setDataError(null)
 
-  // 自定義欄位狀態
-  const [customImportantDocuments, setCustomImportantDocuments] = useState<CustomField[]>([])
-  const [customPartManagement, setCustomPartManagement] = useState<CustomField[]>([])
-  const [customCompliance, setCustomCompliance] = useState<CustomField[]>([])
-  const [newCustomField, setNewCustomField] = useState({ name: "", type: "text" as const })
-  const [activeDialog, setActiveDialog] = useState<string | null>(null)
+      try {
+        // 獲取客戶數據
+        const { data: customers, error: customersError } = await supabase
+          .from("customers")
+          .select("customer_id, customer_short_name")
+          .order("customer_id")
 
-  // 文件記錄狀態
-  const [customDocuments, setCustomDocuments] = useState<DocumentRecord[]>([])
-  // 零件特性記錄狀態
-  const [customPartFeatures, setCustomPartFeatures] = useState<PartFeatureRecord[]>([])
-  const [customCompliances, setCustomCompliances] = useState<ComplianceRecord[]>([])
-  // 新文件名稱輸入
-  const [newDocumentName, setNewDocumentName] = useState("")
-  // 新零件特性名稱輸入
-  const [newPartFeatureName, setNewPartFeatureName] = useState("")
-  // 新符合性法規名稱輸入
-  const [newComplianceName, setNewComplianceName] = useState("")
+        if (customersError) throw new Error(`獲取客戶數據失敗: ${customersError.message}`)
 
-  // 模擬可用的組件產品
-  const availableComponents = [
-    { id: "1", pn: "LCD-15-HD", name: "15吋 HD LCD面板", factoryId: "1", factoryName: "深圳電子廠", unitPrice: 40.5 },
-    { id: "2", pn: "PCB-MAIN-V1", name: "主板 PCB V1", factoryId: "2", factoryName: "上海科技廠", unitPrice: 15.75 },
-    { id: "3", pn: "CAP-104-SMD", name: "104 SMD電容", factoryId: "3", factoryName: "東莞工業廠", unitPrice: 0.05 },
-    { id: "4", pn: "RES-103-SMD", name: "103 SMD電阻", factoryId: "3", factoryName: "東莞工業廠", unitPrice: 0.03 },
-    { id: "5", pn: "IC-CPU-8086", name: "8086 CPU晶片", factoryId: "4", factoryName: "廣州製造廠", unitPrice: 12.5 },
-    { id: "6", pn: "CASE-PLASTIC", name: "塑膠外殼", factoryId: "5", factoryName: "蘇州電子廠", unitPrice: 5.25 },
-  ]
+        // 將數據轉換為組件需要的格式
+        const formattedCustomers =
+          customers?.map((customer) => ({
+            id: customer.customer_id,
+            name: customer.customer_short_name,
+            code: customer.customer_id || "",
+          })) || []
 
+        // 嘗試獲取供應商數據
+        let formattedFactories = []
+        try {
+          const { data: factoriesData, error: factoriesError } = await supabase
+            .from("suppliers")
+            .select("factory_id, factory_name")
+            .order("factory_id")
+
+          if (!factoriesError && factoriesData) {
+            formattedFactories = factoriesData.map((supplier) => ({
+              id: supplier.factory_id,
+              name: supplier.factory_name,
+              code: supplier.factory_id || "",
+            }))
+          }
+        } catch (factoryError) {
+          console.warn("獲取工廠數據失敗，使用空數組作為後備:", factoryError)
+        }
+
+        setCustomersData(formattedCustomers)
+        setFactories(formattedFactories)
+      } catch (err) {
+        console.error("獲取選項數據失敗:", err)
+        setDataError(err instanceof Error ? err.message : "獲取數據時發生未知錯誤")
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
+    fetchOptions()
+  }, [])
+
+  // 處理輸入變更
   const handleInputChange = (field: string, value: any) => {
     setProduct((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleAddSpecification = () => {
-    if (newSpec.name && newSpec.value) {
-      setProduct((prev) => ({
-        ...prev,
-        specifications: [...(prev.specifications || []), { ...newSpec }],
-      }))
-      setNewSpec({ name: "", value: "" })
-    }
-  }
-
-  const handleRemoveSpecification = (index: number) => {
-    setProduct((prev) => ({
-      ...prev,
-      specifications: (prev.specifications || []).filter((_, i) => i !== index),
-    }))
-  }
-
-  // 處理添加組件
-  const handleAddComponent = () => {
-    if (!selectedComponent) return
-
-    const component = availableComponents.find((c) => c.id === selectedComponent)
-    if (!component) return
-
-    const newComponent: ProductComponent = {
-      id: `comp-${Date.now()}`,
-      productId: component.id,
-      productName: component.name,
-      productPN: component.pn,
-      quantity: 1,
-      unitPrice: component.unitPrice,
-      factoryId: component.factoryId,
-      factoryName: component.factoryName,
-    }
-
-    setProduct((prev) => ({
-      ...prev,
-      components: [...(prev.components || []), newComponent],
-    }))
-    setSelectedComponent("")
-  }
-
-  // 處理移除組件
-  const handleRemoveComponent = (componentId: string) => {
-    setProduct((prev) => ({
-      ...prev,
-      components: (prev.components || []).filter((c) => c.id !== componentId),
-    }))
-  }
-
-  // 處理組件數量變更
-  const handleComponentQuantityChange = (componentId: string, quantity: number) => {
-    setProduct((prev) => ({
-      ...prev,
-      components: (prev.components || []).map((c) => {
-        if (c.id === componentId) {
-          return { ...c, quantity }
-        }
-        return c
-      }),
-    }))
-  }
-
-  // 計算組裝產品總成本
-  const calculateTotalCost = () => {
-    // 組件成本
-    const componentsCost = (product.components || []).reduce((sum, component) => {
-      return sum + component.quantity * component.unitPrice
-    }, 0)
-
-    // 組裝人工成本
-    const laborCost = (product.assemblyTime / 60) * product.assemblyCostPerHour
-
-    // 總成本 = 組件成本 + 人工成本 + 額外成本
-    return componentsCost + laborCost + product.additionalCosts
-  }
-
-  // 處理添加文件記錄
-  const handleAddDocument = () => {
-    if (!newDocumentName) return
-
-    const newDocument: DocumentRecord = {
-      id: `doc_${Date.now()}`,
-      name: newDocumentName,
-      document: "",
-      filename: "",
-    }
-
-    setCustomDocuments((prev) => [...prev, newDocument])
-    setNewDocumentName("")
-  }
-
-  // 處理添加零件特性記錄
-  const handleAddPartFeature = () => {
-    if (!newPartFeatureName) return
-
-    const newFeature: PartFeatureRecord = {
-      id: `feature_${Date.now()}`,
-      name: newPartFeatureName,
-      status: false,
-    }
-
-    setCustomPartFeatures((prev) => [...prev, newFeature])
-    setNewPartFeatureName("")
-  }
-
-  // 處理添加符合性記錄
-  const handleAddCompliance = () => {
-    if (!newComplianceName) return
-
-    const newCompliance: ComplianceRecord = {
-      id: `compliance_${Date.now()}`,
-      regulation: newComplianceName,
-      status: "",
-      substances: "",
-      reason: "",
-      document: "",
-      filename: "",
-    }
-
-    setCustomCompliances((prev) => [...prev, newCompliance])
-    setNewComplianceName("")
   }
 
   // 處理添加製程資料
@@ -563,45 +435,6 @@ function ProductFormComponent({
         purchaseRequirements: purchaseReqs,
       }
     })
-  }
-
-  // 處理文件上傳 (擴展現有函數)
-  const handleCustomDocumentUpload = (id: string, file: File) => {
-    const fileData = {
-      path: URL.createObjectURL(file),
-      filename: file.name,
-    }
-
-    setCustomDocuments((prev) =>
-      prev.map((doc) => (doc.id === id ? { ...doc, document: fileData.path, filename: fileData.filename } : doc)),
-    )
-  }
-
-  // 處理刪除文件記錄
-  const handleRemoveDocument = (id: string) => {
-    setCustomDocuments((prev) => prev.filter((doc) => doc.id !== id))
-  }
-
-  // 處理刪除零件特性記錄
-  const handleRemovePartFeature = (id: string) => {
-    setCustomPartFeatures((prev) => prev.filter((feature) => feature.id !== id))
-  }
-
-  // 處理刪除符合性記錄
-  const handleRemoveCompliance = (id: string) => {
-    setCustomCompliances((prev) => prev.filter((compliance) => compliance.id !== id))
-  }
-
-  // 處理零件特性狀態變更
-  const handlePartFeatureStatusChange = (id: string, status: boolean) => {
-    setCustomPartFeatures((prev) => prev.map((feature) => (feature.id === id ? { ...feature, status } : feature)))
-  }
-
-  // 處理符合性狀態變更
-  const handleCustomComplianceChange = (id: string, field: string, value: string) => {
-    setCustomCompliances((prev) =>
-      prev.map((compliance) => (compliance.id === id ? { ...compliance, [field]: value } : compliance)),
-    )
   }
 
   // 處理文件上傳
@@ -683,18 +516,6 @@ function ProductFormComponent({
               },
             },
           }))
-        } else if (fieldType.startsWith("custom_")) {
-          const [_, category, id] = fieldType.split("_")
-
-          if (category === "importantDocuments") {
-            setCustomImportantDocuments((prev) =>
-              prev.map((field) => (field.id === id ? { ...field, value: fileData.path } : field)),
-            )
-          } else if (category === "compliance") {
-            setCustomCompliance((prev) =>
-              prev.map((field) => (field.id === id ? { ...field, value: fileData.path } : field)),
-            )
-          }
         }
         break
     }
@@ -762,195 +583,7 @@ function ProductFormComponent({
     }
   }
 
-  // 處理添加自定義欄位
-  const handleAddCustomField = (category: string) => {
-    if (!newCustomField.name) return
-
-    const newField: CustomField = {
-      id: `${category}_${Date.now()}`,
-      name: newCustomField.name,
-      value: "",
-      type: newCustomField.type,
-    }
-
-    if (category === "importantDocuments") {
-      setCustomImportantDocuments((prev) => [...prev, newField])
-    } else if (category === "partManagement") {
-      setCustomPartManagement((prev) => [...prev, newField])
-    } else if (category === "compliance") {
-      setCustomCompliance((prev) => [...prev, newField])
-    }
-
-    setNewCustomField({ name: "", type: "text" })
-    setActiveDialog(null)
-  }
-
-  // 處理自定義欄位值變更
-  const handleCustomFieldChange = (category: string, id: string, value: string | boolean) => {
-    if (category === "importantDocuments") {
-      setCustomImportantDocuments((prev) =>
-        prev.map((field) => (field.id === id ? { ...field, value: value as string } : field)),
-      )
-    } else if (category === "partManagement") {
-      setCustomPartManagement((prev) =>
-        prev.map((field) => (field.id === id ? { ...field, value: String(value) } : field)),
-      )
-    } else if (category === "compliance") {
-      setCustomCompliance((prev) =>
-        prev.map((field) => (field.id === id ? { ...field, value: value as string } : field)),
-      )
-    }
-  }
-
-  // 處理刪除自定義欄位
-  const handleRemoveCustomField = (category: string, id: string) => {
-    if (category === "importantDocuments") {
-      setCustomImportantDocuments((prev) => prev.filter((field) => field.id !== id))
-    } else if (category === "partManagement") {
-      setCustomPartManagement((prev) => prev.filter((field) => field.id !== id))
-    } else if (category === "compliance") {
-      setCustomCompliance((prev) => prev.filter((field) => field.id !== id))
-    }
-  }
-
-  const router = useRouter()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // 將自定義欄位和記錄添加到提交數據中
-    const submitData = {
-      ...product,
-      customer_id: product.customerName?.id,
-      factory_id: product.factoryName?.id,
-      customImportantDocuments,
-      customPartManagement,
-      customCompliance,
-      customDocuments,
-      customPartFeatures,
-      customCompliances,
-    }
-
-    try {
-      // 使用 Server Action 保存產品
-      const result = await saveProduct(submitData)
-
-      if (result.success) {
-        toast({
-          title: "產品保存成功",
-          description: `產品 ${product.partNo} 已成功保存到資料庫`,
-        })
-
-        // 如果是從新增產品頁面提交，則導航到產品列表
-        if (onSubmit) {
-          onSubmit(submitData)
-        } else {
-          router.push("/products")
-        }
-      } else {
-        toast({
-          title: "錯誤",
-          description: `保存產品失敗: ${result.error}`,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("保存產品時出錯:", error)
-      toast({
-        title: "錯誤",
-        description: "保存產品時出錯，請稍後再試",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // 添加生成訂單和採購單要求的函數
-  const generateRequirements = (processData: ProcessRecord[]) => {
-    // 訂單零件要求
-    const orderReqs = processData
-      .filter((proc) => proc.requirements)
-      .map((proc) => `${proc.process}：${proc.requirements}`)
-      .join("\n")
-
-    // 採購單零件要求
-    const materialProc = processData.find((proc) => proc.process === "材料")
-    const heatTreatmentProc = processData.find((proc) => proc.process === "熱處理")
-    const platingProc = processData.find((proc) => proc.process === "電鍍")
-    const screeningProc = processData.find((proc) => proc.process === "篩選")
-
-    const purchaseReqs = []
-
-    if (materialProc && materialProc.requirements) {
-      purchaseReqs.push(`材料：${materialProc.requirements}`)
-    }
-
-    if (heatTreatmentProc && heatTreatmentProc.requirements) {
-      purchaseReqs.push(`熱處理：${heatTreatmentProc.requirements}`)
-    }
-
-    if (platingProc && platingProc.requirements) {
-      purchaseReqs.push(`電鍍：${platingProc.requirements}`)
-    }
-
-    if (screeningProc && screeningProc.requirements) {
-      purchaseReqs.push(`篩選：${screeningProc.requirements}`)
-    }
-
-    return {
-      orderReqs,
-      purchaseReqs: purchaseReqs.join("\n"),
-    }
-  }
-
-  // 渲染添加自定義欄位對話框
-  const renderAddCustomFieldDialog = (category: string) => (
-    <Dialog open={activeDialog === category} onOpenChange={(open) => setActiveDialog(open ? category : null)}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>添加自定義欄位</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="custom-field-name" className="text-right">
-              欄位名稱
-            </Label>
-            <Input
-              id="custom-field-name"
-              value={newCustomField.name}
-              onChange={(e) => setNewCustomField({ ...newCustomField, name: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="custom-field-type" className="text-right">
-              欄位類型
-            </Label>
-            <Select
-              value={newCustomField.type}
-              onValueChange={(value: "text" | "file" | "checkbox") =>
-                setNewCustomField({ ...newCustomField, type: value })
-              }
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="選擇欄位類型" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">文字</SelectItem>
-                <SelectItem value="file">文件</SelectItem>
-                <SelectItem value="checkbox">勾選框</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Button type="button" onClick={() => handleAddCustomField(category)}>
-            添加
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-
+  // 處理添加特殊要求
   const handleAddSpecialReq = () => {
     if (newSpecialReq.content && newSpecialReq.user) {
       const date = newSpecialReq.date || new Date().toLocaleDateString("zh-TW")
@@ -959,7 +592,6 @@ function ProductFormComponent({
         specialRequirements: [
           ...(prev.specialRequirements || []),
           {
-            id: `req_${Date.now()}`,
             content: newSpecialReq.content,
             date: date,
             user: newSpecialReq.user,
@@ -971,6 +603,7 @@ function ProductFormComponent({
     }
   }
 
+  // 處理添加製程備註
   const handleAddProcessNote = () => {
     if (newProcessNote.content && newProcessNote.user) {
       const date = newProcessNote.date || new Date().toLocaleDateString("zh-TW")
@@ -990,6 +623,7 @@ function ProductFormComponent({
     }
   }
 
+  // 處理添加履歷備註
   const handleAddResumeNote = () => {
     if (newResumeNote.content && newResumeNote.user) {
       const date = newResumeNote.date || new Date().toLocaleDateString("zh-TW")
@@ -1048,412 +682,195 @@ function ProductFormComponent({
     })
   }
 
-  // 渲染備註對話框
-  const renderNoteDialog = () => (
-    <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>添加編輯備註</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="note-content" className="text-right">
-              備註內容
-            </Label>
-            <Textarea
-              id="note-content"
-              value={newNote.content}
-              onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-              className="col-span-3"
-              rows={3}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="note-date" className="text-right">
-              日期
-            </Label>
-            <Input
-              id="note-date"
-              type="date"
-              value={newNote.date}
-              onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
-              className="col-span-3"
-              placeholder={new Date().toLocaleDateString("zh-TW")}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="note-user" className="text-right">
-              使用者
-            </Label>
-            <Input
-              id="note-user"
-              value={newNote.user}
-              onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" onClick={handleAddEditNote} disabled={!newNote.content || !newNote.user}>
-            添加
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  // 處理添加規格
+  const handleAddSpecification = () => {
+    if (newSpec.name && newSpec.value) {
+      setProduct((prev) => ({
+        ...prev,
+        specifications: [...(prev.specifications || []), { ...newSpec }],
+      }))
+      setNewSpec({ name: "", value: "" })
+    }
+  }
 
-  // 渲染製程對話框
-  const renderProcessDialog = () => (
-    <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>添加製程資料</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-name" className="text-right">
-              製程
-            </Label>
-            <Input
-              id="process-name"
-              value={newProcess.process}
-              onChange={(e) => setNewProcess({ ...newProcess, process: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-vendor" className="text-right">
-              廠商
-            </Label>
-            <Input
-              id="process-vendor"
-              value={newProcess.vendor}
-              onChange={(e) => setNewProcess({ ...newProcess, vendor: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-capacity" className="text-right">
-              產能(SH)
-            </Label>
-            <Input
-              id="process-capacity"
-              value={newProcess.capacity}
-              onChange={(e) => setNewProcess({ ...newProcess, capacity: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-requirements" className="text-right">
-              要求
-            </Label>
-            <Input
-              id="process-requirements"
-              value={newProcess.requirements}
-              onChange={(e) => setNewProcess({ ...newProcess, requirements: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-report" className="text-right">
-              報告
-            </Label>
-            <Input
-              id="process-report"
-              value={newProcess.report}
-              onChange={(e) => setNewProcess({ ...newProcess, report: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" onClick={handleAddProcess} disabled={!newProcess.process}>
-            添加
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  // 處理刪除規格
+  const handleRemoveSpecification = (index: number) => {
+    setProduct((prev) => ({
+      ...prev,
+      specifications: (prev.specifications || []).filter((_, i) => i !== index),
+    }))
+  }
 
-  // 渲染特殊要求對話框
-  const renderSpecialReqDialog = () => (
-    <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>添加特殊要求/測試</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="special-req-content" className="text-right">
-              要求內容
-            </Label>
-            <Textarea
-              id="special-req-content"
-              value={newSpecialReq.content}
-              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
-              className="col-span-3"
-              rows={3}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="special-req-date" className="text-right">
-              日期
-            </Label>
-            <Input
-              id="special-req-date"
-              type="date"
-              value={newSpecialReq.date}
-              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
-              className="col-span-3"
-              placeholder={new Date().toLocaleDateString("zh-TW")}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="special-req-user" className="text-right">
-              使用者
-            </Label>
-            <Input
-              id="special-req-user"
-              value={newSpecialReq.user}
-              onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" onClick={handleAddSpecialReq} disabled={!newSpecialReq.content || newSpecialReq.user}>
-            添加
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  // 生成訂單和採購單要求
+  const generateRequirements = (processData: ProcessRecord[]) => {
+    // 訂單零件要求
+    const orderReqs = processData
+      .filter((proc) => proc.requirements)
+      .map((proc) => `${proc.process}：${proc.requirements}`)
+      .join("\n")
 
-  // 渲染製程備註對話框
-  const renderProcessNoteDialog = () => (
-    <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>添加製程備註</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-note-content" className="text-right">
-              備註內容
-            </Label>
-            <Textarea
-              id="process-note-content"
-              value={newProcessNote.content}
-              onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
-              className="col-span-3"
-              rows={3}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-note-date" className="text-right">
-              日期
-            </Label>
-            <Input
-              id="process-note-date"
-              type="date"
-              value={newProcessNote.date}
-              onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
-              className="col-span-3"
-              placeholder={new Date().toLocaleDateString("zh-TW")}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="process-note-user" className="text-right">
-              使用者
-            </Label>
-            <Input
-              id="process-note-user"
-              value={newProcessNote.user}
-              onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            onClick={handleAddProcessNote}
-            disabled={!newProcessNote.content || newProcessNote.user}
-          >
-            添加
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+    // 採購單零件要求
+    const materialProc = processData.find((proc) => proc.process === "材料")
+    const heatTreatmentProc = processData.find((proc) => proc.process === "熱處理")
+    const platingProc = processData.find((proc) => proc.process === "電鍍")
+    const screeningProc = processData.find((proc) => proc.process === "篩選")
 
-  // 渲染履歷備註對話框
-  const renderResumeNoteDialog = () => (
-    <Dialog open={isResumeNoteDialogOpen} onOpenChange={setIsResumeNoteDialogOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>添加履歷備註</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="resume-note-content" className="text-right">
-              備註內容
-            </Label>
-            <Textarea
-              id="resume-note-content"
-              value={newResumeNote.content}
-              onChange={(e) => setNewResumeNote({ ...newResumeNote, content: e.target.value })}
-              className="col-span-3"
-              rows={3}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="resume-note-date" className="text-right">
-              日期
-            </Label>
-            <Input
-              id="resume-note-date"
-              type="date"
-              value={newResumeNote.date}
-              onChange={(e) => setNewResumeNote({ ...newResumeNote, date: e.target.value })}
-              className="col-span-3"
-              placeholder={new Date().toLocaleDateString("zh-TW")}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="resume-note-user" className="text-right">
-              使用者
-            </Label>
-            <Input
-              id="resume-note-user"
-              value={newResumeNote.user}
-              onChange={(e) => setNewResumeNote({ ...newResumeNote, user: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" onClick={handleAddResumeNote} disabled={!newResumeNote.content || newResumeNote.user}>
-            添加
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+    const purchaseReqs = []
 
-  // 在ProductForm組件內部，在return語句之前添加以下代碼
-  const supabase = createClientComponentClient()
-  const [customersData, setCustomersData] = useState<{ id: string; name: string; code: string }[]>([])
-  const [factories, setFactories] = useState<{ id: string; name: string; code: string }[]>([])
-  const [dataLoading, setDataLoading] = useState(true)
-  const [dataError, setDataError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    async function fetchOptions() {
-      setDataLoading(true)
-      setDataError(null)
-
-      try {
-        // 獲取客戶數據
-        const { data: customers, error: customersError } = await supabase
-          .from("customers")
-          .select("customer_id, customer_short_name")
-          .order("customer_id")
-
-        if (customersError) throw new Error(`獲取客戶數據失敗: ${customersError.message}`)
-
-        // 將數據轉換為組件需要的格式
-        const formattedCustomers =
-          customers?.map((customer) => ({
-            id: customer.customer_id,
-            name: customer.customer_short_name,
-            code: customer.customer_id || "",
-          })) || []
-
-        // 嘗試獲取供應商數據
-        let formattedFactories = []
-        try {
-          const { data: factoriesData, error: factoriesError } = await supabase
-            .from("suppliers")
-            .select("factory_id, factory_name")
-            .order("factory_id")
-
-          if (!factoriesError && factoriesData) {
-            formattedFactories = factoriesData.map((supplier) => ({
-              id: supplier.factory_id,
-              name: supplier.factory_name,
-              code: supplier.factory_id || "",
-            }))
-          }
-        } catch (factoryError) {
-          console.warn("獲取工廠數據失敗，使用空數組作為後備:", factoryError)
-          // 使用空數組作為後備，允許應用繼續運行
-        }
-
-        setCustomersData(formattedCustomers)
-        setFactories(formattedFactories)
-      } catch (err) {
-        console.error("獲取選項數據失敗:", err)
-        setDataError(err instanceof Error ? err.message : "獲取數據時發生未知錯誤")
-      } finally {
-        setDataLoading(false)
-      }
+    if (materialProc && materialProc.requirements) {
+      purchaseReqs.push(`材料：${materialProc.requirements}`)
     }
 
-    fetchOptions()
-  }, [])
-
-  const handleRetry = () => {
-    setDataLoading(true)
-    setDataError(null)
-
-    // 重新獲取數據的函數
-    const fetchOptions = async () => {
-      try {
-        // 獲取客戶數據
-        const { data: customers, error: customersError } = await supabase
-          .from("customers")
-          .select("id, name, code")
-          .order("code")
-
-        if (customersError) throw new Error(`獲取客戶數據失敗: ${customersError.message}`)
-
-        // 將數據轉換為組件需要的格式
-        const formattedCustomers =
-          customers?.map((customer) => ({
-            id: customer.id,
-            name: customer.name,
-            code: customer.code || "",
-          })) || []
-
-        // 獲取供應商數據
-        const { data: factoriesData, error: factoriesError } = await supabase
-          .from("suppliers")
-          .select("supplier_id, supplier_name")
-          .order("supplier_id")
-
-        if (factoriesError) throw new Error(`獲取供應商數據失敗: ${factoriesError.message}`)
-
-        // 將數據轉換為組件需要的格式
-        const formattedFactories =
-          factoriesData?.map((supplier) => ({
-            id: supplier.supplier_id,
-            name: supplier.supplier_name,
-            code: supplier.supplier_id || "",
-          })) || []
-
-        setCustomersData(formattedCustomers)
-        setFactories(formattedFactories)
-        setDataLoading(false)
-      } catch (err) {
-        console.error("重試獲取選項數據失敗:", err)
-        setDataError(err instanceof Error ? err.message : "重試獲取數據時發生未知錯誤")
-        setDataLoading(false)
-      }
+    if (heatTreatmentProc && heatTreatmentProc.requirements) {
+      purchaseReqs.push(`熱處理：${heatTreatmentProc.requirements}`)
     }
 
-    fetchOptions()
+    if (platingProc && platingProc.requirements) {
+      purchaseReqs.push(`電鍍：${platingProc.requirements}`)
+    }
+
+    if (screeningProc && screeningProc.requirements) {
+      purchaseReqs.push(`篩選：${screeningProc.requirements}`)
+    }
+
+    return {
+      orderReqs,
+      purchaseReqs: purchaseReqs.join("\n"),
+    }
+  }
+
+  // 提交表單
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!product.componentName || !product.partNo || !product.customerName.id || !product.factoryName.id) {
+      toast({
+        title: "錯誤",
+        description: "請填寫必要欄位：零件名稱、Part No.、客戶代碼和工廠代碼",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // 準備要插入的資料
+      const productData = {
+        // 組合主鍵欄位
+        customer_id: product.customerName.id,
+        part_no: product.partNo,
+        factory_id: product.factoryName.id,
+
+        // 基本資訊
+        component_name: product.componentName,
+        specification: product.specification,
+        customs_code: product.customsCode,
+        end_customer: product.endCustomer,
+        product_type: product.productType,
+        classification_code: product.classificationCode,
+        vehicle_drawing_no: product.vehicleDrawingNo,
+        customer_drawing_no: product.customerDrawingNo,
+        product_period: product.productPeriod,
+        description: product.description,
+        status: product.status,
+        created_date: product.createdDate || new Date().toISOString().split("T")[0],
+        last_order_date: product.lastOrderDate,
+        last_price: product.lastPrice,
+        currency: product.currency,
+
+        // 產品規格
+        specifications: product.specifications,
+        sample_status: product.sampleStatus,
+        sample_date: product.sampleDate,
+
+        // 圖面資訊
+        original_drawing_version: product.originalDrawingVersion,
+        drawing_version: product.drawingVersion,
+        customer_original_drawing: product.customerOriginalDrawing,
+        jinzhan_drawing: product.jinzhanDrawing,
+        customer_drawing: product.customerDrawing,
+        factory_drawing: product.factoryDrawing,
+        customer_drawing_version: product.customerDrawingVersion,
+        factory_drawing_version: product.factoryDrawingVersion,
+
+        // 產品圖片
+        images: product.images,
+
+        // 組裝資訊
+        is_assembly: product.isAssembly,
+        components: product.components,
+        assembly_time: product.assemblyTime,
+        assembly_cost_per_hour: product.assemblyCostPerHour,
+        additional_costs: product.additionalCosts,
+
+        // 文件與認證
+        important_documents: product.importantDocuments,
+        part_management: product.partManagement,
+        compliance_status: product.complianceStatus,
+        edit_notes: product.editNotes,
+
+        // 製程資料
+        process_data: product.processData,
+        order_requirements: product.orderRequirements,
+        purchase_requirements: product.purchaseRequirements,
+        special_requirements: product.specialRequirements,
+        process_notes: product.processNotes,
+
+        // 履歷資料
+        has_mold: product.hasMold,
+        mold_cost: product.moldCost,
+        refundable_mold_quantity: product.refundableMoldQuantity,
+        mold_returned: product.moldReturned,
+        accounting_note: product.accountingNote,
+        quality_notes: product.qualityNotes,
+        order_history: product.orderHistory,
+        resume_notes: product.resumeNotes,
+
+        // 商業條款
+        moq: product.moq,
+        lead_time: product.leadTime,
+        packaging_requirements: product.packagingRequirements,
+      }
+
+      // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
+      const { data, error } = await supabase.from("products").upsert(productData, {
+        onConflict: "customer_id,part_no,factory_id",
+        returning: "minimal",
+      })
+
+      if (error) {
+        console.error("保存產品時出錯:", error)
+        toast({
+          title: "錯誤",
+          description: `保存產品失敗: ${error.message}`,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "成功",
+        description: "產品已成功保存",
+      })
+
+      // 如果有提供onSubmit回調，則調用它
+      if (onSubmit) {
+        onSubmit(productData)
+      } else {
+        // 否則導航到產品列表頁面
+        router.push("/products/all")
+      }
+    } catch (error) {
+      console.error("保存產品時出錯:", error)
+      toast({
+        title: "錯誤",
+        description: "保存產品時出錯，請稍後再試",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // 如果正在加載產品數據，顯示加載狀態
@@ -1470,7 +887,7 @@ function ProductFormComponent({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
           <TabsTrigger value="images">產品圖片</TabsTrigger>
@@ -1481,310 +898,1322 @@ function ProductFormComponent({
           <TabsTrigger value="assembly">組裝資訊</TabsTrigger>
         </TabsList>
 
+        {/* 基本資訊頁籤 */}
         <TabsContent value="basic" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-4">
-            {/* 左右兩欄佈局 */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* 左欄 */}
-              <div className="space-y-4">
-                <TableContainer>
-                  <TableRow>
-                    <TableCell label="零件名稱">
-                      <Input
-                        id="componentName"
-                        value={product.componentName || ""}
-                        onChange={(e) => handleInputChange("componentName", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="規格">
-                      <Input
-                        id="specification"
-                        value={product.specification || ""}
-                        onChange={(e) => handleInputChange("specification", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="海關碼">
-                      <Input
-                        id="customsCode"
-                        value={product.customsCode || ""}
-                        onChange={(e) => handleInputChange("customsCode", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="終端客戶">
-                      <Input
-                        id="endCustomer"
-                        value={product.endCustomer || ""}
-                        onChange={(e) => handleInputChange("endCustomer", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="客戶代碼">
-                      <div className="grid grid-cols-2">
-                        <div className="p-2 border-r">
-                          {dataLoading ? (
-                            <div className="flex items-center justify-center h-8">
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                            </div>
-                          ) : dataError ? (
-                            <div className="text-red-500 text-sm">{dataError}</div>
-                          ) : (
-                            <Select
-                              value={product.customerName?.id || ""}
-                              onValueChange={(value) => {
-                                const selectedCustomer = customersData.find((c) => c.id === value)
-                                if (selectedCustomer) {
-                                  setProduct((prev) => ({
-                                    ...prev,
-                                    customerName: {
-                                      id: selectedCustomer.id,
-                                      name: selectedCustomer.name,
-                                      code: selectedCustomer.code,
-                                    },
-                                  }))
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                                <SelectValue placeholder="" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {customersData.map((customer) => (
-                                  <SelectItem key={customer.id} value={customer.id}>
-                                    {customer.code}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        <div className="p-2 bg-gray-50">
-                          {dataLoading ? (
-                            <div className="flex items-center justify-center h-8">
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                            </div>
-                          ) : dataError ? (
-                            <div className="text-red-500 text-sm">{dataError}</div>
-                          ) : (
-                            <Select
-                              value={product.customerName?.name || ""}
-                              onValueChange={(value) => {
-                                const selectedCustomer = customersData.find((c) => c.name === value)
-                                if (selectedCustomer) {
-                                  setProduct((prev) => ({
-                                    ...prev,
-                                    customerName: {
-                                      id: selectedCustomer.id,
-                                      name: selectedCustomer.name,
-                                      code: selectedCustomer.code,
-                                    },
-                                  }))
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8 bg-gray-50">
-                                <SelectValue placeholder="" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {customersData.map((customer) => (
-                                  <SelectItem key={customer.id} value={customer.name}>
-                                    {customer.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell label="工廠代碼">
-                      <div className="grid grid-cols-2">
-                        <div className="p-2 border-r">
-                          {dataLoading ? (
-                            <div className="flex items-center justify-center h-8">
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                            </div>
-                          ) : dataError ? (
-                            <div className="text-red-500 text-sm">{dataError}</div>
-                          ) : (
-                            <Select
-                              value={product.factoryName?.id || ""}
-                              onValueChange={(value) => {
-                                const selectedFactory = factories.find((f) => f.id === value)
-                                if (selectedFactory) {
-                                  setProduct((prev) => ({
-                                    ...prev,
-                                    factoryName: {
-                                      id: selectedFactory.id,
-                                      name: selectedFactory.name,
-                                      code: selectedFactory.code,
-                                    },
-                                  }))
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8">
-                                <SelectValue placeholder="" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {factories.map((factory) => (
-                                  <SelectItem key={factory.id} value={factory.id}>
-                                    {factory.code}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        <div className="p-2 bg-gray-50">
-                          {dataLoading ? (
-                            <div className="flex items-center justify-center h-8">
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                            </div>
-                          ) : dataError ? (
-                            <div className="text-red-500 text-sm">{dataError}</div>
-                          ) : (
-                            <Select
-                              value={product.factoryName?.name || ""}
-                              onValueChange={(value) => {
-                                const selectedFactory = factories.find((f) => f.name === value)
-                                if (selectedFactory) {
-                                  setProduct((prev) => ({
-                                    ...prev,
-                                    factoryName: {
-                                      id: selectedFactory.id,
-                                      name: selectedFactory.name,
-                                      code: selectedFactory.code,
-                                    },
-                                  }))
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="border-0 shadow-none focus:ring-0 h-8 bg-gray-50">
-                                <SelectValue placeholder="" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {factories.map((factory) => (
-                                  <SelectItem key={factory.id} value={factory.name}>
-                                    {factory.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </TableContainer>
-              </div>
+          <div className="grid grid-cols-2 gap-6">
+            {/* 左側欄位 */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="componentName">零件名稱</Label>
+                  <Input
+                    id="componentName"
+                    value={product.componentName || ""}
+                    onChange={(e) => handleInputChange("componentName", e.target.value)}
+                  />
+                </div>
 
-              {/* 右欄 */}
-              <div className="space-y-4">
-                <TableContainer>
-                  <TableRow>
-                    <TableCell label="產品類別">
-                      <Input
-                        id="productType"
-                        value={product.productType || ""}
-                        onChange={(e) => handleInputChange("productType", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="Part No.">
-                      <Input
-                        id="partNo"
-                        value={product.partNo || ""}
-                        onChange={(e) => handleInputChange("partNo", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="今湛分類碼">
-                      <Input
-                        id="classificationCode"
-                        value={product.classificationCode || ""}
-                        onChange={(e) => handleInputChange("classificationCode", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="車廠圖號">
-                      <Input
-                        id="vehicleDrawingNo"
-                        value={product.vehicleDrawingNo || ""}
-                        onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="客戶圖號">
-                      <Input
-                        id="customerDrawingNo"
-                        value={product.customerDrawingNo || ""}
-                        onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                    <TableCell label="產品期稿">
-                      <Input
-                        id="productPeriod"
-                        value={product.productPeriod || ""}
-                        onChange={(e) => handleInputChange("productPeriod", e.target.value)}
-                        className="border-0 shadow-none focus-visible:ring-0 h-8"
-                      />
-                    </TableCell>
-                  </TableRow>
-                </TableContainer>
+                <div className="space-y-2">
+                  <Label htmlFor="specification">規格</Label>
+                  <Input
+                    id="specification"
+                    value={product.specification || ""}
+                    onChange={(e) => handleInputChange("specification", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customsCode">海關碼</Label>
+                  <Input
+                    id="customsCode"
+                    value={product.customsCode || ""}
+                    onChange={(e) => handleInputChange("customsCode", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endCustomer">終端客戶</Label>
+                  <Input
+                    id="endCustomer"
+                    value={product.endCustomer || ""}
+                    onChange={(e) => handleInputChange("endCustomer", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customerCode">客戶代碼</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={product.customerName?.id || ""}
+                      onValueChange={(value) => {
+                        const selectedCustomer = customersData.find((c) => c.id === value)
+                        if (selectedCustomer) {
+                          setProduct((prev) => ({
+                            ...prev,
+                            customerName: {
+                              id: selectedCustomer.id,
+                              name: selectedCustomer.name,
+                              code: selectedCustomer.code,
+                            },
+                          }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇客戶代碼" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customersData.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={product.customerName?.name || ""}
+                      onValueChange={(value) => {
+                        const selectedCustomer = customersData.find((c) => c.name === value)
+                        if (selectedCustomer) {
+                          setProduct((prev) => ({
+                            ...prev,
+                            customerName: {
+                              id: selectedCustomer.id,
+                              name: selectedCustomer.name,
+                              code: selectedCustomer.code,
+                            },
+                          }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇客戶名稱" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customersData.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.name}>
+                            {customer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="factoryCode">工廠代碼</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={product.factoryName?.id || ""}
+                      onValueChange={(value) => {
+                        const selectedFactory = factories.find((f) => f.id === value)
+                        if (selectedFactory) {
+                          setProduct((prev) => ({
+                            ...prev,
+                            factoryName: {
+                              id: selectedFactory.id,
+                              name: selectedFactory.name,
+                              code: selectedFactory.code,
+                            },
+                          }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇工廠代碼" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {factories.map((factory) => (
+                          <SelectItem key={factory.id} value={factory.id}>
+                            {factory.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={product.factoryName?.name || ""}
+                      onValueChange={(value) => {
+                        const selectedFactory = factories.find((f) => f.name === value)
+                        if (selectedFactory) {
+                          setProduct((prev) => ({
+                            ...prev,
+                            factoryName: {
+                              id: selectedFactory.id,
+                              name: selectedFactory.name,
+                              code: selectedFactory.code,
+                            },
+                          }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇工廠名稱" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {factories.map((factory) => (
+                          <SelectItem key={factory.id} value={factory.name}>
+                            {factory.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* 組裝產品開關 */}
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is-assembly"
-                  checked={product.isAssembly || false}
-                  onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
-                />
-                <Label htmlFor="is-assembly">這是一個組裝產品</Label>
-              </div>
-              <p className="text-sm text-gray-500">
-                組裝產品由多個組件組成，可能來自不同工廠。啟用此選項可以管理組件和計算組裝成本。
-              </p>
-            </div>
+            {/* 右側欄位 */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="productType">產品類別</Label>
+                  <Input
+                    id="productType"
+                    value={product.productType || ""}
+                    onChange={(e) => handleInputChange("productType", e.target.value)}
+                  />
+                </div>
 
-            {/* 產品描述 */}
-            <div className="space-y-2">
-              <Label htmlFor="description">產品描述</Label>
-              <Textarea
-                id="description"
-                value={product.description || ""}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                rows={3}
+                <div className="space-y-2">
+                  <Label htmlFor="partNo">Part No.</Label>
+                  <Input
+                    id="partNo"
+                    value={product.partNo || ""}
+                    onChange={(e) => handleInputChange("partNo", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="classificationCode">今湛分類碼</Label>
+                  <Input
+                    id="classificationCode"
+                    value={product.classificationCode || ""}
+                    onChange={(e) => handleInputChange("classificationCode", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleDrawingNo">車廠圖號</Label>
+                  <Input
+                    id="vehicleDrawingNo"
+                    value={product.vehicleDrawingNo || ""}
+                    onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customerDrawingNo">客戶圖號</Label>
+                  <Input
+                    id="customerDrawingNo"
+                    value={product.customerDrawingNo || ""}
+                    onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="productPeriod">產品期稿</Label>
+                  <Input
+                    id="productPeriod"
+                    value={product.productPeriod || ""}
+                    onChange={(e) => handleInputChange("productPeriod", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 組裝產品開關 */}
+          <div className="space-y-2 pt-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is-assembly"
+                checked={product.isAssembly || false}
+                onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
               />
+              <Label htmlFor="is-assembly">這是一個組裝產品</Label>
             </div>
+            <p className="text-sm text-gray-500">
+              組裝產品由多個組件組成，可能來自不同工廠。啟用此選項可以管理組件和計算組裝成本。
+            </p>
+          </div>
+
+          {/* 產品描述 */}
+          <div className="space-y-2 pt-4">
+            <Label htmlFor="description">產品描述</Label>
+            <Textarea
+              id="description"
+              value={product.description || ""}
+              onChange={(e) => handleInputChange("description", e.target.value)}
+              rows={3}
+            />
           </div>
         </TabsContent>
 
-        {/* 其他TabsContent保持不變 */}
+        {/* 產品圖片頁籤 */}
+        <TabsContent value="images" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">產品圖片</h3>
+                    <Button type="button" size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加圖片
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    {product.images && product.images.length > 0 ? (
+                      product.images.map((image, index) => (
+                        <div key={index} className="relative border rounded-md overflow-hidden">
+                          <img
+                            src={image.url || "/placeholder.svg"}
+                            alt={image.alt || `產品圖片 ${index + 1}`}
+                            className="w-full h-40 object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 h-6 w-6"
+                            onClick={() => {
+                              setProduct((prev) => ({
+                                ...prev,
+                                images: prev.images.filter((_, i) => i !== index),
+                              }))
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 flex flex-col items-center justify-center border border-dashed rounded-md p-6">
+                        <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">尚未添加產品圖片</p>
+                        <p className="text-xs text-gray-400">點擊"添加圖片"按鈕上傳產品圖片</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* 文件與認證頁籤 */}
+        <TabsContent value="documents" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
+            {/* 圖面資訊 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">圖面資訊</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="originalDrawingVersion">原圖版次</Label>
+                      <Input
+                        id="originalDrawingVersion"
+                        value={product.originalDrawingVersion || ""}
+                        onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerOriginalDrawing">客戶原圖</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          id="customerOriginalDrawing"
+                          onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
+                          className="hidden"
+                        />
+                        <Input
+                          readOnly
+                          value={product.customerOriginalDrawing?.filename || "未選擇圖面"}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("customerOriginalDrawing")?.click()}
+                        >
+                          選擇圖面連結
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 pt-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">發單製作</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-center">客戶圖</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-center">工廠圖</h4>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="drawingVersion">繪圖版次</Label>
+                      <Input
+                        id="drawingVersion"
+                        value={product.drawingVersion || ""}
+                        onChange={(e) => handleInputChange("drawingVersion", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerDrawingVersion">客戶圖版次</Label>
+                      <Input
+                        id="customerDrawingVersion"
+                        value={product.customerDrawingVersion || ""}
+                        onChange={(e) => handleInputChange("customerDrawingVersion", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="factoryDrawingVersion">工廠圖版次</Label>
+                      <Input
+                        id="factoryDrawingVersion"
+                        value={product.factoryDrawingVersion || ""}
+                        onChange={(e) => handleInputChange("factoryDrawingVersion", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="jinzhanDrawing">今湛繪圖</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          id="jinzhanDrawing"
+                          onChange={(e) => handleFileUpload(e, "jinzhanDrawing")}
+                          className="hidden"
+                        />
+                        <Input readOnly value={product.jinzhanDrawing?.filename || "未選擇圖面"} className="flex-1" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("jinzhanDrawing")?.click()}
+                        >
+                          選擇圖面連結
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerDrawing">客戶圖</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          id="customerDrawing"
+                          onChange={(e) => handleFileUpload(e, "customerDrawing")}
+                          className="hidden"
+                        />
+                        <Input readOnly value={product.customerDrawing?.filename || "未選擇圖面"} className="flex-1" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("customerDrawing")?.click()}
+                        >
+                          選擇圖面連結
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="factoryDrawing">工廠圖</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          id="factoryDrawing"
+                          onChange={(e) => handleFileUpload(e, "factoryDrawing")}
+                          className="hidden"
+                        />
+                        <Input readOnly value={product.factoryDrawing?.filename || "未選擇圖面"} className="flex-1" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("factoryDrawing")?.click()}
+                        >
+                          選擇圖面連結
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 重要文件 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">重要文件</h3>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="PPAP">PPAP認可資料夾</Label>
+                      <div className="flex items-center gap-2">
+                        <Input type="file" id="PPAP" onChange={(e) => handleFileUpload(e, "PPAP")} className="hidden" />
+                        <Input
+                          readOnly
+                          value={product.importantDocuments?.PPAP?.filename || "未選擇文件"}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("PPAP")?.click()}
+                        >
+                          選擇文件連結
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="PSW">PSW報告</Label>
+                      <div className="flex items-center gap-2">
+                        <Input type="file" id="PSW" onChange={(e) => handleFileUpload(e, "PSW")} className="hidden" />
+                        <Input
+                          readOnly
+                          value={product.importantDocuments?.PSW?.filename || "未選擇文件"}
+                          className="flex-1"
+                        />
+                        <Button type="button" variant="outline" onClick={() => document.getElementById("PSW")?.click()}>
+                          選擇文件連結
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="capacityAnalysis">產能分析</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          id="capacityAnalysis"
+                          onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
+                          className="hidden"
+                        />
+                        <Input
+                          readOnly
+                          value={product.importantDocuments?.capacityAnalysis?.filename || "未選擇文件"}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("capacityAnalysis")?.click()}
+                        >
+                          選擇文件連結
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 零件管理特性 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">零件管理特性</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <Label>特性名稱</Label>
+                      </div>
+                      <div className="text-right">
+                        <Label>狀態</Label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                      <div className="col-span-2">
+                        <Label htmlFor="safetyPart">安全件</Label>
+                      </div>
+                      <div className="flex justify-end">
+                        <Checkbox
+                          id="safetyPart"
+                          checked={product.partManagement?.safetyPart || false}
+                          onCheckedChange={(checked) => handlePartManagementChange("safetyPart", checked === true)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                      <div className="col-span-2">
+                        <Label htmlFor="automotivePart">汽車件</Label>
+                      </div>
+                      <div className="flex justify-end">
+                        <Checkbox
+                          id="automotivePart"
+                          checked={product.partManagement?.automotivePart || false}
+                          onCheckedChange={(checked) => handlePartManagementChange("automotivePart", checked === true)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                      <div className="col-span-2">
+                        <Label htmlFor="CBAMPart">CBAM零件</Label>
+                      </div>
+                      <div className="flex justify-end">
+                        <Checkbox
+                          id="CBAMPart"
+                          checked={product.partManagement?.CBAMPart || false}
+                          onCheckedChange={(checked) => handlePartManagementChange("CBAMPart", checked === true)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                      <div className="col-span-2">
+                        <Label htmlFor="clockRequirement">時鐘要求</Label>
+                      </div>
+                      <div className="flex justify-end">
+                        <Checkbox
+                          id="clockRequirement"
+                          checked={product.partManagement?.clockRequirement || false}
+                          onCheckedChange={(checked) =>
+                            handlePartManagementChange("clockRequirement", checked === true)
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 符合性要求 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">符合性要求</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-5 gap-4">
+                      <div>
+                        <Label>法規</Label>
+                      </div>
+                      <div className="text-center">
+                        <Label>符合狀態</Label>
+                      </div>
+                      <div className="text-center">
+                        <Label>含有物質</Label>
+                      </div>
+                      <div className="text-center">
+                        <Label>理由</Label>
+                      </div>
+                      <div className="text-center">
+                        <Label>文件</Label>
+                      </div>
+                    </div>
+
+                    {["RoHS", "REACh", "EUPOP", "TSCA", "CP65", "PFAS", "CMRT", "EMRT"].map((regulation) => (
+                      <div key={regulation} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
+                        <div>
+                          <Label>{regulation}</Label>
+                        </div>
+                        <div className="text-center">
+                          <RadioGroup
+                            value={product.complianceStatus?.[regulation]?.status || ""}
+                            onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
+                            className="flex justify-center space-x-4"
+                          >
+                            <div className="flex items-center space-x-1">
+                              <RadioGroupItem value="符合" id={`${regulation}-comply`} />
+                              <Label htmlFor={`${regulation}-comply`} className="text-sm">
+                                符合
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <RadioGroupItem value="不符" id={`${regulation}-not-comply`} />
+                              <Label htmlFor={`${regulation}-not-comply`} className="text-sm">
+                                不符
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        <div>
+                          <Input
+                            value={product.complianceStatus?.[regulation]?.substances || ""}
+                            onChange={(e) => handleComplianceFieldChange(regulation, "substances", e.target.value)}
+                            placeholder="含有物質"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            value={product.complianceStatus?.[regulation]?.reason || ""}
+                            onChange={(e) => handleComplianceFieldChange(regulation, "reason", e.target.value)}
+                            placeholder="理由"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            id={`compliance_${regulation}`}
+                            onChange={(e) => handleFileUpload(e, `compliance_${regulation}`)}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => document.getElementById(`compliance_${regulation}`)?.click()}
+                          >
+                            選擇文件連結
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 編輯備註 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">編輯備註</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsNoteDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加備註
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>備註內容</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>日期</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>使用者</Label>
+                    </div>
+                  </div>
+
+                  {product.editNotes && product.editNotes.length > 0 ? (
+                    product.editNotes.map((note, index) => (
+                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                        <div>
+                          <p className="text-sm">{note.content}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{note.date}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{note.user}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">尚未添加任何備註</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* 製程資料頁籤 */}
+        <TabsContent value="process" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
+            {/* 製程資料 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">製程資料</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsProcessDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      新增製程
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-6 gap-4">
+                    <div>
+                      <Label>製程</Label>
+                    </div>
+                    <div>
+                      <Label>廠商</Label>
+                    </div>
+                    <div>
+                      <Label>產能(SH)</Label>
+                    </div>
+                    <div>
+                      <Label>要求</Label>
+                    </div>
+                    <div>
+                      <Label>報告</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>操作</Label>
+                    </div>
+                  </div>
+
+                  {product.processData && product.processData.length > 0 ? (
+                    product.processData.map((process) => (
+                      <div key={process.id} className="grid grid-cols-6 gap-4 items-center border-b pb-2">
+                        <div>
+                          <Input
+                            value={process.process}
+                            onChange={(e) => handleProcessFieldChange(process.id, "process", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            value={process.vendor}
+                            onChange={(e) => handleProcessFieldChange(process.id, "vendor", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            value={process.capacity}
+                            onChange={(e) => handleProcessFieldChange(process.id, "capacity", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            value={process.requirements}
+                            onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            value={process.report}
+                            onChange={(e) => handleProcessFieldChange(process.id, "report", e.target.value)}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRemoveProcess(process.id)}
+                          >
+                            刪除
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">尚未添加任何製程資料</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 訂單零件要求 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">訂單零件要求</h3>
+                  <Textarea
+                    value={product.orderRequirements || ""}
+                    onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
+                    rows={5}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 採購零件要求 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">採購零件要求</h3>
+                  <Textarea
+                    value={product.purchaseRequirements || ""}
+                    onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
+                    rows={5}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 特殊要求/測試 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">特殊要求/測試</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsSpecialReqDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加特殊要求
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>要求內容</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>日期</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>使用者</Label>
+                    </div>
+                  </div>
+
+                  {product.specialRequirements && product.specialRequirements.length > 0 ? (
+                    product.specialRequirements.map((req, index) => (
+                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                        <div>
+                          <p className="text-sm">{req.content}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{req.date}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{req.user}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">尚未添加任何特殊要求</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 製程備註 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">製程備註</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsProcessNoteDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加備註
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>備註內容</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>日期</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>使用者</Label>
+                    </div>
+                  </div>
+
+                  {product.processNotes && product.processNotes.length > 0 ? (
+                    product.processNotes.map((note, index) => (
+                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                        <div>
+                          <p className="text-sm">{note.content}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{note.date}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{note.user}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">尚未添加任何製程備註</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* 履歷資料頁籤 */}
+        <TabsContent value="resume" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
+            {/* 模具資訊 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">模具資訊</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasMold"
+                          checked={product.hasMold || false}
+                          onCheckedChange={(checked) => handleInputChange("hasMold", checked === true)}
+                        />
+                        <Label htmlFor="hasMold">有無開模具</Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="moldReturned"
+                          checked={product.moldReturned || false}
+                          onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
+                          disabled={!product.hasMold}
+                        />
+                        <Label htmlFor="moldReturned">已退模</Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="moldCost">模具費</Label>
+                      <Input
+                        id="moldCost"
+                        type="number"
+                        value={product.moldCost || ""}
+                        onChange={(e) => handleInputChange("moldCost", e.target.value)}
+                        disabled={!product.hasMold}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="refundableMoldQuantity">可退模數量</Label>
+                      <Input
+                        id="refundableMoldQuantity"
+                        type="number"
+                        value={product.refundableMoldQuantity || ""}
+                        onChange={(e) => handleInputChange("refundableMoldQuantity", e.target.value)}
+                        disabled={!product.hasMold}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="accountingNote">會計註記</Label>
+                    <Textarea
+                      id="accountingNote"
+                      value={product.accountingNote || ""}
+                      onChange={(e) => handleInputChange("accountingNote", e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 訂單歷史 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">訂單歷史</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsOrderHistoryDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加訂單記錄
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-1">
+                        <Label>已出貨數量</Label>
+                      </div>
+                      <div className="col-span-2 text-right">
+                        <span className="font-bold">
+                          {product.orderHistory?.reduce((sum, order) => sum + (order.quantity || 0), 0) || 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>訂單號碼</Label>
+                      </div>
+                      <div className="text-center">
+                        <Label>訂單數量</Label>
+                      </div>
+                    </div>
+
+                    {product.orderHistory && product.orderHistory.length > 0 ? (
+                      product.orderHistory.map((order, index) => (
+                        <div key={index} className="grid grid-cols-2 gap-4 items-center border-b pb-2">
+                          <div>
+                            <Input
+                              value={order.orderNumber}
+                              onChange={(e) => handleOrderHistoryChange(index, "orderNumber", e.target.value)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={order.quantity}
+                              onChange={(e) =>
+                                handleOrderHistoryChange(index, "quantity", Number.parseInt(e.target.value) || 0)
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => handleRemoveOrderHistory(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">尚未添加任何訂單歷史</div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 履歷備註 */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">履歷備註</h3>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIsResumeNoteDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加備註
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>備註內容</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>日期</Label>
+                    </div>
+                    <div className="text-center">
+                      <Label>使用者</Label>
+                    </div>
+                  </div>
+
+                  {product.resumeNotes && product.resumeNotes.length > 0 ? (
+                    product.resumeNotes.map((note, index) => (
+                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                        <div>
+                          <p className="text-sm">{note.content}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{note.date}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm">{note.user}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">尚未添加任何履歷備註</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* 商業條款頁籤 */}
+        <TabsContent value="commercial" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">商業條款</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="moq">最小訂購量 (MOQ)</Label>
+                      <Input
+                        id="moq"
+                        type="number"
+                        value={product.moq || ""}
+                        onChange={(e) => handleInputChange("moq", Number.parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="leadTime">交貨時間</Label>
+                      <Input
+                        id="leadTime"
+                        value={product.leadTime || ""}
+                        onChange={(e) => handleInputChange("leadTime", e.target.value)}
+                        placeholder="例如: 30天"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="packagingRequirements">包裝要求</Label>
+                    <Textarea
+                      id="packagingRequirements"
+                      value={product.packagingRequirements || ""}
+                      onChange={(e) => handleInputChange("packagingRequirements", e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* 組裝資訊頁籤 */}
+        <TabsContent value="assembly" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">組裝資訊</h3>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="is-assembly-tab"
+                        checked={product.isAssembly || false}
+                        onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
+                      />
+                      <Label htmlFor="is-assembly-tab">這是一個組裝產品</Label>
+                    </div>
+                  </div>
+
+                  {product.isAssembly ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="assemblyTime">組裝時間 (分鐘)</Label>
+                          <Input
+                            id="assemblyTime"
+                            type="number"
+                            value={product.assemblyTime || 0}
+                            onChange={(e) => handleInputChange("assemblyTime", Number.parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="assemblyCostPerHour">組裝人工成本 (每小時)</Label>
+                          <Input
+                            id="assemblyCostPerHour"
+                            type="number"
+                            value={product.assemblyCostPerHour || 0}
+                            onChange={(e) =>
+                              handleInputChange("assemblyCostPerHour", Number.parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="additionalCosts">額外成本</Label>
+                          <Input
+                            id="additionalCosts"
+                            type="number"
+                            value={product.additionalCosts || 0}
+                            onChange={(e) =>
+                              handleInputChange("additionalCosts", Number.parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label>組件清單</Label>
+                          <Button type="button" variant="outline" size="sm">
+                            <Plus className="h-4 w-4 mr-2" />
+                            添加組件
+                          </Button>
+                        </div>
+
+                        {product.components && product.components.length > 0 ? (
+                          <div className="border rounded-md overflow-hidden">
+                            <div className="grid grid-cols-5 gap-4 bg-gray-100 p-2">
+                              <div>
+                                <Label>組件名稱</Label>
+                              </div>
+                              <div>
+                                <Label>Part No.</Label>
+                              </div>
+                              <div>
+                                <Label>工廠</Label>
+                              </div>
+                              <div className="text-center">
+                                <Label>數量</Label>
+                              </div>
+                              <div className="text-center">
+                                <Label>單價</Label>
+                              </div>
+                            </div>
+
+                            {product.components.map((component, index) => (
+                              <div key={index} className="grid grid-cols-5 gap-4 p-2 border-t">
+                                <div>
+                                  <p>{component.productName}</p>
+                                </div>
+                                <div>
+                                  <p>{component.productPN}</p>
+                                </div>
+                                <div>
+                                  <p>{component.factoryName}</p>
+                                </div>
+                                <div className="text-center">
+                                  <Input
+                                    type="number"
+                                    value={component.quantity}
+                                    onChange={(e) => {
+                                      const newComponents = [...product.components]
+                                      newComponents[index].quantity = Number.parseInt(e.target.value) || 1
+                                      handleInputChange("components", newComponents)
+                                    }}
+                                    className="w-20 mx-auto text-center"
+                                  />
+                                </div>
+                                <div className="text-center">
+                                  <p>{component.unitPrice.toFixed(2)}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 border rounded-md text-gray-500">尚未添加任何組件</div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                      <p>此產品未設定為組裝產品</p>
+                      <p className="text-sm">請開啟上方的組裝產品開關以啟用組裝資訊設定</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
 
-      {/* 渲染對話框 */}
-      {renderNoteDialog()}
-      {renderProcessDialog()}
-      {renderSpecialReqDialog()}
-      {renderProcessNoteDialog()}
-      {renderResumeNoteDialog()}
-      {renderAddCustomFieldDialog("importantDocuments")}
-      {renderAddCustomFieldDialog("partManagement")}
-      {renderAddCustomFieldDialog("compliance")}
-
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline">
+        <Button type="button" variant="outline" onClick={() => router.push("/products/all")}>
           取消
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? (
+        <Button type="submit" disabled={isSubmitting || isLoading}>
+          {isSubmitting || isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               保存中...
@@ -1798,10 +2227,7 @@ function ProductFormComponent({
   )
 }
 
-// Export the component as both a named export and a default export
-export { ProductFormComponent as ProductForm }
-
-// 添加生成訂單和採購單要求的函數
+// 生成訂單和採購單要求的函數
 const generateRequirements = (processData: ProcessRecord[]) => {
   // 訂單零件要求
   const orderReqs = processData
@@ -1839,4 +2265,4 @@ const generateRequirements = (processData: ProcessRecord[]) => {
   }
 }
 
-export default ProductFormComponent
+export default ProductForm

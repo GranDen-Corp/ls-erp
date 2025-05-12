@@ -7,22 +7,18 @@ import Link from "next/link"
 import { ProductForm } from "@/components/products/product-form"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useState } from "react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "@/hooks/use-toast"
 
 export default function NewProductPage() {
   const searchParams = useSearchParams()
   const cloneId = searchParams.get("clone")
   const productType = searchParams.get("type")
   const router = useRouter()
-  const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true)
     try {
-      // 模擬API調用
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
       // 成功提示
       toast({
         title: "產品創建成功",
