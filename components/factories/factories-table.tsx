@@ -47,10 +47,15 @@ interface Supplier {
   status?: string
 }
 
+type SortField = keyof Supplier | ""
+type SortDirection = "asc" | "desc"
+
 export function FactoriesTable() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<SortField>("factory_id")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const { toast } = useToast()
 
   // 從Supabase獲取供應商資料
@@ -77,6 +82,45 @@ export function FactoriesTable() {
 
     fetchSuppliers()
   }, [])
+
+  // 處理排序
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
+  // 排序供應商
+  const sortedSuppliers = [...suppliers].sort((a, b) => {
+    if (!sortField) return 0
+
+    const fieldA = a[sortField as keyof Supplier]
+    const fieldB = b[sortField as keyof Supplier]
+
+    if (fieldA === undefined || fieldA === null) return sortDirection === "asc" ? -1 : 1
+    if (fieldB === undefined || fieldB === null) return sortDirection === "asc" ? 1 : -1
+
+    if (typeof fieldA === "string" && typeof fieldB === "string") {
+      return sortDirection === "asc" ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA)
+    }
+
+    return sortDirection === "asc" ? (fieldA < fieldB ? -1 : 1) : fieldA > fieldB ? -1 : 1
+  })
+
+  // 渲染排序按鈕
+  const renderSortButton = (field: SortField, label: string) => (
+    <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort(field)}>
+      {label}
+      <ArrowUpDown
+        className={`ml-2 h-4 w-4 ${sortField === field ? "opacity-100" : "opacity-50"} ${
+          sortField === field && sortDirection === "desc" ? "rotate-180 transform" : ""
+        }`}
+      />
+    </Button>
+  )
 
   // 處理刪除供應商
   const handleDeleteSupplier = async (supplierId: string) => {
@@ -129,29 +173,24 @@ export function FactoriesTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">供應商ID</TableHead>
-              <TableHead>
-                <div className="flex items-center">
-                  供應商名稱
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead>類型</TableHead>
-              <TableHead>電話</TableHead>
-              <TableHead>ISO認證</TableHead>
-              <TableHead>IATF認證</TableHead>
+              <TableHead>{renderSortButton("factory_id", "供應商ID")}</TableHead>
+              <TableHead>{renderSortButton("factory_name", "供應商名稱")}</TableHead>
+              <TableHead>{renderSortButton("supplier_type", "類型")}</TableHead>
+              <TableHead>{renderSortButton("factory_phone", "電話")}</TableHead>
+              <TableHead>{renderSortButton("iso9001_certified", "ISO認證")}</TableHead>
+              <TableHead>{renderSortButton("iatf16949_certified", "IATF認證")}</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {suppliers.length === 0 ? (
+            {sortedSuppliers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
                   沒有找到供應商資料
                 </TableCell>
               </TableRow>
             ) : (
-              suppliers.map((supplier) => (
+              sortedSuppliers.map((supplier) => (
                 <TableRow key={supplier.factory_id}>
                   <TableCell className="font-medium">{supplier.factory_id}</TableCell>
                   <TableCell>

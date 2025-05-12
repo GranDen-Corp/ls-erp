@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Eye, FileText, Loader2, Search, MoreHorizontal, Pencil, Copy, Layers, ArrowUpDown } from "lucide-react"
+import { Eye, FileText, Loader2, MoreHorizontal, Pencil, Copy, Layers, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -32,13 +32,16 @@ interface ProductsTableProps {
   isLoading?: boolean
 }
 
+type SortField = keyof Product | ""
+type SortDirection = "asc" | "desc"
+
 export function ProductsTable({ products = [], isLoading = false }: ProductsTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [customerFilter, setCustomerFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [sortField, setSortField] = useState<string>("part_no")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [sortField, setSortField] = useState<SortField>("part_no")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [processedProducts, setProcessedProducts] = useState<Product[]>([])
@@ -114,8 +117,20 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
     return match && matchesSearch && matchesType && matchesCustomer && matchesStatus
   })
 
+  // 處理排序
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
   // 排序產品
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (!sortField) return 0
+
     const fieldA = a[sortField as keyof Product]
     const fieldB = b[sortField as keyof Product]
 
@@ -134,16 +149,6 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedProducts = sortedProducts.slice(startIndex, startIndex + itemsPerPage)
 
-  // 處理排序
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    } else {
-      setSortField(field)
-      setSortDirection("asc")
-    }
-  }
-
   // 狀態顏色映射
   const statusColorMap: Record<string, string> = {
     active: "bg-green-500",
@@ -157,6 +162,18 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
     sample: "樣品階段",
     discontinued: "已停產",
   }
+
+  // 渲染排序按鈕
+  const renderSortButton = (field: SortField, label: string) => (
+    <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort(field)}>
+      {label}
+      <ArrowUpDown
+        className={`ml-2 h-4 w-4 ${sortField === field ? "opacity-100" : "opacity-50"} ${
+          sortField === field && sortDirection === "desc" ? "rotate-180 transform" : ""
+        }`}
+      />
+    </Button>
+  )
 
   if (isLoading) {
     return (
@@ -173,7 +190,6 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="搜尋產品編號、名稱、客戶或工廠..."
@@ -230,70 +246,14 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
           <TableHeader>
             <TableRow>
               <TableHead className="w-12"></TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("part_no")}>
-                  Part No.
-                  {sortField === "part_no" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("component_name")}>
-                  產品名稱
-                  {sortField === "component_name" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("customer_id")}>
-                  客戶
-                  {sortField === "customer_id" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("factory_id")}>
-                  工廠
-                  {sortField === "factory_id" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("product_type")}>
-                  類別
-                  {sortField === "product_type" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("last_price")}>
-                  最近價格
-                  {sortField === "last_price" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("last_order_date")}>
-                  最近訂單
-                  {sortField === "last_order_date" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort("status")}>
-                  狀態
-                  {sortField === "status" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
-                  )}
-                </Button>
-              </TableHead>
+              <TableHead>{renderSortButton("part_no", "Part No.")}</TableHead>
+              <TableHead>{renderSortButton("component_name", "產品名稱")}</TableHead>
+              <TableHead>{renderSortButton("customer_id", "客戶")}</TableHead>
+              <TableHead>{renderSortButton("factory_id", "工廠")}</TableHead>
+              <TableHead>{renderSortButton("product_type", "類別")}</TableHead>
+              <TableHead>{renderSortButton("last_price", "最近價格")}</TableHead>
+              <TableHead>{renderSortButton("last_order_date", "最近訂單")}</TableHead>
+              <TableHead>{renderSortButton("status", "狀態")}</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>

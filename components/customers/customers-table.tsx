@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Eye, FileEdit, MoreHorizontal, Trash2, Tag } from "lucide-react"
+import { Eye, FileEdit, MoreHorizontal, Trash2, Tag, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -39,8 +40,51 @@ interface CustomersTableProps {
   isLoading?: boolean
 }
 
+type SortField = keyof Customer | ""
+type SortDirection = "asc" | "desc"
+
 export function CustomersTable({ data = [], isLoading = false }: CustomersTableProps) {
-  // Removed the searchTerm state and filtering logic
+  const [sortField, setSortField] = useState<SortField>("customer_id")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+
+  // 處理排序
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
+  // 排序客戶
+  const sortedCustomers = [...data].sort((a, b) => {
+    if (!sortField) return 0
+
+    const fieldA = a[sortField as keyof Customer]
+    const fieldB = b[sortField as keyof Customer]
+
+    if (fieldA === undefined || fieldA === null) return sortDirection === "asc" ? -1 : 1
+    if (fieldB === undefined || fieldB === null) return sortDirection === "asc" ? 1 : -1
+
+    if (typeof fieldA === "string" && typeof fieldB === "string") {
+      return sortDirection === "asc" ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA)
+    }
+
+    return sortDirection === "asc" ? (fieldA < fieldB ? -1 : 1) : fieldA > fieldB ? -1 : 1
+  })
+
+  // 渲染排序按鈕
+  const renderSortButton = (field: SortField, label: string) => (
+    <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort(field)}>
+      {label}
+      <ArrowUpDown
+        className={`ml-2 h-4 w-4 ${sortField === field ? "opacity-100" : "opacity-50"} ${
+          sortField === field && sortDirection === "desc" ? "rotate-180 transform" : ""
+        }`}
+      />
+    </Button>
+  )
 
   if (isLoading) {
     return (
@@ -63,31 +107,29 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
 
   return (
     <div className="space-y-4">
-      {/* Removed the search input div */}
-
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>客戶編號</TableHead>
-              <TableHead>客戶名稱</TableHead>
-              <TableHead>集團</TableHead>
-              <TableHead>國家/地區</TableHead>
-              <TableHead>聯絡人</TableHead>
-              <TableHead>付款條件</TableHead>
-              <TableHead>幣別</TableHead>
+              <TableHead>{renderSortButton("customer_id", "客戶編號")}</TableHead>
+              <TableHead>{renderSortButton("customer_short_name", "客戶名稱")}</TableHead>
+              <TableHead>{renderSortButton("group_code", "集團")}</TableHead>
+              <TableHead>{renderSortButton("division_location", "國家/地區")}</TableHead>
+              <TableHead>{renderSortButton("client_contact_person", "聯絡人")}</TableHead>
+              <TableHead>{renderSortButton("payment_due_date", "付款條件")}</TableHead>
+              <TableHead>{renderSortButton("currency", "幣別")}</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
+            {sortedCustomers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center">
-                  沒有找到符合條件的客戶
+                  沒有找到客戶資料
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((customer) => (
+              sortedCustomers.map((customer) => (
                 <TableRow key={customer.customer_id}>
                   <TableCell className="font-medium">{customer.customer_id}</TableCell>
                   <TableCell>
