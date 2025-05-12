@@ -1,9 +1,78 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { DataTable } from "./data-table"
 import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase-client"
 
 export function ProductDataTable() {
+  const [customers, setCustomers] = useState<Record<string, any>>({})
+  const [suppliers, setSuppliers] = useState<Record<string, any>>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // 獲取客戶和供應商(工廠)資料
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const supabase = createClient()
+
+        // 嘗試獲取客戶資料
+        try {
+          const { data: customerData, error: customerError } = await supabase.from("customers").select("*")
+
+          if (customerError) {
+            console.error("獲取客戶資料失敗:", customerError.message)
+          } else if (customerData) {
+            // 將客戶資料轉換為以ID為鍵的對象
+            const customersMap: Record<string, any> = {}
+            customerData.forEach((customer) => {
+              // 使用customer_id作為鍵，如果不存在則使用id
+              const customerId = customer.customer_id || customer.id
+              if (customerId) {
+                customersMap[customerId] = customer
+              }
+            })
+
+            setCustomers(customersMap)
+          }
+        } catch (err: any) {
+          console.error("處理客戶資料時出錯:", err.message)
+        }
+
+        // 嘗試獲取供應商(工廠)資料
+        try {
+          const { data: supplierData, error: supplierError } = await supabase.from("suppliers").select("*")
+
+          if (supplierError) {
+            console.error("獲取供應商資料失敗:", supplierError.message)
+          } else if (supplierData) {
+            // 將供應商資料轉換為以ID為鍵的對象
+            const suppliersMap: Record<string, any> = {}
+            supplierData.forEach((supplier) => {
+              // 使用supplier_id作為鍵，如果不存在則使用id
+              const supplierId = supplier.supplier_id || supplier.id
+              if (supplierId) {
+                suppliersMap[supplierId] = supplier
+              }
+            })
+
+            setSuppliers(suppliersMap)
+          }
+        } catch (err: any) {
+          console.error("處理供應商資料時出錯:", err.message)
+        }
+      } catch (err: any) {
+        console.error("獲取資料時出錯:", err.message)
+        setError(`獲取資料時出錯: ${err.message}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
   // 定義產品資料表的欄位
   const columns = [
     {
@@ -19,13 +88,19 @@ export function ProductDataTable() {
     {
       key: "customer_id",
       title: "客戶",
-      render: (value: any, row: any) => row?.customer?.customer_short_name || "-",
+      render: (value: any, row: any) => {
+        const customer = customers[value]
+        return customer ? customer.customer_short_name || customer.customer_name || customer.name : value || "-"
+      },
       sortable: true,
     },
     {
       key: "factory_id",
       title: "工廠",
-      render: (value: any, row: any) => row?.factory?.factory_name || "-",
+      render: (value: any, row: any) => {
+        const supplier = suppliers[value]
+        return supplier ? supplier.supplier_name || supplier.factory_name || supplier.name : value || "-"
+      },
       sortable: true,
     },
     {
@@ -61,12 +136,18 @@ export function ProductDataTable() {
         {
           label: "客戶",
           key: "customer_id",
-          render: (value: any, row: any) => row?.customer?.customer_short_name || "-",
+          render: (value: any, row: any) => {
+            const customer = customers[value]
+            return customer ? customer.customer_short_name || customer.customer_name || customer.name : value || "-"
+          },
         },
         {
           label: "工廠",
           key: "factory_id",
-          render: (value: any, row: any) => row?.factory?.factory_name || "-",
+          render: (value: any, row: any) => {
+            const supplier = suppliers[value]
+            return supplier ? supplier.supplier_name || supplier.factory_name || supplier.name : value || "-"
+          },
         },
         { label: "海關碼", key: "customs_code" },
         { label: "終端客戶", key: "end_customer" },
@@ -317,6 +398,10 @@ export function ProductDataTable() {
     },
   ]
 
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>
+  }
+
   return (
     <DataTable
       title="產品資料表"
@@ -324,6 +409,7 @@ export function ProductDataTable() {
       columns={columns}
       detailTabs={detailTabs}
       filterOptions={filterOptions}
+      isLoading={loading}
     />
   )
 }
