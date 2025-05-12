@@ -21,6 +21,12 @@ const statusColorMap: Record<string, string> = {
   結案: "bg-gray-500",
 }
 
+// 定義產品項目的介面
+interface PartItem {
+  part_no: string
+  description?: string
+}
+
 export function OrdersTable() {
   const router = useRouter()
   const [orders, setOrders] = useState<any[]>([])
@@ -199,6 +205,60 @@ export function OrdersTable() {
     }
   }, [searchTerm, orders, customers])
 
+  // 解析part_no_list JSON並獲取產品名稱
+  const parsePartNoList = (partNoListData: any, customerId: string): string => {
+    try {
+      let partItems: PartItem[] = []
+
+      // 如果是字符串，嘗試解析JSON
+      if (typeof partNoListData === "string") {
+        try {
+          partItems = JSON.parse(partNoListData)
+        } catch (e) {
+          console.error("解析part_no_list JSON失敗:", e)
+          return "-"
+        }
+      }
+      // 如果已經是陣列，直接使用
+      else if (Array.isArray(partNoListData)) {
+        partItems = partNoListData
+      }
+      // 其他情況
+      else {
+        console.error("無法處理的part_no_list格式:", partNoListData)
+        return "-"
+      }
+
+      // 確保partItems是陣列且有元素
+      if (!Array.isArray(partItems) || partItems.length === 0) {
+        return "-"
+      }
+
+      // 獲取客戶的產品映射
+      const customerProducts = products[customerId] || {}
+
+      // 映射每個part_no到產品名稱
+      const productNames = partItems.map((item) => {
+        // 確保item是對象且有part_no屬性
+        if (typeof item === "object" && item && "part_no" in item) {
+          const partNo = item.part_no
+          // 從products中查找產品名稱，如果找不到則使用part_no
+          return customerProducts[partNo] || partNo
+        } else if (typeof item === "string") {
+          // 如果item直接是字符串，假設它是part_no
+          return customerProducts[item] || item
+        }
+        return "-"
+      })
+
+      // 用分號連接所有產品名稱
+      return productNames.join("; ")
+    } catch (error) {
+      console.error("解析part_no_list時出錯:", error)
+      return "-"
+    }
+  }
+
   // 獲取產品名稱
   const getProductName = (order: any) => {
     try {
@@ -210,26 +270,9 @@ export function OrdersTable() {
         return customerProducts[order.part_no_assembly] || order.part_no_assembly
       }
 
-      // 如果有產品清單
+      // 如果有產品清單 - 使用新的解析函數
       if (order.part_no_list) {
-        let partNoList: string[] = []
-
-        // 嘗試解析JSON
-        if (typeof order.part_no_list === "string") {
-          try {
-            partNoList = JSON.parse(order.part_no_list)
-          } catch {
-            // 如果不是有效的JSON，嘗試按逗號分隔
-            partNoList = order.part_no_list.split(/[,;]/).map((item: string) => item.trim())
-          }
-        } else if (Array.isArray(order.part_no_list)) {
-          partNoList = order.part_no_list
-        }
-
-        // 獲取每個產品的名稱
-        const productNames = partNoList.map((partNo) => customerProducts[partNo] || partNo)
-
-        return productNames.join("; ")
+        return parsePartNoList(order.part_no_list, customerId)
       }
 
       return "-"
