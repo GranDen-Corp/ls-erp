@@ -27,7 +27,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [activeTab, setActiveTab] = useState("basic")
 
   // 基本資訊
-  const [customerCode, setCustomerCode] = useState("")
+  const [customerID, setCustomerID] = useState("") // 客戶編號 (customer_id)
   const [customerName, setCustomerName] = useState("")
   const [shortName, setShortName] = useState("")
   const [customerType, setCustomerType] = useState("")
@@ -58,44 +58,28 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   // 當 initialData 變更時更新狀態
   useEffect(() => {
     console.log("CustomerForm 接收到的初始數據:", initialData) // 添加日誌以便調試
+    console.log("CustomerForm 接收到的客戶ID:", customerId) // 添加日誌以便調試
 
     if (initialData) {
       // 檢查資料庫字段與表單字段的映射
       console.log("資料庫字段映射檢查:")
+      console.log("customer_id:", initialData.customer_id)
       console.log("customer_code:", initialData.customer_code)
       console.log("customer_name:", initialData.customer_name)
       console.log("customer_short_name:", initialData.customer_short_name)
-      console.log("short_name:", initialData.short_name)
       console.log("customer_type:", initialData.customer_type)
       console.log("status:", initialData.status)
-      console.log("contact_person:", initialData.contact_person)
-      console.log("email:", initialData.email)
-      console.log("phone:", initialData.phone)
-      console.log("fax:", initialData.fax)
-      console.log("address:", initialData.address)
-      console.log("country:", initialData.country)
-      console.log("website:", initialData.website)
-      console.log("tax_id:", initialData.tax_id)
-      console.log("payment_terms:", initialData.payment_terms)
-      console.log("credit_limit:", initialData.credit_limit)
-      console.log("currency:", initialData.currency)
-      console.log("bank_name:", initialData.bank_name)
-      console.log("bank_account:", initialData.bank_account)
-      console.log("group_code:", initialData.group_code)
-      console.log("group_tag:", initialData.group_tag)
-      console.log("notes:", initialData.notes)
-      console.log("created_at:", initialData.created_at)
 
       // 基本資訊
-      setCustomerCode(initialData.customer_code || "")
+      setCustomerID(initialData.customer_id || "") // 設置客戶編號
       setCustomerName(initialData.customer_name || initialData.customer_full_name || "")
       setShortName(initialData.customer_short_name || initialData.short_name || "")
       setCustomerType(initialData.customer_type || "")
       setStatus(initialData.status || "active")
 
       // 聯絡資訊
-      setContactPerson(initialData.contact_person || "")
-      setEmail(initialData.email || initialData.invoice_email || "")
+      setContactPerson(initialData.contact_person || initialData.client_contact_person || "")
+      setEmail(initialData.email || initialData.report_email || initialData.invoice_email || "")
       setPhone(initialData.phone || initialData.customer_phone || "")
       setFax(initialData.fax || initialData.customer_fax || "")
       setAddress(initialData.address || initialData.customer_address || "")
@@ -104,7 +88,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
       // 財務資訊
       setTaxId(initialData.tax_id || "")
-      setPaymentTerms(initialData.payment_terms || initialData.payment_due_date || "")
+      setPaymentTerms(initialData.payment_terms || initialData.payment_term || initialData.payment_due_date || "")
       setCreditLimit(initialData.credit_limit || 0)
       setCurrency(initialData.currency || "TWD")
       setBankName(initialData.bank_name || "")
@@ -115,7 +99,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setNotes(initialData.notes || "")
       setCreatedAt(initialData.created_at || new Date().toISOString())
     }
-  }, [initialData])
+  }, [initialData, customerId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,7 +107,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
     try {
       const customerData = {
-        customer_code: customerCode,
+        customer_id: customerID, // 使用客戶編號
         customer_name: customerName,
         customer_short_name: shortName,
         customer_type: customerType,
@@ -181,7 +165,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       if (customerId) {
         router.push(`/customers/${customerId}`)
       } else {
-        router.push("/customers")
+        // 對於新創建的客戶，我們需要獲取新插入記錄的ID
+        if (result.data && result.data.length > 0 && result.data[0].customer_id) {
+          router.push(`/customers/${result.data[0].customer_id}`)
+        } else {
+          router.push("/customers")
+        }
       }
 
       router.refresh()
@@ -215,13 +204,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customerCode">客戶編號 *</Label>
-                  <Input
-                    id="customerCode"
-                    value={customerCode}
-                    onChange={(e) => setCustomerCode(e.target.value)}
-                    required
-                  />
+                  <Label htmlFor="customerID">客戶編號 *</Label>
+                  <Input id="customerID" value={customerID} onChange={(e) => setCustomerID(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="customerName">客戶名稱 *</Label>
@@ -374,7 +358,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(`/customers/${customerId || ""}`)}
+          onClick={() => router.push(customerId ? `/customers/${customerId}` : "/customers")}
           disabled={isSubmitting}
         >
           取消
