@@ -1,26 +1,16 @@
 "use client"
-import { useState, useEffect } from "react"
-import type React from "react"
 
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Eye, FileText, MoreHorizontal, Pencil, ShoppingCart, Truck } from "lucide-react"
-import Link from "next/link"
-import { supabaseClient } from "@/lib/supabase-client"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, Search, FileDown, Eye } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { supabaseClient } from "@/lib/supabase-client"
+import { format } from "date-fns"
+import { zhTW } from "date-fns/locale"
 
 // 狀態顏色映射
 const statusColorMap: Record<string, string> = {
@@ -31,384 +21,334 @@ const statusColorMap: Record<string, string> = {
   結案: "bg-gray-500",
 }
 
-// 模擬訂單數據 - 當資料表不存在時使用
-const mockOrdersData = [
-  {
-    id: "1",
-    order_number: "ORD-2023-0012",
-    customer_id: "1",
-    customer_name: "台灣電子",
-    po_number: "PO-TE-2023-042",
-    amount: 25200,
-    status: "待確認",
-    order_date: "2023-04-15",
-    products: "特殊冷成型零件 x 500",
-    currency: "USD",
-  },
-  {
-    id: "2",
-    order_number: "ORD-2023-0011",
-    customer_id: "2",
-    customer_name: "新竹科技",
-    po_number: "PO-HT-2023-118",
-    amount: 12400,
-    status: "進行中",
-    order_date: "2023-04-14",
-    products: "汽車緊固件 x 2000",
-    currency: "USD",
-  },
-  {
-    id: "3",
-    order_number: "ORD-2023-0010",
-    customer_id: "3",
-    customer_name: "台北工業",
-    po_number: "PO-TI-2023-087",
-    amount: 8750,
-    status: "驗貨完成",
-    order_date: "2023-04-12",
-    products: "特殊沖壓零件 x 5000",
-    currency: "USD",
-  },
-  {
-    id: "4",
-    order_number: "ORD-2023-0009",
-    customer_id: "4",
-    customer_name: "高雄製造",
-    po_number: "PO-KM-2023-063",
-    amount: 18300,
-    status: "已出貨",
-    order_date: "2023-04-10",
-    products: "組裝零件 x 300",
-    currency: "USD",
-  },
-  {
-    id: "5",
-    order_number: "ORD-2023-0008",
-    customer_id: "5",
-    customer_name: "台中電子",
-    po_number: "PO-TC-2023-055",
-    amount: 9200,
-    status: "結案",
-    order_date: "2023-04-08",
-    products: "汽車零件 x 150",
-    currency: "USD",
-  },
-]
-
-interface Order {
-  id: string
-  order_number: string
-  customer_id: string
-  customer_name: string
-  po_number: string
-  amount: number
-  status: string
-  order_date: string
-  products: string
-  currency: string
-}
-
-interface OrdersTableProps {
-  status?: string
-}
-
-export function OrdersTable({ status }: OrdersTableProps) {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export function OrdersTable() {
+  const router = useRouter()
+  const [orders, setOrders] = useState<any[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState(status || "")
-  const [usingMockData, setUsingMockData] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [customers, setCustomers] = useState<Record<string, string>>({})
+  const [products, setProducts] = useState<Record<string, Record<string, string>>>({})
 
+  // 獲取訂單、客戶和產品資料
   useEffect(() => {
-    async function fetchOrders() {
+    async function fetchData() {
       try {
-        setLoading(true)
+        setIsLoading(true)
+        setError(null)
 
-        // 檢查orders表是否存在
-        const { error: tableCheckError } = await supabaseClient.from("orders").select("id").limit(1).single()
+        // 1. 獲取客戶資料
+        const { data: customersData, error: customersError } = await supabaseClient.from("customers").select("*")
 
-        // 如果表不存在，使用模擬數據
-        if (tableCheckError && tableCheckError.message.includes("does not exist")) {
-          console.warn("Orders table does not exist, using mock data")
-          setUsingMockData(true)
+        if (customersError) {
+          console.error("獲取客戶資料失敗:", customersError)
+        } else if (customersData) {
+          const customerMap: Record<string, string> = {}
 
-          // 過濾模擬數據
-          let filteredMockData = [...mockOrdersData]
-          if (statusFilter && statusFilter !== "all") {
-            filteredMockData = mockOrdersData.filter((order) => order.status === statusFilter)
+          // 嘗試找出客戶ID和名稱欄位
+          if (customersData.length > 0) {
+            const firstRow = customersData[0]
+            const idField =
+              "customer_id" in firstRow
+                ? "customer_id"
+                : "id" in firstRow
+                  ? "id"
+                  : Object.keys(firstRow).find((key) => key.includes("id")) || "id"
+
+            const nameField =
+              "name" in firstRow
+                ? "name"
+                : "customer_name" in firstRow
+                  ? "customer_name"
+                  : "company" in firstRow
+                    ? "company"
+                    : Object.keys(firstRow).find((key) => key.includes("name")) || "name"
+
+            customersData.forEach((customer) => {
+              const id = customer[idField]
+              const name = customer[nameField]
+              if (id && name) {
+                customerMap[id] = name
+              }
+            })
           }
 
-          setOrders(filteredMockData)
-          return
+          setCustomers(customerMap)
         }
 
-        // 如果表存在，從Supabase獲取訂單資料
-        let query = supabaseClient
-          .from("orders")
-          .select(`
-            id,
-            order_number,
-            customer_id,
-            po_number,
-            amount,
-            status,
-            order_date,
-            products,
-            currency
-          `)
-          .order("order_date", { ascending: false })
+        // 2. 獲取產品資料
+        const { data: productsData, error: productsError } = await supabaseClient.from("products").select("*")
 
-        // 如果有狀態過濾，則添加過濾條件
-        if (statusFilter && statusFilter !== "all") {
-          query = query.eq("status", statusFilter)
+        if (productsError) {
+          console.error("獲取產品資料失敗:", productsError)
+        } else if (productsData) {
+          const productMap: Record<string, Record<string, string>> = {}
+
+          // 按客戶ID分組產品
+          productsData.forEach((product) => {
+            const customerId = product.customer_id || "unknown"
+            const partNo = product.part_no || product.id || ""
+            const componentName = product.component_name || product.name || product.product_name || partNo
+
+            if (!productMap[customerId]) {
+              productMap[customerId] = {}
+            }
+
+            productMap[customerId][partNo] = componentName
+          })
+
+          setProducts(productMap)
         }
 
-        const { data: ordersData, error: ordersError } = await query
+        // 3. 獲取訂單資料 - 嘗試多種方式
+        let ordersData = null
+        let ordersError = null
 
-        if (ordersError) throw ordersError
-
+        // 嘗試方式1: 使用order_date排序
         try {
-          // 獲取所有客戶資料，用於後續映射
-          const { data: customersData, error: customersError } = await supabaseClient
-            .from("customers")
-            .select("id, name")
-
-          if (customersError) throw customersError
-
-          // 創建客戶ID到名稱的映射
-          const customerMap = new Map(customersData.map((customer) => [customer.id, customer.name]))
-
-          // 格式化訂單資料，使用映射獲取客戶名稱
-          const formattedOrders = ordersData.map((order) => ({
-            id: order.id,
-            order_number: order.order_number,
-            customer_id: order.customer_id,
-            customer_name: customerMap.get(order.customer_id) || "Unknown Customer",
-            po_number: order.po_number,
-            amount: order.amount,
-            status: order.status,
-            order_date: order.order_date,
-            products: order.products,
-            currency: order.currency || "USD",
-          }))
-
-          setOrders(formattedOrders)
-        } catch (customerError) {
-          console.error("Error fetching customer data:", customerError)
-          // 如果獲取客戶資料失敗，仍然顯示訂單，但客戶名稱顯示為未知
-          const formattedOrders = ordersData.map((order) => ({
-            id: order.id,
-            order_number: order.order_number,
-            customer_id: order.customer_id,
-            customer_name: "Unknown Customer",
-            po_number: order.po_number,
-            amount: order.amount,
-            status: order.status,
-            order_date: order.order_date,
-            products: order.products,
-            currency: order.currency || "USD",
-          }))
-
-          setOrders(formattedOrders)
+          const result = await supabaseClient.from("orders").select("*").order("order_date", { ascending: false })
+          if (!result.error) {
+            ordersData = result.data
+          } else if (result.error.message.includes("does not exist")) {
+            // 如果order_date不存在，嘗試方式2
+            console.log("order_date欄位不存在，嘗試其他排序方式")
+          } else {
+            // 其他錯誤
+            ordersError = result.error
+          }
+        } catch (err) {
+          console.error("嘗試使用order_date排序失敗:", err)
         }
-      } catch (err) {
-        console.error("Error fetching orders:", err)
-        setError("Failed to load orders. Please try again later.")
-        // 發生錯誤時使用模擬數據
-        setUsingMockData(true)
-        setOrders(mockOrdersData)
+
+        // 如果方式1失敗，嘗試方式2: 使用order_id排序
+        if (!ordersData && !ordersError) {
+          try {
+            const result = await supabaseClient.from("orders").select("*").order("order_id", { ascending: false })
+            if (!result.error) {
+              ordersData = result.data
+            } else if (result.error.message.includes("does not exist")) {
+              // 如果order_id不存在，嘗試方式3
+              console.log("order_id欄位不存在，嘗試其他排序方式")
+            } else {
+              // 其他錯誤
+              ordersError = result.error
+            }
+          } catch (err) {
+            console.error("嘗試使用order_id排序失敗:", err)
+          }
+        }
+
+        // 如果方式2失敗，嘗試方式3: 不排序
+        if (!ordersData && !ordersError) {
+          try {
+            const result = await supabaseClient.from("orders").select("*")
+            if (!result.error) {
+              ordersData = result.data
+            } else {
+              ordersError = result.error
+            }
+          } catch (err) {
+            console.error("嘗試不排序獲取訂單失敗:", err)
+            ordersError = err instanceof Error ? err : new Error(String(err))
+          }
+        }
+
+        // 處理最終結果
+        if (ordersError) {
+          console.error("獲取訂單資料失敗:", ordersError)
+          setError("獲取訂單資料失敗，請稍後再試。")
+        } else if (ordersData) {
+          // 檢查訂單資料的結構，確定可用的欄位
+          if (ordersData.length > 0) {
+            console.log("訂單資料欄位:", Object.keys(ordersData[0]))
+          }
+
+          setOrders(ordersData)
+          setFilteredOrders(ordersData)
+        } else {
+          setOrders([])
+          setFilteredOrders([])
+        }
+      } catch (error) {
+        console.error("獲取資料時出錯:", error)
+        setError("獲取資料時發生錯誤，請稍後再試。")
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
-    fetchOrders()
-  }, [statusFilter])
+    fetchData()
+  }, [])
 
-  // 當props中的status變更時，更新狀態過濾器
+  // 處理搜尋
   useEffect(() => {
-    setStatusFilter(status || "")
-  }, [status])
+    if (searchTerm.trim() === "") {
+      setFilteredOrders(orders)
+    } else {
+      const term = searchTerm.toLowerCase()
+      const filtered = orders.filter((order) => {
+        const orderId = String(order.order_id || "").toLowerCase()
+        const poId = String(order.po_id || "").toLowerCase()
+        const customerId = String(order.customer_id || "").toLowerCase()
+        const customerName = customers[order.customer_id] ? customers[order.customer_id].toLowerCase() : ""
 
-  // 過濾訂單
-  const filteredOrders = orders.filter((order) => {
-    return (
-      order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.po_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.products.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  })
+        return orderId.includes(term) || poId.includes(term) || customerId.includes(term) || customerName.includes(term)
+      })
+      setFilteredOrders(filtered)
+    }
+  }, [searchTerm, orders, customers])
 
-  // 處理搜尋輸入變更
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
+  // 獲取產品名稱
+  const getProductName = (order: any) => {
+    try {
+      const customerId = order.customer_id || "unknown"
+      const customerProducts = products[customerId] || {}
+
+      // 如果有組件產品
+      if (order.part_no_assembly) {
+        return customerProducts[order.part_no_assembly] || order.part_no_assembly
+      }
+
+      // 如果有產品清單
+      if (order.part_no_list) {
+        let partNoList: string[] = []
+
+        // 嘗試解析JSON
+        if (typeof order.part_no_list === "string") {
+          try {
+            partNoList = JSON.parse(order.part_no_list)
+          } catch {
+            // 如果不是有效的JSON，嘗試按逗號分隔
+            partNoList = order.part_no_list.split(/[,;]/).map((item: string) => item.trim())
+          }
+        } else if (Array.isArray(order.part_no_list)) {
+          partNoList = order.part_no_list
+        }
+
+        // 獲取每個產品的名稱
+        const productNames = partNoList.map((partNo) => customerProducts[partNo] || partNo)
+
+        return productNames.join("; ")
+      }
+
+      return "-"
+    } catch (error) {
+      console.error("獲取產品名稱時出錯:", error)
+      return "-"
+    }
   }
 
-  // 處理狀態過濾變更
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value)
+  // 格式化日期
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-"
+    try {
+      return format(new Date(dateString), "yyyy/MM/dd", { locale: zhTW })
+    } catch (e) {
+      return dateString
+    }
   }
 
-  // 格式化金額顯示
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("zh-TW", { style: "currency", currency }).format(amount)
+  // 查看訂單詳情
+  const viewOrderDetails = (orderId: string) => {
+    router.push(`/orders/${orderId}`)
+  }
+
+  // 導出訂單資料
+  const exportOrders = () => {
+    // 實現導出功能
+    alert("導出功能尚未實現")
+  }
+
+  // 獲取訂單日期
+  const getOrderDate = (order: any) => {
+    // 嘗試多個可能的日期欄位
+    const possibleDateFields = ["order_date", "created_at", "updated_at", "date"]
+    for (const field of possibleDateFields) {
+      if (order[field]) {
+        return formatDate(order[field])
+      }
+    }
+    return "-"
   }
 
   return (
-    <div className="space-y-4">
-      {usingMockData && (
-        <Alert variant="warning">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>注意</AlertTitle>
-          <AlertDescription>
-            資料庫中的訂單資料表尚未建立，目前顯示的是模擬資料。請聯繫管理員設置資料庫。
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <Input
-          placeholder="搜尋訂單編號、客戶、PO編號或產品..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="max-w-sm"
-        />
-        {!status && (
-          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="所有狀態" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有狀態</SelectItem>
-              <SelectItem value="待確認">待確認</SelectItem>
-              <SelectItem value="進行中">進行中</SelectItem>
-              <SelectItem value="驗貨完成">驗貨完成</SelectItem>
-              <SelectItem value="已出貨">已出貨</SelectItem>
-              <SelectItem value="結案">結案</SelectItem>
-            </SelectContent>
-          </Select>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>訂單管理</CardTitle>
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              type="search"
+              placeholder="搜尋訂單..."
+              className="pl-8 w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" onClick={exportOrders}>
+            <FileDown className="mr-2 h-4 w-4" />
+            導出
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {error ? (
+          <div className="text-center text-red-500 py-4">{error}</div>
+        ) : isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="text-center text-gray-500 py-4">沒有找到訂單資料</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>訂單編號</TableHead>
+                  <TableHead>客戶</TableHead>
+                  <TableHead>客戶PO編號</TableHead>
+                  <TableHead>產品</TableHead>
+                  <TableHead>訂單日期</TableHead>
+                  <TableHead>狀態</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map((order, index) => (
+                  <TableRow key={order.id || order.order_id || index}>
+                    <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
+                    <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
+                    <TableCell>{order.po_id || "-"}</TableCell>
+                    <TableCell>{getProductName(order)}</TableCell>
+                    <TableCell>{getOrderDate(order)}</TableCell>
+                    <TableCell>
+                      {order.status ? (
+                        <Badge className={`${statusColorMap[order.status] || "bg-gray-500"} text-white`}>
+                          {order.status}
+                        </Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => viewOrderDetails(order.order_id || order.id || index.toString())}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>訂單編號</TableHead>
-              <TableHead>客戶</TableHead>
-              <TableHead>客戶PO編號</TableHead>
-              <TableHead>產品</TableHead>
-              <TableHead>金額</TableHead>
-              <TableHead>日期</TableHead>
-              <TableHead>狀態</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              // 載入中顯示骨架屏
-              Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Skeleton className="h-6 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-28" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-40" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-20" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-8 w-8 ml-auto" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : filteredOrders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
-                  {searchTerm ? "沒有符合搜尋條件的訂單" : "沒有訂單資料"}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.order_number}</TableCell>
-                  <TableCell>{order.customer_name}</TableCell>
-                  <TableCell>{order.po_number}</TableCell>
-                  <TableCell>{order.products}</TableCell>
-                  <TableCell>{formatAmount(order.amount, order.currency)}</TableCell>
-                  <TableCell>{new Date(order.order_date).toLocaleDateString("zh-TW")}</TableCell>
-                  <TableCell>
-                    <Badge className={`${statusColorMap[order.status] || "bg-gray-500"} text-white`}>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">開啟選單</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>操作</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Link href={`/orders/${order.id}`} className="flex items-center">
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看詳情
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href={`/orders/${order.id}/edit`} className="flex items-center">
-                            <Pencil className="mr-2 h-4 w-4" />
-                            編輯訂單
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href={`/orders/${order.id}/confirmation`} className="flex items-center">
-                            <FileText className="mr-2 h-4 w-4" />
-                            查看訂單確認書
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href={`/purchases/from-order/${order.id}`} className="flex items-center">
-                            <ShoppingCart className="mr-2 h-4 w-4" />
-                            查看採購單
-                          </Link>
-                        </DropdownMenuItem>
-                        {(order.status === "驗貨完成" || order.status === "已出貨" || order.status === "結案") && (
-                          <DropdownMenuItem>
-                            <Link href={`/shipments/from-order/${order.id}`} className="flex items-center">
-                              <Truck className="mr-2 h-4 w-4" />
-                              查看出貨資訊
-                            </Link>
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
