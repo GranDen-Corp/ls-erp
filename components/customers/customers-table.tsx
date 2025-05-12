@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabaseClient } from "@/lib/supabase-client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
 // 客戶資料類型
 interface Customer {
@@ -45,6 +46,7 @@ export default function CustomersTable() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
 
   // 從Supabase獲取客戶資料
   useEffect(() => {
@@ -182,7 +184,7 @@ export default function CustomersTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>客戶ID</TableHead>
+              <TableHead>客戶編號</TableHead>
               <TableHead>客戶名稱</TableHead>
               <TableHead>集團</TableHead>
               <TableHead>國家/地區</TableHead>
@@ -226,12 +228,16 @@ export default function CustomersTable() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <Link href={`/customers/${customer.customer_id}`}>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看詳情
-                          </DropdownMenuItem>
-                        </Link>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            // 使用與 customer-data-table.tsx 中相同的詳情顯示方式
+                            // 這裡我們假設會打開一個模態框來顯示客戶詳情
+                            router.push(`/customers/${customer.customer_id}`)
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          查看詳情
+                        </DropdownMenuItem>
                         <Link href={`/customers/${customer.customer_id}/edit`}>
                           <DropdownMenuItem>
                             <FileEdit className="mr-2 h-4 w-4" />
