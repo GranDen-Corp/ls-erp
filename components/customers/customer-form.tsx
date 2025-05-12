@@ -89,7 +89,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       // 基本資訊
       setCustomerCode(initialData.customer_code || "")
       setCustomerName(initialData.customer_name || initialData.customer_full_name || "")
-      setShortName(initialData.short_name || initialData.customer_short_name || "")
+      setShortName(initialData.customer_short_name || initialData.short_name || "")
       setCustomerType(initialData.customer_type || "")
       setStatus(initialData.status || "active")
 
@@ -111,19 +111,9 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setBankAccount(initialData.bank_account || "")
 
       // 其他資訊
-      setGroupTag(initialData.group_tag || initialData.group_code || "")
+      setGroupTag(initialData.group_code || initialData.group_tag || "")
       setNotes(initialData.notes || "")
       setCreatedAt(initialData.created_at || new Date().toISOString())
-
-      // 設置完成後再次檢查表單狀態
-      setTimeout(() => {
-        console.log("表單狀態設置後檢查:")
-        console.log("customerCode:", customerCode)
-        console.log("customerName:", customerName)
-        console.log("shortName:", shortName)
-        console.log("customerType:", customerType)
-        console.log("status:", status)
-      }, 100)
     }
   }, [initialData])
 
@@ -135,7 +125,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       const customerData = {
         customer_code: customerCode,
         customer_name: customerName,
-        customer_short_name: shortName, // 注意這裡使用 customer_short_name 而不是 short_name
+        customer_short_name: shortName,
         customer_type: customerType,
         status,
         contact_person: contactPerson,
@@ -151,18 +141,21 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         currency,
         bank_name: bankName,
         bank_account: bankAccount,
-        group_code: groupTag, // 注意：這裡使用 group_code 而不是 group_tag
+        group_code: groupTag,
         notes,
         updated_at: new Date().toISOString(),
       }
 
       console.log("提交的客戶數據:", customerData) // 添加日誌以便調試
+      console.log("客戶ID:", customerId) // 添加日誌以便調試
 
       let result
 
       if (customerId) {
         // 更新現有客戶
         result = await supabaseClient.from("customers").update(customerData).eq("customer_id", customerId)
+
+        console.log("更新結果:", result) // 添加日誌以便調試
       } else {
         // 新增客戶
         result = await supabaseClient.from("customers").insert([
@@ -171,6 +164,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
             created_at: createdAt,
           },
         ])
+
+        console.log("插入結果:", result) // 添加日誌以便調試
       }
 
       if (result.error) {
@@ -182,7 +177,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         description: `客戶 ${customerName} 已${customerId ? "更新" : "創建"}`,
       })
 
-      router.push("/customers")
+      // 更新後重定向到客戶詳情頁面，而不是客戶列表
+      if (customerId) {
+        router.push(`/customers/${customerId}`)
+      } else {
+        router.push("/customers")
+      }
+
       router.refresh()
     } catch (error) {
       console.error("保存客戶時出錯:", error)
@@ -196,40 +197,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
     }
   }
 
-  // 添加一個調試按鈕，用於檢查當前表單狀態
-  const debugFormState = () => {
-    console.log("當前表單狀態:")
-    console.log("customerCode:", customerCode)
-    console.log("customerName:", customerName)
-    console.log("shortName:", shortName)
-    console.log("customerType:", customerType)
-    console.log("status:", status)
-    console.log("contactPerson:", contactPerson)
-    console.log("email:", email)
-    console.log("phone:", phone)
-    console.log("fax:", fax)
-    console.log("address:", address)
-    console.log("country:", country)
-    console.log("website:", website)
-    console.log("taxId:", taxId)
-    console.log("paymentTerms:", paymentTerms)
-    console.log("creditLimit:", creditLimit)
-    console.log("currency:", currency)
-    console.log("bankName:", bankName)
-    console.log("bankAccount:", bankAccount)
-    console.log("groupTag:", groupTag)
-    console.log("notes:", notes)
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 添加調試按鈕，僅在開發環境中顯示 */}
-      {process.env.NODE_ENV === "development" && (
-        <Button type="button" onClick={debugFormState} variant="outline" size="sm">
-          調試表單狀態
-        </Button>
-      )}
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
@@ -246,7 +215,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customerCode">客戶代碼 *</Label>
+                  <Label htmlFor="customerCode">客戶編號 *</Label>
                   <Input
                     id="customerCode"
                     value={customerCode}
@@ -402,7 +371,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       </Tabs>
 
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={() => router.push("/customers")} disabled={isSubmitting}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push(`/customers/${customerId || ""}`)}
+          disabled={isSubmitting}
+        >
           取消
         </Button>
         <Button type="submit" disabled={isSubmitting}>

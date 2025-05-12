@@ -125,7 +125,7 @@ export default async function CustomerDetailsPage({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">客戶編號</p>
-                  <p>{customer.customer_id || "-"}</p>
+                  <p>{customer.customer_code || "-"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">客戶簡稱</p>

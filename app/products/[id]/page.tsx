@@ -14,6 +14,7 @@ import { ProductComplaintHistory } from "@/components/products/product-complaint
 import { ProductAssemblyDetails } from "@/components/products/product-assembly-details"
 import { Badge } from "@/components/ui/badge"
 import { supabaseClient } from "@/lib/supabase-client"
+import { useRouter } from "next/navigation"
 
 interface ProductPageProps {
   params: {
@@ -26,6 +27,7 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [product, setProduct] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -33,10 +35,27 @@ export default function ProductPage({ params }: ProductPageProps) {
         setLoading(true)
         setError(null)
 
-        const { data, error } = await supabaseClient.from("products").select("*").eq("part_no", id).single()
+        // 特殊路徑處理
+        const specialPaths: Record<string, string> = {
+          assembly: "/products/assembly",
+          new: "/products/new",
+        }
+
+        // 檢查是否為特殊路徑
+        if (id in specialPaths) {
+          router.push(specialPaths[id])
+          return
+        }
+
+        // 正常查詢產品資料
+        const { data, error } = await supabaseClient.from("products").select("*").eq("part_no", id).maybeSingle()
 
         if (error) {
           throw new Error(`獲取產品資料時出錯: ${error.message}`)
+        }
+
+        if (!data) {
+          throw new Error(`找不到產品資料: ${id}`)
         }
 
         // 處理圖片資料
@@ -78,7 +97,28 @@ export default function ProductPage({ params }: ProductPageProps) {
     if (id) {
       fetchProduct()
     }
-  }, [id])
+  }, [id, router])
+
+  // 如果是特殊路徑，顯示載入中，等待重定向
+  if (id === "assembly" || id === "new") {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/products">
+            <Button variant="outline" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold">重定向中...</h1>
+        </div>
+        <Card>
+          <CardContent className="flex justify-center items-center h-64">
+            <p>請稍候...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
