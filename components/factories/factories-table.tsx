@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { MoreHorizontal, ArrowUpDown, Loader2, FileEdit, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,130 +106,124 @@ export function FactoriesTable() {
 
   if (isLoading) {
     return (
-      <Card className="w-full">
-        <CardContent className="flex justify-center items-center h-64 pt-6">
-          <div className="flex flex-col items-center">
-            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <p>載入供應商資料中...</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="w-full flex justify-center items-center h-64">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin mb-2" />
+          <p>載入供應商資料中...</p>
+        </div>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Card className="w-full">
-        <CardContent className="flex justify-center items-center h-64 pt-6">
-          <p className="text-red-500">錯誤: {error}</p>
-        </CardContent>
-      </Card>
+      <div className="w-full flex justify-center items-center h-64">
+        <p className="text-red-500">錯誤: {error}</p>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
+    <div className="w-full">
+      <div className="border rounded-md overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">供應商ID</TableHead>
+              <TableHead>
+                <div className="flex items-center">
+                  供應商名稱
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>類型</TableHead>
+              <TableHead>電話</TableHead>
+              <TableHead>ISO認證</TableHead>
+              <TableHead>IATF認證</TableHead>
+              <TableHead className="text-right">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {suppliers.length === 0 ? (
               <TableRow>
-                <TableHead className="w-[100px]">供應商ID</TableHead>
-                <TableHead>
-                  <div className="flex items-center">
-                    供應商名稱
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </div>
-                </TableHead>
-                <TableHead>類型</TableHead>
-                <TableHead>電話</TableHead>
-                <TableHead>ISO認證</TableHead>
-                <TableHead>IATF認證</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  沒有找到供應商資料
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {suppliers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    沒有找到供應商資料
+            ) : (
+              suppliers.map((supplier) => (
+                <TableRow key={supplier.factory_id}>
+                  <TableCell className="font-medium">{supplier.factory_id}</TableCell>
+                  <TableCell>
+                    <div>{supplier.factory_name}</div>
+                    <div className="text-sm text-muted-foreground">{supplier.factory_full_name}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{supplier.supplier_type || "-"}</Badge>
+                  </TableCell>
+                  <TableCell>{supplier.factory_phone || "-"}</TableCell>
+                  <TableCell>
+                    <Badge variant={supplier.iso9001_certified === "是" ? "default" : "secondary"}>
+                      {supplier.iso9001_certified === "是" ? "已認證" : "未認證"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        supplier.iatf16949_certified === "是"
+                          ? "default"
+                          : supplier.iatf16949_certified === "審核中"
+                            ? "outline"
+                            : "secondary"
+                      }
+                    >
+                      {supplier.iatf16949_certified === "是"
+                        ? "已認證"
+                        : supplier.iatf16949_certified === "審核中"
+                          ? "審核中"
+                          : "未認證"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">開啟選單</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>操作</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/factories/all/${supplier.factory_id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            查看詳情
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/factories/all/${supplier.factory_id}/edit`}>
+                            <FileEdit className="mr-2 h-4 w-4" />
+                            編輯供應商
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => handleDeleteSupplier(supplier.factory_id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          刪除供應商
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ) : (
-                suppliers.map((supplier) => (
-                  <TableRow key={supplier.factory_id}>
-                    <TableCell className="font-medium">{supplier.factory_id}</TableCell>
-                    <TableCell>
-                      <div>{supplier.factory_name}</div>
-                      <div className="text-sm text-muted-foreground">{supplier.factory_full_name}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{supplier.supplier_type || "-"}</Badge>
-                    </TableCell>
-                    <TableCell>{supplier.factory_phone || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant={supplier.iso9001_certified === "是" ? "default" : "secondary"}>
-                        {supplier.iso9001_certified === "是" ? "已認證" : "未認證"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          supplier.iatf16949_certified === "是"
-                            ? "default"
-                            : supplier.iatf16949_certified === "審核中"
-                              ? "outline"
-                              : "secondary"
-                        }
-                      >
-                        {supplier.iatf16949_certified === "是"
-                          ? "已認證"
-                          : supplier.iatf16949_certified === "審核中"
-                            ? "審核中"
-                            : "未認證"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">開啟選單</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>操作</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/factories/all/${supplier.factory_id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              查看詳情
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/factories/all/${supplier.factory_id}/edit`}>
-                              <FileEdit className="mr-2 h-4 w-4" />
-                              編輯供應商
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => handleDeleteSupplier(supplier.factory_id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            刪除供應商
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-      <CardFooter className="flex items-center justify-between">
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-between py-4">
         <div className="text-sm text-muted-foreground">
           顯示 {suppliers.length} 個供應商中的 1-{suppliers.length} 個
         </div>
@@ -249,7 +242,7 @@ export function FactoriesTable() {
             </PaginationItem>
           </PaginationContent>
         </Pagination>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   )
 }

@@ -175,6 +175,7 @@ export default function FactoriesPage() {
       onExport={handleExport}
       onImport={handleImport}
       searchPlaceholder="搜尋供應商名稱、聯絡人或電子郵件..."
+      className="px-0"
     >
       <FactoriesTable data={filteredFactories} isLoading={isLoading} />
     </ManagementLayout>
