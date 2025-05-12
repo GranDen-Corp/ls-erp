@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -81,19 +81,63 @@ const defaultValues: Partial<FactoryFormValues> = {
 
 interface FactoryFormProps {
   factory?: any
+  factoryId?: string
+  initialData?: any
 }
 
-export function FactoryForm({ factory }: FactoryFormProps) {
+export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 合併初始數據
+  const mergedInitialData = initialData || factory || {}
+
   // 初始化表單
   const form = useForm<FactoryFormValues>({
     resolver: zodResolver(factoryFormSchema),
-    defaultValues: factory || defaultValues,
+    defaultValues: mergedInitialData.factory_id ? mergedInitialData : defaultValues,
   })
+
+  // 當初始數據變更時更新表單
+  useEffect(() => {
+    if (mergedInitialData && Object.keys(mergedInitialData).length > 0) {
+      console.log("FactoryForm 接收到的初始數據:", mergedInitialData)
+
+      // 將初始數據映射到表單字段
+      const formData = {
+        factory_id: mergedInitialData.factory_id || mergedInitialData.id || "",
+        factory_name: mergedInitialData.factory_name || mergedInitialData.name || "",
+        factory_full_name: mergedInitialData.factory_full_name || mergedInitialData.fullName || "",
+        factory_address: mergedInitialData.factory_address || mergedInitialData.address || "",
+        factory_phone: mergedInitialData.factory_phone || mergedInitialData.phone || "",
+        factory_fax: mergedInitialData.factory_fax || mergedInitialData.fax || "",
+        tax_id: mergedInitialData.tax_id || mergedInitialData.taxId || "",
+        supplier_type: mergedInitialData.supplier_type || mergedInitialData.supplierType || "assembly",
+        category1: mergedInitialData.category1 || mergedInitialData.category || "",
+        category2: mergedInitialData.category2 || "",
+        category3: mergedInitialData.category3 || "",
+        iso9001_certified: mergedInitialData.iso9001_certified || mergedInitialData.iso9001Certified || "否",
+        iatf16949_certified: mergedInitialData.iatf16949_certified || mergedInitialData.iatf16949Certified || "否",
+        iso17025_certified: mergedInitialData.iso17025_certified || mergedInitialData.iso17025Certified || "否",
+        cqi9_certified: mergedInitialData.cqi9_certified || mergedInitialData.cqi9Certified || "否",
+        cqi11_certified: mergedInitialData.cqi11_certified || mergedInitialData.cqi11Certified || "否",
+        cqi12_certified: mergedInitialData.cqi12_certified || mergedInitialData.cqi12Certified || "否",
+        contact_person: mergedInitialData.contact_person || mergedInitialData.contactPerson || "",
+        contact_phone: mergedInitialData.contact_phone || mergedInitialData.contactPhone || "",
+        contact_email: mergedInitialData.contact_email || mergedInitialData.email || "",
+        website: mergedInitialData.website || "",
+        country: mergedInitialData.country || "台灣",
+        city: mergedInitialData.city || "",
+        postal_code: mergedInitialData.postal_code || mergedInitialData.postalCode || "",
+        notes: mergedInitialData.notes || "",
+        status: mergedInitialData.status || "active",
+      }
+
+      form.reset(formData)
+    }
+  }, [mergedInitialData, form])
 
   // 表單提交處理
   async function onSubmit(data: FactoryFormValues) {
@@ -102,7 +146,7 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
     try {
       // 檢查供應商ID是否已存在（僅在創建新供應商時檢查）
-      if (!factory) {
+      if (!factoryId && !factory) {
         const { data: existingFactory, error: checkError } = await supabaseClient
           .from("suppliers")
           .select("factory_id")
@@ -119,9 +163,13 @@ export function FactoryForm({ factory }: FactoryFormProps) {
       }
 
       // 插入或更新供應商資料
-      const { error: saveError } = factory
-        ? await supabaseClient.from("suppliers").update(data).eq("factory_id", factory.factory_id)
-        : await supabaseClient.from("suppliers").insert(data)
+      const { error: saveError } =
+        factoryId || factory
+          ? await supabaseClient
+              .from("suppliers")
+              .update(data)
+              .eq("factory_id", factoryId || factory.factory_id)
+          : await supabaseClient.from("suppliers").insert(data)
 
       if (saveError) {
         throw new Error(`保存供應商資料時出錯: ${saveError.message}`)
@@ -129,8 +177,8 @@ export function FactoryForm({ factory }: FactoryFormProps) {
 
       // 顯示成功訊息
       toast({
-        title: factory ? "供應商已更新" : "供應商已建立",
-        description: `供應商 ${data.factory_name} 已成功${factory ? "更新" : "建立"}`,
+        title: factoryId || factory ? "供應商已更新" : "供應商已建立",
+        description: `供應商 ${data.factory_name} 已成功${factoryId || factory ? "更新" : "建立"}`,
       })
 
       // 導航回供應商列表
@@ -182,9 +230,11 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                       <FormItem>
                         <FormLabel>供應商ID *</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入供應商ID" {...field} disabled={!!factory} />
+                          <Input placeholder="輸入供應商ID" {...field} disabled={!!factoryId || !!factory} />
                         </FormControl>
-                        <FormDescription>{factory ? "供應商ID不可修改" : "請輸入唯一的供應商識別碼"}</FormDescription>
+                        <FormDescription>
+                          {factoryId || factory ? "供應商ID不可修改" : "請輸入唯一的供應商識別碼"}
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -685,7 +735,7 @@ export function FactoryForm({ factory }: FactoryFormProps) {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 處理中...
               </>
-            ) : factory ? (
+            ) : factoryId || factory ? (
               "更新供應商"
             ) : (
               "創建供應商"

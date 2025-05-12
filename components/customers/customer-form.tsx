@@ -57,73 +57,37 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
   // 當 initialData 變更時更新狀態
   useEffect(() => {
-    console.log("CustomerForm 接收到的初始數據:", initialData) // 添加日誌以便調試
-
     if (initialData) {
-      // 檢查資料庫字段與表單字段的映射
-      console.log("資料庫字段映射檢查:")
-      console.log("customer_code:", initialData.customer_code)
-      console.log("customer_name:", initialData.customer_name)
-      console.log("customer_short_name:", initialData.customer_short_name)
-      console.log("short_name:", initialData.short_name)
-      console.log("customer_type:", initialData.customer_type)
-      console.log("status:", initialData.status)
-      console.log("contact_person:", initialData.contact_person)
-      console.log("email:", initialData.email)
-      console.log("phone:", initialData.phone)
-      console.log("fax:", initialData.fax)
-      console.log("address:", initialData.address)
-      console.log("country:", initialData.country)
-      console.log("website:", initialData.website)
-      console.log("tax_id:", initialData.tax_id)
-      console.log("payment_terms:", initialData.payment_terms)
-      console.log("credit_limit:", initialData.credit_limit)
-      console.log("currency:", initialData.currency)
-      console.log("bank_name:", initialData.bank_name)
-      console.log("bank_account:", initialData.bank_account)
-      console.log("group_code:", initialData.group_code)
-      console.log("group_tag:", initialData.group_tag)
-      console.log("notes:", initialData.notes)
-      console.log("created_at:", initialData.created_at)
+      console.log("CustomerForm 接收到的初始數據:", initialData)
 
       // 基本資訊
-      setCustomerCode(initialData.customer_code || "")
-      setCustomerName(initialData.customer_name || initialData.customer_full_name || "")
-      setShortName(initialData.short_name || initialData.customer_short_name || "")
-      setCustomerType(initialData.customer_type || "")
+      setCustomerCode(initialData.code || "")
+      setCustomerName(initialData.name || "")
+      setShortName(initialData.shortName || "")
+      setCustomerType(initialData.customerType || "")
       setStatus(initialData.status || "active")
 
       // 聯絡資訊
-      setContactPerson(initialData.contact_person || "")
-      setEmail(initialData.email || initialData.invoice_email || "")
-      setPhone(initialData.phone || initialData.customer_phone || "")
-      setFax(initialData.fax || initialData.customer_fax || "")
-      setAddress(initialData.address || initialData.customer_address || "")
-      setCountry(initialData.country || initialData.division_location || "")
+      setContactPerson(initialData.contactPerson || "")
+      setEmail(initialData.email || "")
+      setPhone(initialData.phone || "")
+      setFax(initialData.fax || "")
+      setAddress(initialData.address || "")
+      setCountry(initialData.country || "")
       setWebsite(initialData.website || "")
 
       // 財務資訊
-      setTaxId(initialData.tax_id || "")
-      setPaymentTerms(initialData.payment_terms || initialData.payment_due_date || "")
-      setCreditLimit(initialData.credit_limit || 0)
+      setTaxId(initialData.taxId || "")
+      setPaymentTerms(initialData.paymentTerms || "")
+      setCreditLimit(initialData.creditLimit || 0)
       setCurrency(initialData.currency || "TWD")
-      setBankName(initialData.bank_name || "")
-      setBankAccount(initialData.bank_account || "")
+      setBankName(initialData.bankName || "")
+      setBankAccount(initialData.bankAccount || "")
 
       // 其他資訊
-      setGroupTag(initialData.group_tag || initialData.group_code || "")
+      setGroupTag(initialData.groupTag || "")
       setNotes(initialData.notes || "")
-      setCreatedAt(initialData.created_at || new Date().toISOString())
-
-      // 設置完成後再次檢查表單狀態
-      setTimeout(() => {
-        console.log("表單狀態設置後檢查:")
-        console.log("customerCode:", customerCode)
-        console.log("customerName:", customerName)
-        console.log("shortName:", shortName)
-        console.log("customerType:", customerType)
-        console.log("status:", status)
-      }, 100)
+      setCreatedAt(initialData.createdAt || new Date().toISOString())
     }
   }, [initialData])
 
@@ -133,9 +97,10 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
     try {
       const customerData = {
+        customer_id: customerId || customerCode,
         customer_code: customerCode,
         customer_name: customerName,
-        customer_short_name: shortName, // 注意這裡使用 customer_short_name 而不是 short_name
+        customer_short_name: shortName,
         customer_type: customerType,
         status,
         contact_person: contactPerson,
@@ -151,12 +116,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         currency,
         bank_name: bankName,
         bank_account: bankAccount,
-        group_code: groupTag, // 注意：這裡使用 group_code 而不是 group_tag
+        group_tag: groupTag,
         notes,
         updated_at: new Date().toISOString(),
       }
 
-      console.log("提交的客戶數據:", customerData) // 添加日誌以便調試
+      console.log("提交的客戶數據:", customerData)
 
       let result
 
@@ -196,40 +161,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
     }
   }
 
-  // 添加一個調試按鈕，用於檢查當前表單狀態
-  const debugFormState = () => {
-    console.log("當前表單狀態:")
-    console.log("customerCode:", customerCode)
-    console.log("customerName:", customerName)
-    console.log("shortName:", shortName)
-    console.log("customerType:", customerType)
-    console.log("status:", status)
-    console.log("contactPerson:", contactPerson)
-    console.log("email:", email)
-    console.log("phone:", phone)
-    console.log("fax:", fax)
-    console.log("address:", address)
-    console.log("country:", country)
-    console.log("website:", website)
-    console.log("taxId:", taxId)
-    console.log("paymentTerms:", paymentTerms)
-    console.log("creditLimit:", creditLimit)
-    console.log("currency:", currency)
-    console.log("bankName:", bankName)
-    console.log("bankAccount:", bankAccount)
-    console.log("groupTag:", groupTag)
-    console.log("notes:", notes)
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 添加調試按鈕，僅在開發環境中顯示 */}
-      {process.env.NODE_ENV === "development" && (
-        <Button type="button" onClick={debugFormState} variant="outline" size="sm">
-          調試表單狀態
-        </Button>
-      )}
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
@@ -252,7 +185,9 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     value={customerCode}
                     onChange={(e) => setCustomerCode(e.target.value)}
                     required
+                    disabled={!!customerId}
                   />
+                  {customerId && <p className="text-sm text-muted-foreground">客戶編號不可修改</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="customerName">客戶名稱 *</Label>
@@ -421,6 +356,3 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
     </form>
   )
 }
-
-// 同時提供默認導出，以便兩種導入方式都能工作
-export default CustomerForm
