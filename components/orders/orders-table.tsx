@@ -12,13 +12,20 @@ import { supabaseClient } from "@/lib/supabase-client"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 
+// 狀態映射: 數字到文字
+const statusMap: Record<string, string> = {
+  "0": "待確認",
+  "1": "進行中",
+  "2": "驗貨完成",
+  "3": "已出貨/結案",
+}
+
 // 狀態顏色映射
 const statusColorMap: Record<string, string> = {
   待確認: "bg-yellow-500",
   進行中: "bg-blue-500",
   驗貨完成: "bg-green-500",
-  已出貨: "bg-purple-500",
-  結案: "bg-gray-500",
+  "已出貨/結案": "bg-purple-500",
 }
 
 // 定義產品項目的介面
@@ -111,41 +118,23 @@ export function OrdersTable() {
         let ordersData = null
         let ordersError = null
 
-        // 嘗試方式1: 使用order_date排序
+        // 嘗試方式1: 使用order_id排序
         try {
-          const result = await supabaseClient.from("orders").select("*").order("order_date", { ascending: false })
+          const result = await supabaseClient.from("orders").select("*").order("order_id", { ascending: false })
           if (!result.error) {
             ordersData = result.data
           } else if (result.error.message.includes("does not exist")) {
-            // 如果order_date不存在，嘗試方式2
-            console.log("order_date欄位不存在，嘗試其他排序方式")
+            // 如果order_id不存在，嘗試方式2
+            console.log("order_id欄位不存在，嘗試其他排序方式")
           } else {
             // 其他錯誤
             ordersError = result.error
           }
         } catch (err) {
-          console.error("嘗試使用order_date排序失敗:", err)
+          console.error("嘗試使用order_id排序失敗:", err)
         }
 
-        // 如果方式1失敗，嘗試方式2: 使用order_id排序
-        if (!ordersData && !ordersError) {
-          try {
-            const result = await supabaseClient.from("orders").select("*").order("order_id", { ascending: false })
-            if (!result.error) {
-              ordersData = result.data
-            } else if (result.error.message.includes("does not exist")) {
-              // 如果order_id不存在，嘗試方式3
-              console.log("order_id欄位不存在，嘗試其他排序方式")
-            } else {
-              // 其他錯誤
-              ordersError = result.error
-            }
-          } catch (err) {
-            console.error("嘗試使用order_id排序失敗:", err)
-          }
-        }
-
-        // 如果方式2失敗，嘗試方式3: 不排序
+        // 如果方式1失敗，嘗試方式2: 不排序
         if (!ordersData && !ordersError) {
           try {
             const result = await supabaseClient.from("orders").select("*")
@@ -282,13 +271,95 @@ export function OrdersTable() {
     }
   }
 
-  // 格式化日期
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-"
+  // 從order_id中提取日期
+  const extractDateFromOrderId = (orderId: string): string => {
     try {
-      return format(new Date(dateString), "yyyy/MM/dd", { locale: zhTW })
-    } catch (e) {
-      return dateString
+      // 檢查orderId是否為有效的字符串
+      if (!orderId || typeof orderId !== "string") {
+        return "-"
+      }
+
+      // 嘗試提取timestamp部分
+      // 假設order_id格式為timestamp或包含timestamp
+      // 例如: "1620000000000" 或 "ORD-1620000000000" 或 "ORD-1620000000000-XXX"
+
+      // 提取數字部分
+      const timestampMatch = orderId.match(/(\d{10,13})/)
+      if (!timestampMatch) {
+        return "-"
+      }
+
+      const timestamp = Number.parseInt(timestampMatch[1])
+
+      // 檢查是否為有效的timestamp
+      if (isNaN(timestamp)) {
+        return "-"
+      }
+
+      // 轉換為日期並格式化
+      const date = new Date(
+        // 如果是10位數（秒），轉換為毫秒
+        timestamp.toString().length === 10 ? timestamp * 1000 : timestamp,
+      )
+
+      // 檢查是否為有效日期
+      if (isNaN(date.getTime())) {
+        return "-"
+      }
+
+      return format(date, "yyyy/MM/dd", { locale: zhTW })
+    } catch (error) {
+      console.error("從order_id提取日期時出錯:", error, "order_id:", orderId)
+      return "-"
+    }
+  }
+
+  // 獲取訂單日期
+  const getOrderDate = (order: any) => {
+    // 首先嘗試從order_id提取日期
+    if (order.order_id) {
+      const extractedDate = extractDateFromOrderId(order.order_id)
+      if (extractedDate !== "-") {
+        return extractedDate
+      }
+    }
+
+    // 如果從order_id無法提取有效日期，嘗試其他日期欄位
+    const possibleDateFields = ["order_date", "created_at", "updated_at", "date"]
+    for (const field of possibleDateFields) {
+      if (order[field]) {
+        try {
+          return format(new Date(order[field]), "yyyy/MM/dd", { locale: zhTW })
+        } catch (e) {
+          // 忽略錯誤，嘗試下一個欄位
+        }
+      }
+    }
+
+    return "-"
+  }
+
+  // 獲取訂單狀態
+  const getOrderStatus = (order: any): { text: string; color: string } => {
+    try {
+      // 檢查是否有status欄位
+      if (order.status === undefined || order.status === null) {
+        return { text: "-", color: "bg-gray-500" }
+      }
+
+      // 將status轉換為字符串
+      const statusKey = String(order.status)
+
+      // 從映射中獲取狀態文字
+      const statusText = statusMap[statusKey] || statusKey
+
+      // 獲取狀態顏色
+      const statusColor = statusColorMap[statusText] || "bg-gray-500"
+
+      return { text: statusText, color: statusColor }
+    } catch (error) {
+      console.error("獲取訂單狀態時出錯:", error)
+      return { text: "-", color: "bg-gray-500" }
     }
   }
 
@@ -301,18 +372,6 @@ export function OrdersTable() {
   const exportOrders = () => {
     // 實現導出功能
     alert("導出功能尚未實現")
-  }
-
-  // 獲取訂單日期
-  const getOrderDate = (order: any) => {
-    // 嘗試多個可能的日期欄位
-    const possibleDateFields = ["order_date", "created_at", "updated_at", "date"]
-    for (const field of possibleDateFields) {
-      if (order[field]) {
-        return formatDate(order[field])
-      }
-    }
-    return "-"
   }
 
   return (
@@ -360,33 +419,30 @@ export function OrdersTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order, index) => (
-                  <TableRow key={order.id || order.order_id || index}>
-                    <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
-                    <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
-                    <TableCell>{order.po_id || "-"}</TableCell>
-                    <TableCell>{getProductName(order)}</TableCell>
-                    <TableCell>{getOrderDate(order)}</TableCell>
-                    <TableCell>
-                      {order.status ? (
-                        <Badge className={`${statusColorMap[order.status] || "bg-gray-500"} text-white`}>
-                          {order.status}
-                        </Badge>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => viewOrderDetails(order.order_id || order.id || index.toString())}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredOrders.map((order, index) => {
+                  const status = getOrderStatus(order)
+                  return (
+                    <TableRow key={order.id || order.order_id || index}>
+                      <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
+                      <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
+                      <TableCell>{order.po_id || "-"}</TableCell>
+                      <TableCell>{getProductName(order)}</TableCell>
+                      <TableCell>{getOrderDate(order)}</TableCell>
+                      <TableCell>
+                        <Badge className={`${status.color} text-white`}>{status.text}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => viewOrderDetails(order.order_id || order.id || index.toString())}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
