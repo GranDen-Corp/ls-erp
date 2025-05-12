@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Eye, FileEdit, MoreHorizontal, Trash2, Tag } from "lucide-react"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -42,17 +40,7 @@ interface CustomersTableProps {
 }
 
 export function CustomersTable({ data = [], isLoading = false }: CustomersTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-
-  const filteredCustomers = data.filter((customer) => {
-    return (
-      customer.customer_short_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.customer_full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.customer_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.client_contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      false
-    )
-  })
+  // Removed the searchTerm state and filtering logic
 
   if (isLoading) {
     return (
@@ -75,14 +63,7 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center">
-        <Input
-          placeholder="搜尋客戶名稱、編號或聯絡人..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
+      {/* Removed the search input div */}
 
       <div className="rounded-md border">
         <Table>
@@ -99,14 +80,14 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCustomers.length === 0 ? (
+            {data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center">
                   沒有找到符合條件的客戶
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCustomers.map((customer) => (
+              data.map((customer) => (
                 <TableRow key={customer.customer_id}>
                   <TableCell className="font-medium">{customer.customer_id}</TableCell>
                   <TableCell>

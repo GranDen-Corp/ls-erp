@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { MoreHorizontal, ArrowUpDown, Search, FileEdit, Trash2, Eye, Loader2 } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Loader2, FileEdit, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,8 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import {
   Pagination,
@@ -52,9 +50,6 @@ interface Supplier {
 
 export function FactoriesTable() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [typeFilter, setTypeFilter] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -83,21 +78,6 @@ export function FactoriesTable() {
 
     fetchSuppliers()
   }, [])
-
-  // 過濾供應商數據
-  const filteredSuppliers = suppliers.filter((supplier) => {
-    const matchesSearch =
-      supplier.factory_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.factory_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.factory_full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      false
-
-    const matchesStatus = statusFilter === "all" || supplier.status === statusFilter
-
-    const matchesType = typeFilter === "all" || supplier.supplier_type === typeFilter
-
-    return matchesSearch && matchesStatus && matchesType
-  })
 
   // 處理刪除供應商
   const handleDeleteSupplier = async (supplierId: string) => {
@@ -128,11 +108,7 @@ export function FactoriesTable() {
   if (isLoading) {
     return (
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle>供應商列表</CardTitle>
-          <CardDescription>載入中...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center items-center h-64">
+        <CardContent className="flex justify-center items-center h-64 pt-6">
           <div className="flex flex-col items-center">
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
             <p>載入供應商資料中...</p>
@@ -145,64 +121,16 @@ export function FactoriesTable() {
   if (error) {
     return (
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle>供應商列表</CardTitle>
-          <CardDescription>發生錯誤</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center items-center h-64">
+        <CardContent className="flex justify-center items-center h-64 pt-6">
           <p className="text-red-500">錯誤: {error}</p>
         </CardContent>
       </Card>
     )
   }
 
-  // 獲取唯一的供應商類型
-  const supplierTypes = Array.from(new Set(suppliers.map((supplier) => supplier.supplier_type).filter(Boolean)))
-
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>供應商列表</CardTitle>
-        <CardDescription>管理您的所有供應商資料</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="搜尋供應商..."
-                className="pl-8 w-[250px]"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="狀態篩選" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">所有狀態</SelectItem>
-                <SelectItem value="active">啟用</SelectItem>
-                <SelectItem value="inactive">停用</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="類型篩選" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">所有類型</SelectItem>
-                {supplierTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <CardContent className="pt-6">
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -222,14 +150,14 @@ export function FactoriesTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSuppliers.length === 0 ? (
+              {suppliers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    沒有找到符合條件的供應商
+                    沒有找到供應商資料
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSuppliers.map((supplier) => (
+                suppliers.map((supplier) => (
                   <TableRow key={supplier.factory_id}>
                     <TableCell className="font-medium">{supplier.factory_id}</TableCell>
                     <TableCell>
@@ -304,7 +232,7 @@ export function FactoriesTable() {
       </CardContent>
       <CardFooter className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          顯示 {filteredSuppliers.length} 個供應商中的 1-{filteredSuppliers.length} 個
+          顯示 {suppliers.length} 個供應商中的 1-{suppliers.length} 個
         </div>
         <Pagination>
           <PaginationContent>
