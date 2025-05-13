@@ -100,7 +100,7 @@ export default function Sidebar({ className }: SidebarProps = {}) {
         },
         {
           label: "組合產品",
-          href: "/products/assembly",
+          href: "/products/all?filter=assembly",
           active: pathname === "/products/assembly",
         },
         {

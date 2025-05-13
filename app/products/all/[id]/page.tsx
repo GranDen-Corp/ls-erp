@@ -9,7 +9,6 @@ import { ProductOrderHistory } from "@/components/products/product-order-history
 import { ProductComplaintHistory } from "@/components/products/product-complaint-history"
 import { ProductImagePreview } from "@/components/products/product-image-preview"
 import { ProductPriceHistoryChart } from "@/components/products/product-price-history-chart"
-import { ProductAssemblyDetails } from "@/components/products/product-assembly-details"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
@@ -229,16 +228,12 @@ export default async function ProductDetailPage({
         </CardContent>
       </Card>
 
-      <Tabs
-        defaultValue={product.is_assembly && defaultTab === "assembly" ? "assembly" : defaultTab}
-        className="w-full"
-      >
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="specifications">規格</TabsTrigger>
           <TabsTrigger value="orders">訂單歷史</TabsTrigger>
           <TabsTrigger value="price">價格歷史</TabsTrigger>
           <TabsTrigger value="complaints">投訴記錄</TabsTrigger>
-          {product.is_assembly && <TabsTrigger value="assembly">組合詳情</TabsTrigger>}
         </TabsList>
         <TabsContent value="specifications">
           <Card>
@@ -280,18 +275,6 @@ export default async function ProductDetailPage({
             </CardContent>
           </Card>
         </TabsContent>
-        {product.is_assembly && (
-          <TabsContent value="assembly">
-            <Card>
-              <CardHeader>
-                <CardTitle>組合詳情</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProductAssemblyDetails productId={product.part_no} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   )

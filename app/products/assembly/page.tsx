@@ -6,17 +6,13 @@ import { ArrowLeft, Plus } from "lucide-react"
 import Link from "next/link"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Product } from "@/types/product"
-import { useRouter } from "next/navigation"
 import { ProductsTable } from "@/components/products/products-table"
-import { AdvancedFilter, type FilterOption } from "@/components/ui/advanced-filter"
 
 export default function AssemblyProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filters, setFilters] = useState({})
   const supabase = createClientComponentClient()
-  const router = useRouter()
 
   useEffect(() => {
     const fetchAssemblyProducts = async () => {
@@ -73,34 +69,7 @@ export default function AssemblyProductsPage() {
     }
 
     fetchAssemblyProducts()
-  }, [filters])
-
-  // 定義篩選選項
-  const filterOptions: FilterOption[] = [
-    {
-      id: "customer",
-      label: "客戶",
-      type: "select",
-      options: [
-        { value: "all", label: "所有客戶" },
-        // 這裡可以動態加載客戶列表
-      ],
-    },
-    {
-      id: "status",
-      label: "狀態",
-      type: "select",
-      options: [
-        { value: "active", label: "活躍" },
-        { value: "inactive", label: "非活躍" },
-        { value: "discontinued", label: "已停產" },
-      ],
-    },
-  ]
-
-  const handleFilterChange = (newFilters: Record<string, any>) => {
-    setFilters(newFilters)
-  }
+  }, [])
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,26 +90,10 @@ export default function AssemblyProductsPage() {
         </Link>
       </div>
 
-      <div className="rounded-md border">
-        <div className="p-4">
-          <h2 className="text-lg font-medium mb-2">搜尋與篩選</h2>
-          <AdvancedFilter
-            options={filterOptions}
-            onFilterChange={handleFilterChange}
-            placeholder="搜尋產品編號、名稱、客戶或工廠..."
-          />
-        </div>
-      </div>
-
       {error ? (
         <p className="text-center text-red-500 py-4">{error}</p>
       ) : (
-        <ProductsTable
-          products={products}
-          isLoading={loading}
-          onEdit={(product) => router.push(`/products/${encodeURIComponent(product.part_no)}/edit?tab=composite`)}
-          onView={(product) => router.push(`/products/all/${encodeURIComponent(product.part_no)}?tab=assembly`)}
-        />
+        <ProductsTable products={products} isLoading={loading} />
       )}
     </div>
   )
