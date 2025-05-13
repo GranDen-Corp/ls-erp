@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -109,6 +109,7 @@ const emptyDocumentRecord = {
   filename: "",
 }
 
+// Export the component as a named export
 export function ProductForm({
   productId,
   isClone = false,
@@ -376,6 +377,11 @@ export function ProductForm({
     fetchOptions()
   }, [])
 
+  // 在組件頂部添加
+  // Remove the debounceTimer reference since we're not using it anymore
+  // Find and remove this line near the top of the component:
+  // const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+
   // Dialog components for popup forms
   const EditNoteDialog = () => (
     <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
@@ -425,70 +431,117 @@ export function ProductForm({
     </Dialog>
   )
 
-  const ProcessDialog = () => (
-    <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
-      <DialogContent className="sm:max-w-[550px]">
-        <DialogHeader>
-          <DialogTitle>新增製程</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="processName">製程</Label>
-            <Input
-              id="processName"
-              value={newProcess.process}
-              onChange={(e) => setNewProcess({ ...newProcess, process: e.target.value })}
-              placeholder="輸入製程名稱"
-            />
+  const ProcessDialog = React.memo(() => {
+    // 使用本地狀態來管理表單輸入，避免父組件狀態更新導致重新渲染
+    const [localProcess, setLocalProcess] = useState<Omit<ProcessRecord, "id">>(() => ({
+      process: newProcess.process,
+      vendor: newProcess.vendor,
+      capacity: newProcess.capacity,
+      requirements: newProcess.requirements,
+      report: newProcess.report,
+    }))
+
+    // 當對話框打開時，同步外部狀態到本地狀態
+    useEffect(() => {
+      if (isProcessDialogOpen) {
+        setLocalProcess({
+          process: newProcess.process,
+          vendor: newProcess.vendor,
+          capacity: newProcess.capacity,
+          requirements: newProcess.requirements,
+          report: newProcess.report,
+        })
+      }
+    }, [
+      isProcessDialogOpen,
+      newProcess.process,
+      newProcess.vendor,
+      newProcess.capacity,
+      newProcess.requirements,
+      newProcess.report,
+    ])
+
+    // 處理本地表單提交
+    const handleLocalSubmit = () => {
+      // 更新外部狀態
+      setNewProcess({
+        id: "",
+        process: localProcess.process,
+        vendor: localProcess.vendor,
+        capacity: localProcess.capacity,
+        requirements: localProcess.requirements,
+        report: localProcess.report,
+      })
+
+      // 調用添加製程函數
+      handleAddProcess()
+    }
+
+    return (
+      <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>新增製程</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="processName">製程</Label>
+              <Input
+                id="processName"
+                value={localProcess.process}
+                onChange={(e) => setLocalProcess((prev) => ({ ...prev, process: e.target.value }))}
+                placeholder="輸入製程名稱"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="processVendor">廠商</Label>
+              <Input
+                id="processVendor"
+                value={localProcess.vendor}
+                onChange={(e) => setLocalProcess((prev) => ({ ...prev, vendor: e.target.value }))}
+                placeholder="輸入廠商名稱"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="processCapacity">產能(SH)</Label>
+              <Input
+                id="processCapacity"
+                value={localProcess.capacity}
+                onChange={(e) => setLocalProcess((prev) => ({ ...prev, capacity: e.target.value }))}
+                placeholder="輸入產能數值"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="processRequirements">要求</Label>
+              <Input
+                id="processRequirements"
+                value={localProcess.requirements}
+                onChange={(e) => setLocalProcess((prev) => ({ ...prev, requirements: e.target.value }))}
+                placeholder="輸入製程要求"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="processReport">報告</Label>
+              <Input
+                id="processReport"
+                value={localProcess.report}
+                onChange={(e) => setLocalProcess((prev) => ({ ...prev, report: e.target.value }))}
+                placeholder="輸入報告名稱"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="processVendor">廠商</Label>
-            <Input
-              id="processVendor"
-              value={newProcess.vendor}
-              onChange={(e) => setNewProcess({ ...newProcess, vendor: e.target.value })}
-              placeholder="輸入廠商名稱"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="processCapacity">產能(SH)</Label>
-            <Input
-              id="processCapacity"
-              value={newProcess.capacity}
-              onChange={(e) => setNewProcess({ ...newProcess, capacity: e.target.value })}
-              placeholder="輸入產能數值"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="processRequirements">要求</Label>
-            <Input
-              id="processRequirements"
-              value={newProcess.requirements}
-              onChange={(e) => setNewProcess({ ...newProcess, requirements: e.target.value })}
-              placeholder="輸入製程要求"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="processReport">報告</Label>
-            <Input
-              id="processReport"
-              value={newProcess.report}
-              onChange={(e) => setNewProcess({ ...newProcess, report: e.target.value })}
-              placeholder="輸入報告名稱"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setIsProcessDialogOpen(false)}>
-            取消
-          </Button>
-          <Button type="button" onClick={handleAddProcess}>
-            新增製程
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsProcessDialogOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" onClick={handleLocalSubmit}>
+              新增製程
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  })
 
   const SpecialReqDialog = () => (
     <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
@@ -786,10 +839,11 @@ export function ProductForm({
       report: newProcess.report,
     }
 
+    // First add the process data
     setProduct((prev) => {
       const updatedProcessData = [...(prev.processData || []), processRecord]
 
-      // 更新訂單和採購單要求
+      // Then generate requirements
       const { orderReqs, purchaseReqs } = generateRequirements(updatedProcessData)
 
       return {
@@ -800,6 +854,7 @@ export function ProductForm({
       }
     })
 
+    // Reset the new process form
     setNewProcess({
       id: "",
       process: "",
@@ -808,6 +863,8 @@ export function ProductForm({
       requirements: "",
       report: "",
     })
+
+    // Close the dialog
     setIsProcessDialogOpen(false)
   }
 
@@ -816,7 +873,7 @@ export function ProductForm({
     setProduct((prev) => {
       const updatedProcessData = (prev.processData || []).filter((proc) => proc.id !== id)
 
-      // 更新訂單和採購單要求
+      // Generate requirements after removal
       const { orderReqs, purchaseReqs } = generateRequirements(updatedProcessData)
 
       return {
@@ -830,6 +887,7 @@ export function ProductForm({
 
   // 處理製程資料欄位變更
   const handleProcessFieldChange = (id: string, field: keyof ProcessRecord, value: string) => {
+    // Only update the process data without regenerating requirements
     setProduct((prev) => {
       const updatedProcessData = (prev.processData || []).map((proc) => {
         if (proc.id === id) {
@@ -838,12 +896,20 @@ export function ProductForm({
         return proc
       })
 
-      // 更新訂單和採購單要求
-      const { orderReqs, purchaseReqs } = generateRequirements(updatedProcessData)
-
       return {
         ...prev,
         processData: updatedProcessData,
+      }
+    })
+  }
+
+  // Now, let's add a new function to manually regenerate requirements
+  // Add this function after handleProcessFieldChange:
+  const regenerateRequirements = () => {
+    setProduct((prev) => {
+      const { orderReqs, purchaseReqs } = generateRequirements(prev.processData || [])
+      return {
+        ...prev,
         orderRequirements: orderReqs,
         purchaseRequirements: purchaseReqs,
       }
@@ -1165,11 +1231,9 @@ export function ProductForm({
       .map((proc) => `${proc.process}：${proc.requirements}`)
       .join("\n")
 
-    // 採購單零件要求 - 只包含特定製程的要求
-    // 這裡我們假設只需要包含材料、熱處理、電鍍、篩選等關鍵製程
-    const keyProcesses = ["材料", "熱處理", "電鍍", "篩選"]
+    // 採購單零件要求 - 也包含所有製程的要求
     const purchaseReqs = processData
-      .filter((proc) => proc.requirements && keyProcesses.includes(proc.process))
+      .filter((proc) => proc.requirements)
       .map((proc) => `${proc.process}：${proc.requirements}`)
       .join("\n")
 
@@ -1611,22 +1675,6 @@ export function ProductForm({
               </div>
             </div>
           </div>
-
-          {/* 組裝產品開關 - Remove this section
-<div className="space-y-2 pt-4">
-  <div className="flex items-center space-x-2">
-    <Switch
-      id="is-assembly"
-      checked={product.isAssembly || false}
-      onCheckedChange={(checked) => handleInputChange("isAssembly", checked)}
-    />
-    <Label htmlFor="is-assembly">這是一個組裝產品</Label>
-  </div>
-  <p className="text-sm text-gray-500">
-    組裝產品由多個組件組成，可能來自不同工廠。啟用此選項可以管理組件和計算組裝成本。
-  </p>
-</div>
-*/}
 
           {/* 產品描述 */}
           <div className="space-y-2 pt-4">
@@ -2148,10 +2196,15 @@ export function ProductForm({
                                 />
                               </td>
                               <td className="border px-4 py-2">
-                                <Input
+                                <Textarea
                                   value={process.requirements}
                                   onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}
-                                  className="border-0 bg-transparent"
+                                  className="border-0 bg-transparent min-h-[40px] overflow-hidden resize-none"
+                                  onInput={(e) => {
+                                    const target = e.target as HTMLTextAreaElement
+                                    target.style.height = "auto"
+                                    target.style.height = `${target.scrollHeight}px`
+                                  }}
                                 />
                               </td>
                               <td className="border px-4 py-2">
@@ -2193,13 +2246,18 @@ export function ProductForm({
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">訂單零件要求</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">訂單零件要求</h3>
+                      <Button type="button" size="sm" variant="outline" onClick={regenerateRequirements}>
+                        <span className="mr-1">↻</span> 重新生成
+                      </Button>
+                    </div>
                     <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
                       <Textarea
                         value={product.orderRequirements || ""}
                         onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
                         rows={8}
-                        placeholder="製程資料填寫後將自動生成訂單零件要求"
+                        placeholder="點擊「重新生成」按鈕從製程資料生成訂單零件要求"
                         className="bg-transparent border-0 focus-visible:ring-0 resize-none"
                       />
                     </div>
@@ -2211,13 +2269,18 @@ export function ProductForm({
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">採購零件要求</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">採購零件要求</h3>
+                      <Button type="button" size="sm" variant="outline" onClick={regenerateRequirements}>
+                        <span className="mr-1">↻</span> 重新生成
+                      </Button>
+                    </div>
                     <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
                       <Textarea
                         value={product.purchaseRequirements || ""}
                         onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
                         rows={8}
-                        placeholder="製程資料填寫後將自動生成採購零件要求"
+                        placeholder="點擊「重新生成」按鈕從製程資料生成採購零件要求"
                         className="bg-transparent border-0 focus-visible:ring-0 resize-none"
                       />
                     </div>
@@ -2585,4 +2648,5 @@ export function ProductForm({
   )
 }
 
+// Also export as default for compatibility with existing imports
 export default ProductForm
