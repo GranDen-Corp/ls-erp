@@ -63,7 +63,7 @@ export const columns: ColumnDef<Product>[] = [
           {product.isAssembly && (
             <Badge className="ml-2 bg-purple-500 text-white">
               <Layers className="h-3 w-3 mr-1" />
-              組裝
+              組合
             </Badge>
           )}
         </div>

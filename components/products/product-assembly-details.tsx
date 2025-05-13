@@ -1,128 +1,150 @@
 "use client"
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { ProductComponent } from "@/types/assembly-product"
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Loader2 } from "lucide-react"
 
 interface ProductAssemblyDetailsProps {
-  isAssembly: boolean
-  components: ProductComponent[]
-  assemblyTime: number
-  assemblyCostPerHour: number
-  additionalCosts: number
+  productId: string
 }
 
-export function ProductAssemblyDetails({
-  isAssembly,
-  components,
-  assemblyTime,
-  assemblyCostPerHour,
-  additionalCosts,
-}: ProductAssemblyDetailsProps) {
-  if (!isAssembly) {
-    return null
+interface ComponentPart {
+  part_number: string
+  description: string
+  component_name?: string
+  quantity?: number
+}
+
+export function ProductAssemblyDetails({ productId }: ProductAssemblyDetailsProps) {
+  const [components, setComponents] = useState<ComponentPart[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    const fetchAssemblyDetails = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // 獲取產品資料
+        const { data: product, error: productError } = await supabase
+          .from("products")
+          .select("pid_part_no")
+          .eq("part_no", productId)
+          .single()
+
+        if (productError) {
+          throw new Error(`獲取產品資料時出錯: ${productError.message}`)
+        }
+
+        if (!product || !product.pid_part_no) {
+          setComponents([])
+          return
+        }
+
+        // 解析組合部件
+        let componentParts: ComponentPart[] = []
+        if (typeof product.pid_part_no === "string") {
+          try {
+            componentParts = JSON.parse(product.pid_part_no)
+          } catch (e) {
+            console.error("解析組合部件時出錯:", e)
+            componentParts = []
+          }
+        } else if (Array.isArray(product.pid_part_no)) {
+          componentParts = product.pid_part_no
+        }
+
+        // 獲取所有部件的詳細資訊
+        if (componentParts.length > 0) {
+          const partNumbers = componentParts
+            .map((part) => (typeof part === "string" ? part : part.part_number))
+            .filter(Boolean)
+
+          if (partNumbers.length > 0) {
+            const { data: partsData, error: partsError } = await supabase
+              .from("products")
+              .select("part_no, component_name")
+              .in("part_no", partNumbers)
+
+            if (partsError) {
+              console.warn("獲取部件詳細資訊時出錯:", partsError)
+            } else if (partsData) {
+              // 將部件詳細資訊合併到組件列表中
+              componentParts = componentParts.map((part) => {
+                const partNo = typeof part === "string" ? part : part.part_number
+                const partData = partsData.find((p) => p.part_no === partNo)
+
+                if (typeof part === "string") {
+                  return {
+                    part_number: part,
+                    description: "",
+                    component_name: partData?.component_name || "",
+                  }
+                }
+
+                return {
+                  ...part,
+                  component_name: partData?.component_name || "",
+                }
+              })
+            }
+          }
+        }
+
+        setComponents(componentParts)
+      } catch (err) {
+        console.error("獲取組合詳情時出錯:", err)
+        setError(err instanceof Error ? err.message : "獲取組合詳情時出錯")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (productId) {
+      fetchAssemblyDetails()
+    }
+  }, [productId, supabase])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    )
   }
 
-  // 計算組裝產品總成本
-  const calculateTotalCost = () => {
-    // 組件成本
-    const componentsCost = components.reduce((sum, component) => {
-      return sum + component.quantity * component.unitPrice
-    }, 0)
+  if (error) {
+    return <div className="text-red-500 py-4">{error}</div>
+  }
 
-    // 組裝人工成本
-    const laborCost = (assemblyTime / 60) * assemblyCostPerHour
-
-    // 總成本 = 組件成本 + 人工成本 + 額外成本
-    return componentsCost + laborCost + additionalCosts
+  if (components.length === 0) {
+    return <div className="text-gray-500 py-4">此產品沒有組合部件資訊</div>
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>組裝產品資訊</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500">組裝時間</p>
-              <p>{assemblyTime} 分鐘</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">組裝人工成本</p>
-              <p>{assemblyCostPerHour.toFixed(2)} USD/小時</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">額外成本</p>
-              <p>{additionalCosts.toFixed(2)} USD</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-md font-medium">組件清單</h3>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>產品編號</TableHead>
-                    <TableHead>產品名稱</TableHead>
-                    <TableHead>工廠</TableHead>
-                    <TableHead className="text-right">數量</TableHead>
-                    <TableHead className="text-right">單價 (USD)</TableHead>
-                    <TableHead className="text-right">金額 (USD)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {components.map((component) => (
-                    <TableRow key={component.id}>
-                      <TableCell>{component.productPN}</TableCell>
-                      <TableCell>{component.productName}</TableCell>
-                      <TableCell>{component.factoryName}</TableCell>
-                      <TableCell className="text-right">{component.quantity}</TableCell>
-                      <TableCell className="text-right">{component.unitPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        {(component.quantity * component.unitPrice).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {components.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
-                        尚未添加任何組件
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <div className="w-72 space-y-1">
-              <div className="flex justify-between">
-                <span>組件成本:</span>
-                <span>
-                  {components.reduce((sum, component) => sum + component.quantity * component.unitPrice, 0).toFixed(2)}{" "}
-                  USD
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>組裝人工成本:</span>
-                <span>{((assemblyTime / 60) * assemblyCostPerHour).toFixed(2)} USD</span>
-              </div>
-              <div className="flex justify-between">
-                <span>額外成本:</span>
-                <span>{additionalCosts.toFixed(2)} USD</span>
-              </div>
-              <div className="flex justify-between font-bold">
-                <span>總成本:</span>
-                <span>{calculateTotalCost().toFixed(2)} USD</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border px-4 py-2 text-left">部件編號</th>
+              <th className="border px-4 py-2 text-left">部件名稱</th>
+              <th className="border px-4 py-2 text-left">部件描述</th>
+            </tr>
+          </thead>
+          <tbody>
+            {components.map((component, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="border px-4 py-2">{component.part_number}</td>
+                <td className="border px-4 py-2">{component.component_name || "-"}</td>
+                <td className="border px-4 py-2">{component.description || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }

@@ -13,8 +13,12 @@ import { ProductAssemblyDetails } from "@/components/products/product-assembly-d
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
-export default async function ProductDetailPage({ params }: { params: { id: string } }) {
+export default async function ProductDetailPage({
+  params,
+  searchParams,
+}: { params: { id: string }; searchParams: { tab?: string } }) {
   const productId = decodeURIComponent(params.id)
+  const defaultTab = searchParams.tab || "specifications"
 
   // 使用服務器端 Supabase 客戶端獲取產品詳情
   const supabase = createServerComponentClient({ cookies })
@@ -49,6 +53,21 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         isThumbnail: true,
       },
     ]
+  }
+
+  // 處理組合產品部件
+  let assemblyComponents = []
+  try {
+    if (product.pid_part_no) {
+      if (typeof product.pid_part_no === "string") {
+        assemblyComponents = JSON.parse(product.pid_part_no)
+      } else {
+        assemblyComponents = product.pid_part_no
+      }
+    }
+  } catch (e) {
+    console.error("解析組合產品部件時出錯:", e)
+    assemblyComponents = []
   }
 
   return (
@@ -111,6 +130,52 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                 <dt className="text-sm font-medium text-gray-500">最近訂單日期</dt>
                 <dd className="mt-1 text-sm text-gray-900">{product.last_order_date || "-"}</dd>
               </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">規格</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.specification || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">海關碼</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.customs_code || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">終端客戶</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.end_customer || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">分類碼</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.classification_code || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">車廠圖號</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.vehicle_drawing_no || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">客戶圖號</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.customer_drawing_no || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">產品期稿</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.product_period || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">創建日期</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.created_date || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">MOQ</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.moq || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">交貨時間</dt>
+                <dd className="mt-1 text-sm text-gray-900">{product.lead_time || "-"}</dd>
+              </div>
+              {product.is_assembly && (
+                <div className="col-span-2">
+                  <dt className="text-sm font-medium text-gray-500">組合產品</dt>
+                  <dd className="mt-1 text-sm text-gray-900">是</dd>
+                </div>
+              )}
             </dl>
           </CardContent>
         </Card>
@@ -125,13 +190,55 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         </Card>
       </div>
 
-      <Tabs defaultValue="specifications" className="w-full">
+      {product.is_assembly && assemblyComponents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>組合部件</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-4 py-2 text-left">部件編號</th>
+                    <th className="border px-4 py-2 text-left">部件描述</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assemblyComponents.map((component, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="border px-4 py-2">
+                        {component.part_number || (typeof component === "string" ? component : "-")}
+                      </td>
+                      <td className="border px-4 py-2">{component.description || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>產品描述</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-900">{product.description || "無產品描述"}</p>
+        </CardContent>
+      </Card>
+
+      <Tabs
+        defaultValue={product.is_assembly && defaultTab === "assembly" ? "assembly" : defaultTab}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="specifications">規格</TabsTrigger>
           <TabsTrigger value="orders">訂單歷史</TabsTrigger>
           <TabsTrigger value="price">價格歷史</TabsTrigger>
           <TabsTrigger value="complaints">投訴記錄</TabsTrigger>
-          {product.is_assembly && <TabsTrigger value="assembly">組裝詳情</TabsTrigger>}
+          {product.is_assembly && <TabsTrigger value="assembly">組合詳情</TabsTrigger>}
         </TabsList>
         <TabsContent value="specifications">
           <Card>
@@ -177,7 +284,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           <TabsContent value="assembly">
             <Card>
               <CardHeader>
-                <CardTitle>組裝詳情</CardTitle>
+                <CardTitle>組合詳情</CardTitle>
               </CardHeader>
               <CardContent>
                 <ProductAssemblyDetails productId={product.part_no} />

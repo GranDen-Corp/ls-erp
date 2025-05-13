@@ -167,60 +167,40 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
   const parseAssemblyParts = (product: Product) => {
     if (!product.is_assembly || !product.pid_part_no) return []
 
-    let partNumbers: string[] = []
+    let components: Array<{ part_number?: string; description?: string }> = []
 
     try {
       // 處理不同格式的 pid_part_no
       if (Array.isArray(product.pid_part_no)) {
-        // 如果是數組，提取每個元素的 part_no 或直接使用元素值
-        partNumbers = product.pid_part_no.map((item) => {
-          if (typeof item === "object" && item !== null && "part_no" in item) {
-            return item.part_no
-          }
-          return String(item)
-        })
+        // 如果是數組，直接使用
+        components = product.pid_part_no
       } else if (typeof product.pid_part_no === "string") {
         // 如果是字符串，嘗試解析為 JSON
         try {
           const parsed = JSON.parse(product.pid_part_no)
           if (Array.isArray(parsed)) {
-            partNumbers = parsed.map((item) => {
-              if (typeof item === "object" && item !== null && "part_no" in item) {
-                return item.part_no
-              }
-              return String(item)
-            })
-          } else {
-            partNumbers = [product.pid_part_no]
+            components = parsed
           }
         } catch (e) {
-          // 如果不是有效的 JSON，則直接使用字符串
-          partNumbers = [product.pid_part_no]
+          console.error("解析 pid_part_no 字符串時出錯:", e)
         }
       } else if (product.pid_part_no && typeof product.pid_part_no === "object") {
-        // 如果是對象，提取 part_no 屬性或所有值
-        if ("part_no" in product.pid_part_no) {
-          partNumbers = [product.pid_part_no.part_no]
-        } else {
-          partNumbers = Object.values(product.pid_part_no).map((item) => {
-            if (typeof item === "object" && item !== null && "part_no" in item) {
-              return item.part_no
-            }
-            return String(item)
-          })
-        }
+        // 如果是單個對象，放入數組
+        components = [product.pid_part_no]
       }
     } catch (e) {
-      console.error("解析零件編號時出錯:", e, product.pid_part_no)
+      console.error("解析組合部件時出錯:", e, product.pid_part_no)
       return []
     }
 
-    // 查找每個零件的產品名稱
-    return partNumbers.map((partNo) => {
+    // 查找每個部件的產品名稱
+    return components.map((component) => {
+      const partNo = component.part_number || ""
       const componentProduct = processedProducts.find((p) => p.part_no === partNo)
       return {
         partNo,
         componentName: componentProduct?.component_name || "",
+        description: component.description || "",
       }
     })
   }
@@ -352,7 +332,7 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
                       {product.is_assembly && (
                         <Badge className="ml-2 bg-purple-500 text-white">
                           <Layers className="h-3 w-3 mr-1" />
-                          組裝
+                          組合
                         </Badge>
                       )}
                     </TableCell>
@@ -362,11 +342,11 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
                         {product.is_assembly && assemblyParts.length > 0 && (
                           <div className="text-xs text-gray-500 mt-1">
                             {assemblyParts
-                              .filter((part) => part.componentName) // 只顯示有名稱的部件
+                              .filter((part) => part.componentName || part.description) // 只顯示有名稱或描述的部件
                               .map((part, index, filteredArray) => (
                                 <span key={`part-${index}-${part.partNo}`}>
                                   {index > 0 && "; "}
-                                  {part.componentName}
+                                  {part.description || part.componentName}
                                 </span>
                               ))}
                           </div>

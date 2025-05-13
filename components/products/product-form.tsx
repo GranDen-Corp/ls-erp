@@ -1,8 +1,7 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect, useCallback } from "react"
 
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Plus, X } from "lucide-react"
+import { Loader2, Plus, X, Search } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useRouter } from "next/navigation"
@@ -19,6 +18,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 // Add Dialog imports
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 // 產品表單屬性
 interface ProductFormProps {
@@ -28,6 +28,7 @@ interface ProductFormProps {
   initialValues?: any
   isSubmitting?: boolean
   isAssembly?: boolean
+  defaultTab?: string
 }
 
 // 製程資料記錄類型
@@ -88,6 +89,83 @@ interface ProductSpecification {
   value: string
 }
 
+// 產品類型
+interface Product {
+  customer_id: string
+  part_no: string
+  factory_id: string
+  component_name: string
+  specification: string
+  customs_code: string
+  end_customer: string
+  product_type: string
+  classification_code: string
+  vehicle_drawing_no: string
+  customer_drawing_no: string
+  product_period: string
+  description: string
+  status: string
+  created_date: string
+  last_order_date: string
+  last_price: number
+  currency: string
+  specifications: ProductSpecification[]
+  sample_status: string
+  sample_date: string
+  original_drawing_version: string
+  drawing_version: string
+  customer_original_drawing: DocumentRecord
+  jinzhan_drawing: DocumentRecord
+  customer_drawing: DocumentRecord
+  factory_drawing: DocumentRecord
+  customer_drawing_version: string
+  factory_drawing_version: string
+  images: string[]
+  is_assembly: boolean
+  components: string[]
+  assembly_time: number
+  assembly_cost_per_hour: number
+  additional_costs: number
+  important_documents: {
+    PPAP: DocumentRecord
+    PSW: DocumentRecord
+    capacityAnalysis: DocumentRecord
+  }
+  part_management: {
+    safetyPart: boolean
+    automotivePart: boolean
+    CBAMPart: boolean
+    clockRequirement: boolean
+  }
+  compliance_status: {
+    RoHS: ComplianceStatus
+    REACh: ComplianceStatus
+    EUPOP: ComplianceStatus
+    TSCA: ComplianceStatus
+    CP65: ComplianceStatus
+    PFAS: ComplianceStatus
+    CMRT: ComplianceStatus
+    EMRT: ComplianceStatus
+  }
+  edit_notes: Note[]
+  process_data: ProcessRecord[]
+  order_requirements: string
+  purchase_requirements: string
+  special_requirements: Note[]
+  process_notes: Note[]
+  has_mold: boolean
+  mold_cost: string
+  refundable_mold_quantity: string
+  mold_returned: boolean
+  accounting_note: string
+  quality_notes: Note[]
+  order_history: OrderHistoryRecord[]
+  resume_notes: Note[]
+  moq: number
+  lead_time: string
+  packaging_requirements: string
+}
+
 // 默認的空文件對象
 const emptyFileObject = {
   path: "",
@@ -117,6 +195,7 @@ export function ProductForm({
   initialValues,
   isSubmitting = false,
   isAssembly = false,
+  defaultTab = "basic",
 }: ProductFormProps) {
   // 初始化默認產品數據
   const defaultProduct = {
@@ -233,7 +312,7 @@ export function ProductForm({
   }
 
   const [product, setProduct] = useState(safeInitialProduct)
-  const [activeTab, setActiveTab] = useState("basic")
+  const [activeTab, setActiveTab] = useState(defaultTab || "basic")
   const [newNote, setNewNote] = useState({ content: "", date: "", user: "" })
   const [newProcess, setNewProcess] = useState<ProcessRecord>({
     id: "",
@@ -278,6 +357,15 @@ export function ProductForm({
   const router = useRouter()
   const supabase = createClientComponentClient()
 
+  // 新增組合產品相關狀態
+  const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.is_assembly || isAssembly || false)
+  const [selectedComponents, setSelectedComponents] = useState<Array<{ part_number: string; description: string }>>([])
+  const [isComponentSelectorOpen, setIsComponentSelectorOpen] = useState(false)
+  const [componentSearchTerm, setComponentSearchTerm] = useState("")
+  const [availableComponents, setAvailableComponents] = useState<Product[]>([])
+  const [selectedComponentIds, setSelectedComponentIds] = useState<string[]>([])
+  const [loadingComponents, setLoadingComponents] = useState(false)
+
   // 當initialValues變更時更新product
   useEffect(() => {
     if (initialValues) {
@@ -317,7 +405,7 @@ export function ProductForm({
       setProduct((prev) => ({
         ...prev,
         orderRequirements: prev.orderRequirements || orderReqs,
-        purchaseRequirements: prev.purchaseRequirements || purchaseReqs,
+        purchaseRequirements: prev.purchaseReqs,
       }))
     }
   }, [initialValues])
@@ -376,6 +464,118 @@ export function ProductForm({
 
     fetchOptions()
   }, [])
+
+  // 初始化組合產品部件
+  useEffect(() => {
+    if (initialValues?.pid_part_no) {
+      try {
+        let components = []
+        if (typeof initialValues.pid_part_no === "string") {
+          components = JSON.parse(initialValues.pid_part_no)
+        } else if (Array.isArray(initialValues.pid_part_no)) {
+          components = initialValues.pid_part_no
+        }
+
+        if (Array.isArray(components)) {
+          setSelectedComponents(
+            components.map((comp) => {
+              if (typeof comp === "object" && comp.part_number) {
+                return {
+                  part_number: comp.part_number,
+                  description: comp.description || "",
+                }
+              } else if (typeof comp === "string") {
+                return {
+                  part_number: comp,
+                  description: "",
+                }
+              }
+              return comp
+            }),
+          )
+        }
+      } catch (e) {
+        console.error("解析組合產品部件時出錯:", e)
+      }
+    }
+  }, [initialValues])
+
+  // 載入可用的組件產品
+  const loadAvailableComponents = useCallback(async () => {
+    setLoadingComponents(true)
+    try {
+      const supabase = createClientComponentClient()
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_assembly", false)
+        .ilike("part_no", `%${componentSearchTerm}%`)
+        .order("part_no")
+        .limit(50)
+
+      if (error) throw error
+      setAvailableComponents(data || [])
+    } catch (error) {
+      console.error("載入可用組件時出錯:", error)
+      toast({
+        title: "錯誤",
+        description: "載入可用組件時出錯",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingComponents(false)
+    }
+  }, [componentSearchTerm, toast])
+
+  // 當搜尋詞變更時載入組件
+  useEffect(() => {
+    if (isComponentSelectorOpen) {
+      loadAvailableComponents()
+    }
+  }, [isComponentSelectorOpen, loadAvailableComponents])
+
+  // 打開組件選擇器
+  const openComponentSelector = () => {
+    setComponentSearchTerm("")
+    setIsComponentSelectorOpen(true)
+  }
+
+  // 選擇組件
+  const toggleComponentSelection = (component: Product) => {
+    setSelectedComponentIds((prev) => {
+      if (prev.includes(component.part_no)) {
+        return prev.filter((id) => id !== component.part_no)
+      } else {
+        return [...prev, component.part_no]
+      }
+    })
+  }
+
+  // 確認選擇組件
+  const confirmComponentSelection = () => {
+    const newComponents = selectedComponentIds.map((partNo) => {
+      const component = availableComponents.find((c) => c.part_no === partNo)
+      return {
+        part_number: partNo,
+        description: component?.component_name || "",
+      }
+    })
+
+    setSelectedComponents((prev) => {
+      // 合併現有和新選擇的組件，避免重複
+      const existingPartNumbers = prev.map((p) => p.part_number)
+      const uniqueNewComponents = newComponents.filter((c) => !existingPartNumbers.includes(c.part_number))
+      return [...prev, ...uniqueNewComponents]
+    })
+
+    setSelectedComponentIds([])
+    setIsComponentSelectorOpen(false)
+  }
+
+  // 移除已選擇的組件
+  const removeComponent = (partNumber: string) => {
+    setSelectedComponents((prev) => prev.filter((comp) => comp.part_number !== partNumber))
+  }
 
   // 在組件頂部添加
   // Remove the debounceTimer reference since we're not using it anymore
@@ -1243,7 +1443,7 @@ export function ProductForm({
     }
   }
 
-  // 提交表單
+  // 修改提交處理函數，添加組合產品相關邏輯
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -1333,7 +1533,7 @@ export function ProductForm({
         images: product.images,
 
         // 組裝資訊
-        is_assembly: product.isAssembly,
+        is_assembly: isCompositeProduct,
         components: product.components,
         assembly_time: product.assemblyTime,
         assembly_cost_per_hour: product.assemblyCostPerHour,
@@ -1366,6 +1566,9 @@ export function ProductForm({
         moq: product.moq,
         lead_time: product.leadTime,
         packaging_requirements: product.packagingRequirements,
+
+        // 組合產品相關欄位
+        pid_part_no: isCompositeProduct ? selectedComponents : null,
       }
 
       // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
@@ -1408,6 +1611,68 @@ export function ProductForm({
     }
   }
 
+  // 組件選擇器對話框
+  const ComponentSelectorDialog = () => (
+    <Dialog open={isComponentSelectorOpen} onOpenChange={setIsComponentSelectorOpen}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>選擇組件產品</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Input
+              placeholder="搜尋產品編號或名稱..."
+              value={componentSearchTerm}
+              onChange={(e) => setComponentSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="button" onClick={loadAvailableComponents} disabled={loadingComponents}>
+              {loadingComponents ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <ScrollArea className="h-[300px] border rounded-md p-2">
+            {loadingComponents ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : availableComponents.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">沒有找到符合條件的產品</div>
+            ) : (
+              <div className="space-y-2">
+                {availableComponents.map((component) => (
+                  <div
+                    key={component.part_no}
+                    className={`flex items-center justify-between p-2 rounded-md ${
+                      selectedComponentIds.includes(component.part_no) ? "bg-blue-50" : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{component.part_no}</div>
+                      <div className="text-sm text-gray-500">{component.component_name}</div>
+                    </div>
+                    <Checkbox
+                      checked={selectedComponentIds.includes(component.part_no)}
+                      onCheckedChange={() => toggleComponentSelection(component)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsComponentSelectorOpen(false)}>
+            取消
+          </Button>
+          <Button type="button" onClick={confirmComponentSelection} disabled={selectedComponentIds.length === 0}>
+            確認選擇 ({selectedComponentIds.length})
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   // 如果正在加載產品數據，顯示加載狀態
   if (isLoading) {
     return (
@@ -1423,8 +1688,9 @@ export function ProductForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
+          <TabsTrigger value="composite">組合產品</TabsTrigger>
           <TabsTrigger value="images">產品圖片</TabsTrigger>
           <TabsTrigger value="documents">文件與認證</TabsTrigger>
           <TabsTrigger value="process">製程資料</TabsTrigger>
@@ -1689,7 +1955,77 @@ export function ProductForm({
           </div>
         </TabsContent>
 
-        {/* 產品圖片頁籤 */}
+        {/* 新增的組合產品頁籤 */}
+        <TabsContent value="composite" className="space-y-6 pt-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isCompositeProduct"
+                    checked={isCompositeProduct}
+                    onCheckedChange={(checked) => setIsCompositeProduct(checked === true)}
+                  />
+                  <Label htmlFor="isCompositeProduct" className="font-medium">
+                    是否把此商品轉換成組合商品
+                  </Label>
+                </div>
+
+                {isCompositeProduct && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">組件產品列表</h3>
+                      <Button type="button" onClick={openComponentSelector}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        選擇組件
+                      </Button>
+                    </div>
+
+                    {selectedComponents.length === 0 ? (
+                      <div className="text-center py-8 border rounded-md text-gray-500">尚未選擇任何組件產品</div>
+                    ) : (
+                      <div className="border rounded-md overflow-hidden">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left">產品編號</th>
+                              <th className="px-4 py-2 text-left">產品描述</th>
+                              <th className="px-4 py-2 text-center w-20">操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedComponents.map((component, index) => (
+                              <tr key={index} className="border-t">
+                                <td className="px-4 py-2 font-medium">{component.part_number}</td>
+                                <td className="px-4 py-2">{component.description}</td>
+                                <td className="px-4 py-2 text-center">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeComponent(component.part_number)}
+                                  >
+                                    <X className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    <div className="text-sm text-gray-500">
+                      注意：組合產品將由上述選擇的組件組成。請確保所有必要的組件都已添加。
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 其他頁籤保持原有內容 */}
         <TabsContent value="images" className="space-y-4 pt-4">
           <div className="grid grid-cols-1 gap-6">
             {/* 圖面資訊 */}
@@ -2627,6 +2963,8 @@ export function ProductForm({
         <ResumeNoteDialog />
         <PartManagementDialog />
         <ComplianceDialog />
+        {/* 組件選擇器對話框 */}
+        <ComponentSelectorDialog />
       </Tabs>
 
       <div className="flex justify-end space-x-2">

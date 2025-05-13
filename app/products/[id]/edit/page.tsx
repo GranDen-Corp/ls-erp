@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { ProductForm } from "@/components/products/product-form"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { supabaseClient } from "@/lib/supabase-client"
@@ -19,6 +19,8 @@ interface ProductEditPageProps {
 export default function ProductEditPage({ params }: ProductEditPageProps) {
   const { id } = params
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const defaultTab = searchParams.get("tab") || "basic"
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [productData, setProductData] = useState<any>(null)
@@ -203,6 +205,7 @@ export default function ProductEditPage({ params }: ProductEditPageProps) {
               onSubmit={handleSubmit}
               initialValues={productData}
               isSubmitting={isSubmitting}
+              defaultTab={defaultTab}
             />
           )}
         </CardContent>
