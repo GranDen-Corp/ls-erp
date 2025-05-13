@@ -11,9 +11,10 @@ import Link from "next/link"
 interface ProductComponentsInfoProps {
   isAssembly: boolean
   pidPartNo: any // 接受不同格式的 pid_part_no 數據
+  customerId?: string // 產品的客戶ID
 }
 
-export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponentsInfoProps) {
+export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: ProductComponentsInfoProps) {
   const [components, setComponents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
@@ -77,10 +78,15 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponen
         }
 
         // 從數據庫中獲取部件詳細信息
-        const { data, error } = await supabase
-          .from("products")
-          .select("part_no, component_name, customer_id, factory_id")
-          .in("part_no", partNumbers)
+        // 只使用 part_no 和 customer_id 進行查詢
+        let query = supabase.from("products").select("part_no, component_name, customer_id").in("part_no", partNumbers)
+
+        // 如果有客戶ID，則添加客戶ID過濾條件
+        if (customerId) {
+          query = query.eq("customer_id", customerId)
+        }
+
+        const { data, error } = await query
 
         if (error) {
           console.error("獲取部件詳細信息時出錯:", error)
@@ -88,7 +94,11 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponen
         } else {
           // 將查詢結果與原始 pid_part_no 數據合併
           const mergedComponents = partNumbers.map((partNo) => {
-            const componentDetails = data?.find((item) => item.part_no === partNo) || {}
+            // 查找匹配的部件詳情，優先使用相同客戶ID的部件
+            const componentDetails =
+              data?.find((item) => item.part_no === partNo && item.customer_id === customerId) ||
+              data?.find((item) => item.part_no === partNo) ||
+              {}
 
             // 查找原始數據中的數量和其他信息
             let quantity = 1
@@ -109,7 +119,6 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponen
               partNo,
               name: componentDetails.component_name || description || "未知部件",
               customerId: componentDetails.customer_id || "-",
-              factoryId: componentDetails.factory_id || "-",
               quantity,
               description,
             }
@@ -126,7 +135,7 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponen
     }
 
     fetchComponentDetails()
-  }, [isAssembly, pidPartNo, supabase])
+  }, [isAssembly, pidPartNo, customerId, supabase])
 
   // 如果不是組合產品，不顯示任何內容
   if (!isAssembly) {
@@ -174,7 +183,6 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponen
                 <TableHead>部件名稱</TableHead>
                 <TableHead>數量</TableHead>
                 <TableHead>客戶</TableHead>
-                <TableHead>工廠</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,7 +204,6 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo }: ProductComponen
                   </TableCell>
                   <TableCell>{component.quantity}</TableCell>
                   <TableCell>{component.customerId}</TableCell>
-                  <TableCell>{component.factoryId}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
