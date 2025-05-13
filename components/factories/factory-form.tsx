@@ -19,8 +19,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // 表單驗證 schema
 const factoryFormSchema = z.object({
-  factory_id: z.string().min(1, { message: "供應商ID不能為空" }),
-  factory_name: z.string().min(1, { message: "供應商名稱不能為空" }),
+  factory_id: z.string().min(1, { message: "供應商編號不能為空" }),
+  factory_name: z.string().optional(),
   factory_full_name: z.string().min(1, { message: "供應商全名不能為空" }),
   factory_address: z.string().optional(),
   factory_phone: z.string().optional(),
@@ -158,7 +158,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
         }
 
         if (existingFactory) {
-          throw new Error(`供應商ID ${data.factory_id} 已存在，請使用其他ID`)
+          throw new Error(`供應商編號 ${data.factory_id} 已存在，請使用其他編號`)
         }
       }
 
@@ -228,12 +228,12 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
                     name="factory_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>供應商ID *</FormLabel>
+                        <FormLabel>供應商編號 *</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入供應商ID" {...field} disabled={!!factoryId || !!factory} />
+                          <Input placeholder="輸入供應商編號" {...field} disabled={!!factoryId || !!factory} />
                         </FormControl>
                         <FormDescription>
-                          {factoryId || factory ? "供應商ID不可修改" : "請輸入唯一的供應商識別碼"}
+                          {factoryId || factory ? "供應商編號不可修改" : "請輸入唯一的供應商識別碼"}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -258,12 +258,12 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="factory_name"
+                    name="factory_full_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>供應商名稱 *</FormLabel>
+                        <FormLabel>供應商全名 *</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入供應商名稱" {...field} />
+                          <Input placeholder="輸入供應商全名" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -272,12 +272,12 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
 
                   <FormField
                     control={form.control}
-                    name="factory_full_name"
+                    name="factory_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>供應商全名 *</FormLabel>
+                        <FormLabel>供應商簡稱</FormLabel>
                         <FormControl>
-                          <Input placeholder="輸入供應商全名" {...field} />
+                          <Input placeholder="輸入供應商簡稱" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

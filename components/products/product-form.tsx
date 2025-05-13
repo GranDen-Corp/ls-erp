@@ -383,6 +383,7 @@ export function ProductForm({
               value={newNote.content}
               onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
               rows={3}
+              placeholder="輸入備註內容"
             />
           </div>
           <div className="space-y-2">
@@ -391,6 +392,7 @@ export function ProductForm({
               id="noteUser"
               value={newNote.user}
               onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
+              placeholder="輸入使用者名稱"
             />
           </div>
           <div className="space-y-2">
@@ -428,6 +430,7 @@ export function ProductForm({
               id="processName"
               value={newProcess.process}
               onChange={(e) => setNewProcess({ ...newProcess, process: e.target.value })}
+              placeholder="輸入製程名稱"
             />
           </div>
           <div className="space-y-2">
@@ -436,6 +439,7 @@ export function ProductForm({
               id="processVendor"
               value={newProcess.vendor}
               onChange={(e) => setNewProcess({ ...newProcess, vendor: e.target.value })}
+              placeholder="輸入廠商名稱"
             />
           </div>
           <div className="space-y-2">
@@ -444,6 +448,7 @@ export function ProductForm({
               id="processCapacity"
               value={newProcess.capacity}
               onChange={(e) => setNewProcess({ ...newProcess, capacity: e.target.value })}
+              placeholder="輸入產能數值"
             />
           </div>
           <div className="space-y-2">
@@ -452,6 +457,7 @@ export function ProductForm({
               id="processRequirements"
               value={newProcess.requirements}
               onChange={(e) => setNewProcess({ ...newProcess, requirements: e.target.value })}
+              placeholder="輸入製程要求"
             />
           </div>
           <div className="space-y-2">
@@ -460,6 +466,7 @@ export function ProductForm({
               id="processReport"
               value={newProcess.report}
               onChange={(e) => setNewProcess({ ...newProcess, report: e.target.value })}
+              placeholder="輸入報告名稱"
             />
           </div>
         </div>
@@ -1372,15 +1379,19 @@ export function ProductForm({
                     id="componentName"
                     value={product.componentName || ""}
                     onChange={(e) => handleInputChange("componentName", e.target.value)}
+                    placeholder="輸入零件名稱"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="specification">規格</Label>
+                  <Label htmlFor="partNo" className="flex items-center">
+                    <span className="text-red-500 mr-1">*</span>Part No.
+                  </Label>
                   <Input
-                    id="specification"
-                    value={product.specification || ""}
-                    onChange={(e) => handleInputChange("specification", e.target.value)}
+                    id="partNo"
+                    value={product.partNo || ""}
+                    onChange={(e) => handleInputChange("partNo", e.target.value)}
+                    placeholder="輸入產品料號"
                   />
                 </div>
 
@@ -1390,6 +1401,7 @@ export function ProductForm({
                     id="customsCode"
                     value={product.customsCode || ""}
                     onChange={(e) => handleInputChange("customsCode", e.target.value)}
+                    placeholder="輸入海關編碼"
                   />
                 </div>
 
@@ -1399,6 +1411,7 @@ export function ProductForm({
                     id="endCustomer"
                     value={product.endCustomer || ""}
                     onChange={(e) => handleInputChange("endCustomer", e.target.value)}
+                    placeholder="輸入終端客戶"
                   />
                 </div>
 
@@ -1534,22 +1547,22 @@ export function ProductForm({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="specification">規格</Label>
+                  <Input
+                    id="specification"
+                    value={product.specification || ""}
+                    onChange={(e) => handleInputChange("specification", e.target.value)}
+                    placeholder="輸入產品規格"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="productType">產品類別</Label>
                   <Input
                     id="productType"
                     value={product.productType || ""}
                     onChange={(e) => handleInputChange("productType", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="partNo" className="flex items-center">
-                    <span className="text-red-500 mr-1">*</span>Part No.
-                  </Label>
-                  <Input
-                    id="partNo"
-                    value={product.partNo || ""}
-                    onChange={(e) => handleInputChange("partNo", e.target.value)}
+                    placeholder="輸入產品類別"
                   />
                 </div>
 
@@ -1559,6 +1572,7 @@ export function ProductForm({
                     id="classificationCode"
                     value={product.classificationCode || ""}
                     onChange={(e) => handleInputChange("classificationCode", e.target.value)}
+                    placeholder="輸入分類代碼"
                   />
                 </div>
 
@@ -1568,6 +1582,7 @@ export function ProductForm({
                     id="vehicleDrawingNo"
                     value={product.vehicleDrawingNo || ""}
                     onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
+                    placeholder="輸入車廠圖號"
                   />
                 </div>
 
@@ -1577,6 +1592,7 @@ export function ProductForm({
                     id="customerDrawingNo"
                     value={product.customerDrawingNo || ""}
                     onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
+                    placeholder="輸入客戶圖號"
                   />
                 </div>
 
@@ -1586,6 +1602,7 @@ export function ProductForm({
                     id="productPeriod"
                     value={product.productPeriod || ""}
                     onChange={(e) => handleInputChange("productPeriod", e.target.value)}
+                    placeholder="輸入產品期稿"
                   />
                 </div>
               </div>
@@ -1616,6 +1633,7 @@ export function ProductForm({
               value={product.description || ""}
               onChange={(e) => handleInputChange("description", e.target.value)}
               rows={3}
+              placeholder="輸入產品詳細描述"
             />
           </div>
         </TabsContent>
@@ -1636,6 +1654,7 @@ export function ProductForm({
                         id="originalDrawingVersion"
                         value={product.originalDrawingVersion || ""}
                         onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
+                        placeholder="輸入原圖版次"
                       />
                     </div>
 
@@ -1683,6 +1702,7 @@ export function ProductForm({
                         id="drawingVersion"
                         value={product.drawingVersion || ""}
                         onChange={(e) => handleInputChange("drawingVersion", e.target.value)}
+                        placeholder="輸入繪圖版次"
                       />
                     </div>
 
@@ -1692,6 +1712,7 @@ export function ProductForm({
                         id="customerDrawingVersion"
                         value={product.customerDrawingVersion || ""}
                         onChange={(e) => handleInputChange("customerDrawingVersion", e.target.value)}
+                        placeholder="輸入客戶圖版次"
                       />
                     </div>
 
@@ -1701,6 +1722,7 @@ export function ProductForm({
                         id="factoryDrawingVersion"
                         value={product.factoryDrawingVersion || ""}
                         onChange={(e) => handleInputChange("factoryDrawingVersion", e.target.value)}
+                        placeholder="輸入工廠圖版次"
                       />
                     </div>
                   </div>
@@ -2167,6 +2189,7 @@ export function ProductForm({
                     value={product.orderRequirements || ""}
                     onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
                     rows={5}
+                    placeholder="輸入訂單零件要求"
                   />
                 </div>
               </CardContent>
@@ -2181,6 +2204,7 @@ export function ProductForm({
                     value={product.purchaseRequirements || ""}
                     onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
                     rows={5}
+                    placeholder="輸入採購零件要求"
                   />
                 </div>
               </CardContent>
@@ -2321,6 +2345,7 @@ export function ProductForm({
                         value={product.moldCost || ""}
                         onChange={(e) => handleInputChange("moldCost", e.target.value)}
                         disabled={!product.hasMold}
+                        placeholder="輸入模具費用"
                       />
                     </div>
 
@@ -2332,6 +2357,7 @@ export function ProductForm({
                         value={product.refundableMoldQuantity || ""}
                         onChange={(e) => handleInputChange("refundableMoldQuantity", e.target.value)}
                         disabled={!product.hasMold}
+                        placeholder="輸入可退模數量"
                       />
                     </div>
                   </div>
@@ -2343,6 +2369,7 @@ export function ProductForm({
                       value={product.accountingNote || ""}
                       onChange={(e) => handleInputChange("accountingNote", e.target.value)}
                       rows={3}
+                      placeholder="輸入會計相關註記"
                     />
                   </div>
                 </div>
@@ -2481,6 +2508,7 @@ export function ProductForm({
                         type="number"
                         value={product.moq || ""}
                         onChange={(e) => handleInputChange("moq", Number.parseInt(e.target.value) || 0)}
+                        placeholder="輸入最小訂購量"
                       />
                     </div>
 
@@ -2502,6 +2530,7 @@ export function ProductForm({
                       value={product.packagingRequirements || ""}
                       onChange={(e) => handleInputChange("packagingRequirements", e.target.value)}
                       rows={3}
+                      placeholder="輸入包裝相關要求"
                     />
                   </div>
                 </div>
