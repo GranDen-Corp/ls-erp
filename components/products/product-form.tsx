@@ -310,6 +310,14 @@ export function ProductForm({
         orderRequirements: prev.orderRequirements || orderReqs,
         purchaseRequirements: prev.purchaseRequirements || purchaseReqs,
       }))
+    } else {
+      // 如果沒有初始值，也要根據默認製程資料生成要求
+      const { orderReqs, purchaseReqs } = generateRequirements(defaultProduct.processData || [])
+      setProduct((prev) => ({
+        ...prev,
+        orderRequirements: prev.orderRequirements || orderReqs,
+        purchaseRequirements: prev.purchaseRequirements || purchaseReqs,
+      }))
     }
   }, [initialValues])
 
@@ -1157,18 +1165,13 @@ export function ProductForm({
       .map((proc) => `${proc.process}：${proc.requirements}`)
       .join("\n")
 
-    // 採購單零件要求 - 特定製程的要求
-    const purchaseReqsMap = new Map<string, string>()
-
-    // 收集所有製程的要求
-    processData.forEach((proc) => {
-      if (proc.requirements) {
-        purchaseReqsMap.set(proc.process, `${proc.process}：${proc.requirements}`)
-      }
-    })
-
-    // 轉換為字符串
-    const purchaseReqs = Array.from(purchaseReqsMap.values()).join("\n")
+    // 採購單零件要求 - 只包含特定製程的要求
+    // 這裡我們假設只需要包含材料、熱處理、電鍍、篩選等關鍵製程
+    const keyProcesses = ["材料", "熱處理", "電鍍", "篩選"]
+    const purchaseReqs = processData
+      .filter((proc) => proc.requirements && keyProcesses.includes(proc.process))
+      .map((proc) => `${proc.process}：${proc.requirements}`)
+      .join("\n")
 
     return {
       orderReqs,
@@ -2107,108 +2110,121 @@ export function ProductForm({
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-6 gap-4">
-                    <div>
-                      <Label>製程</Label>
-                    </div>
-                    <div>
-                      <Label>廠商</Label>
-                    </div>
-                    <div>
-                      <Label>產能(SH)</Label>
-                    </div>
-                    <div>
-                      <Label>要求</Label>
-                    </div>
-                    <div>
-                      <Label>報告</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>操作</Label>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border px-4 py-2 text-left">製程</th>
+                          <th className="border px-4 py-2 text-left">廠商</th>
+                          <th className="border px-4 py-2 text-left">產能(SH)</th>
+                          <th className="border px-4 py-2 text-left">要求</th>
+                          <th className="border px-4 py-2 text-left">報告</th>
+                          <th className="border px-4 py-2 text-center">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {product.processData && product.processData.length > 0 ? (
+                          product.processData.map((process) => (
+                            <tr key={process.id} className="bg-yellow-50 hover:bg-yellow-100">
+                              <td className="border px-4 py-2">
+                                <Input
+                                  value={process.process}
+                                  onChange={(e) => handleProcessFieldChange(process.id, "process", e.target.value)}
+                                  className="border-0 bg-transparent"
+                                />
+                              </td>
+                              <td className="border px-4 py-2">
+                                <Input
+                                  value={process.vendor}
+                                  onChange={(e) => handleProcessFieldChange(process.id, "vendor", e.target.value)}
+                                  className="border-0 bg-transparent"
+                                />
+                              </td>
+                              <td className="border px-4 py-2">
+                                <Input
+                                  value={process.capacity}
+                                  onChange={(e) => handleProcessFieldChange(process.id, "capacity", e.target.value)}
+                                  className="border-0 bg-transparent"
+                                />
+                              </td>
+                              <td className="border px-4 py-2">
+                                <Input
+                                  value={process.requirements}
+                                  onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}
+                                  className="border-0 bg-transparent"
+                                />
+                              </td>
+                              <td className="border px-4 py-2">
+                                <Input
+                                  value={process.report}
+                                  onChange={(e) => handleProcessFieldChange(process.id, "report", e.target.value)}
+                                  className="border-0 bg-transparent"
+                                />
+                              </td>
+                              <td className="border px-4 py-2 text-center">
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleRemoveProcess(process.id)}
+                                >
+                                  刪除
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="border px-4 py-2 text-center text-gray-500">
+                              尚未添加任何製程資料
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 訂單零件要求和採購單零件要求 */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* 訂單零件要求 */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">訂單零件要求</h3>
+                    <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
+                      <Textarea
+                        value={product.orderRequirements || ""}
+                        onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
+                        rows={8}
+                        placeholder="製程資料填寫後將自動生成訂單零件要求"
+                        className="bg-transparent border-0 focus-visible:ring-0 resize-none"
+                      />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  {product.processData && product.processData.length > 0 ? (
-                    product.processData.map((process) => (
-                      <div key={process.id} className="grid grid-cols-6 gap-4 items-center border-b pb-2">
-                        <div>
-                          <Input
-                            value={process.process}
-                            onChange={(e) => handleProcessFieldChange(process.id, "process", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={process.vendor}
-                            onChange={(e) => handleProcessFieldChange(process.id, "vendor", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={process.capacity}
-                            onChange={(e) => handleProcessFieldChange(process.id, "capacity", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={process.requirements}
-                            onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={process.report}
-                            onChange={(e) => handleProcessFieldChange(process.id, "report", e.target.value)}
-                          />
-                        </div>
-                        <div className="text-center">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleRemoveProcess(process.id)}
-                          >
-                            刪除
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何製程資料</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 訂單零件要求 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">訂單零件要求</h3>
-                  <Textarea
-                    value={product.orderRequirements || ""}
-                    onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
-                    rows={5}
-                    placeholder="輸入訂單零件要求"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 採購零件要求 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">採購零件要求</h3>
-                  <Textarea
-                    value={product.purchaseRequirements || ""}
-                    onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
-                    rows={5}
-                    placeholder="輸入採購零件要求"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              {/* 採購零件要求 */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">採購零件要求</h3>
+                    <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
+                      <Textarea
+                        value={product.purchaseRequirements || ""}
+                        onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
+                        rows={8}
+                        placeholder="製程資料填寫後將自動生成採購零件要求"
+                        className="bg-transparent border-0 focus-visible:ring-0 resize-none"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* 特殊要求/測試 */}
             <Card>
