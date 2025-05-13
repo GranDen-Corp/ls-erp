@@ -163,6 +163,68 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
     discontinued: "已停產",
   }
 
+  // 解析組裝件的零件編號和名稱
+  const parseAssemblyParts = (product: Product) => {
+    if (!product.is_assembly || !product.pid_part_no) return []
+
+    let partNumbers: string[] = []
+
+    try {
+      // 處理不同格式的 pid_part_no
+      if (Array.isArray(product.pid_part_no)) {
+        // 如果是數組，提取每個元素的 part_no 或直接使用元素值
+        partNumbers = product.pid_part_no.map((item) => {
+          if (typeof item === "object" && item !== null && "part_no" in item) {
+            return item.part_no
+          }
+          return String(item)
+        })
+      } else if (typeof product.pid_part_no === "string") {
+        // 如果是字符串，嘗試解析為 JSON
+        try {
+          const parsed = JSON.parse(product.pid_part_no)
+          if (Array.isArray(parsed)) {
+            partNumbers = parsed.map((item) => {
+              if (typeof item === "object" && item !== null && "part_no" in item) {
+                return item.part_no
+              }
+              return String(item)
+            })
+          } else {
+            partNumbers = [product.pid_part_no]
+          }
+        } catch (e) {
+          // 如果不是有效的 JSON，則直接使用字符串
+          partNumbers = [product.pid_part_no]
+        }
+      } else if (product.pid_part_no && typeof product.pid_part_no === "object") {
+        // 如果是對象，提取 part_no 屬性或所有值
+        if ("part_no" in product.pid_part_no) {
+          partNumbers = [product.pid_part_no.part_no]
+        } else {
+          partNumbers = Object.values(product.pid_part_no).map((item) => {
+            if (typeof item === "object" && item !== null && "part_no" in item) {
+              return item.part_no
+            }
+            return String(item)
+          })
+        }
+      }
+    } catch (e) {
+      console.error("解析零件編號時出錯:", e, product.pid_part_no)
+      return []
+    }
+
+    // 查找每個零件的產品名稱
+    return partNumbers.map((partNo) => {
+      const componentProduct = processedProducts.find((p) => p.part_no === partNo)
+      return {
+        partNo,
+        componentName: componentProduct?.component_name || "",
+      }
+    })
+  }
+
   // 渲染排序按鈕
   const renderSortButton = (field: SortField, label: string) => (
     <Button variant="ghost" className="p-0 font-semibold" onClick={() => handleSort(field)}>
@@ -265,99 +327,121 @@ export function ProductsTable({ products = [], isLoading = false }: ProductsTabl
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedProducts.map((product) => (
-                <TableRow key={`${product.customer_id}-${product.part_no}-${product.factory_id}`}>
-                  <TableCell>
-                    <ProductImagePreview
-                      images={
-                        product.images || [
-                          {
-                            id: "default",
-                            url: "/diverse-products-still-life.png",
-                            alt: product.component_name || "產品圖片",
-                            isThumbnail: true,
-                          },
-                        ]
-                      }
-                      thumbnailSize="small"
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {product.part_no}
-                    {product.is_assembly && (
-                      <Badge className="ml-2 bg-purple-500 text-white">
-                        <Layers className="h-3 w-3 mr-1" />
-                        組裝
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{product.component_name}</TableCell>
-                  <TableCell>{product.customer_id}</TableCell>
-                  <TableCell>{product.factory_id}</TableCell>
-                  <TableCell>{product.product_type || "-"}</TableCell>
-                  <TableCell>{product.last_price ? `${product.last_price} ${product.currency || ""}` : "-"}</TableCell>
-                  <TableCell>{product.last_order_date || "-"}</TableCell>
-                  <TableCell>
-                    {product.status ? (
-                      <Badge className={`${statusColorMap[product.status] || "bg-gray-500"} text-white`}>
-                        {statusNameMap[product.status] || product.status}
-                      </Badge>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">開啟選單</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>操作</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Link
-                            href={`/products/all/${encodeURIComponent(product.part_no)}`}
-                            className="flex items-center"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看詳情
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link
-                            href={`/products/all/${encodeURIComponent(product.part_no)}/edit`}
-                            className="flex items-center"
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            編輯產品
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link
-                            href={`/products/new?clone=${encodeURIComponent(product.part_no)}`}
-                            className="flex items-center"
-                          >
-                            <Copy className="mr-2 h-4 w-4" />
-                            複製產品
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link
-                            href={`/products/all/${encodeURIComponent(product.part_no)}/inquiry`}
-                            className="flex items-center"
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            生成詢價單
-                          </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              paginatedProducts.map((product) => {
+                const assemblyParts = parseAssemblyParts(product)
+
+                return (
+                  <TableRow key={`${product.customer_id}-${product.part_no}-${product.factory_id}`}>
+                    <TableCell>
+                      <ProductImagePreview
+                        images={
+                          product.images || [
+                            {
+                              id: "default",
+                              url: "/diverse-products-still-life.png",
+                              alt: product.component_name || "產品圖片",
+                              isThumbnail: true,
+                            },
+                          ]
+                        }
+                        thumbnailSize="small"
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {product.part_no}
+                      {product.is_assembly && (
+                        <Badge className="ml-2 bg-purple-500 text-white">
+                          <Layers className="h-3 w-3 mr-1" />
+                          組裝
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        {product.component_name}
+                        {product.is_assembly && assemblyParts.length > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {assemblyParts
+                              .filter((part) => part.componentName) // 只顯示有名稱的部件
+                              .map((part, index, filteredArray) => (
+                                <span key={`part-${index}-${part.partNo}`}>
+                                  {index > 0 && "; "}
+                                  {part.componentName}
+                                </span>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{product.customer_id}</TableCell>
+                    <TableCell>{product.factory_id}</TableCell>
+                    <TableCell>{product.product_type || "-"}</TableCell>
+                    <TableCell>
+                      {product.last_price ? `${product.last_price} ${product.currency || ""}` : "-"}
+                    </TableCell>
+                    <TableCell>{product.last_order_date || "-"}</TableCell>
+                    <TableCell>
+                      {product.status ? (
+                        <Badge className={`${statusColorMap[product.status] || "bg-gray-500"} text-white`}>
+                          {statusNameMap[product.status] || product.status}
+                        </Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">開啟選單</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>操作</DropdownMenuLabel>
+                          <DropdownMenuItem>
+                            <Link
+                              href={`/products/all/${encodeURIComponent(product.part_no)}`}
+                              className="flex items-center"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              查看詳情
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Link
+                              href={`/products/all/${encodeURIComponent(product.part_no)}/edit`}
+                              className="flex items-center"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              編輯產品
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>
+                            <Link
+                              href={`/products/new?clone=${encodeURIComponent(product.part_no)}`}
+                              className="flex items-center"
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              複製產品
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Link
+                              href={`/products/all/${encodeURIComponent(product.part_no)}/inquiry`}
+                              className="flex items-center"
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              生成詢價單
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
