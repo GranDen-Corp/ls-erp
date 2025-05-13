@@ -9,6 +9,7 @@ import { ProductOrderHistory } from "@/components/products/product-order-history
 import { ProductComplaintHistory } from "@/components/products/product-complaint-history"
 import { ProductImagePreview } from "@/components/products/product-image-preview"
 import { ProductPriceHistoryChart } from "@/components/products/product-price-history-chart"
+import { ProductComponentsInfo } from "@/components/products/product-components-info"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
@@ -52,21 +53,6 @@ export default async function ProductDetailPage({
         isThumbnail: true,
       },
     ]
-  }
-
-  // 處理組合產品部件
-  let assemblyComponents = []
-  try {
-    if (product.pid_part_no) {
-      if (typeof product.pid_part_no === "string") {
-        assemblyComponents = JSON.parse(product.pid_part_no)
-      } else {
-        assemblyComponents = product.pid_part_no
-      }
-    }
-  } catch (e) {
-    console.error("解析組合產品部件時出錯:", e)
-    assemblyComponents = []
   }
 
   return (
@@ -189,35 +175,8 @@ export default async function ProductDetailPage({
         </Card>
       </div>
 
-      {product.is_assembly && assemblyComponents.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>組合部件</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2 text-left">部件編號</th>
-                    <th className="border px-4 py-2 text-left">部件描述</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assemblyComponents.map((component, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="border px-4 py-2">
-                        {component.part_number || (typeof component === "string" ? component : "-")}
-                      </td>
-                      <td className="border px-4 py-2">{component.description || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* 組合產品部件資訊 - 只有當產品是組合產品時才顯示 */}
+      <ProductComponentsInfo isAssembly={product.is_assembly} pidPartNo={product.pid_part_no} />
 
       <Card>
         <CardHeader>
