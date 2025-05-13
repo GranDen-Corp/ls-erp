@@ -2,18 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Plus, FileEdit, Eye } from "lucide-react"
+import { ArrowLeft, Plus } from "lucide-react"
 import Link from "next/link"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Product } from "@/types/product"
-import { DataTable } from "@/components/ui/data-table"
 import { useRouter } from "next/navigation"
+import { ProductsTable } from "@/components/products/products-table"
+import { AdvancedFilter, type FilterOption } from "@/components/ui/advanced-filter"
 
 export default function AssemblyProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [filters, setFilters] = useState({})
   const supabase = createClientComponentClient()
   const router = useRouter()
 
@@ -72,67 +73,34 @@ export default function AssemblyProductsPage() {
     }
 
     fetchAssemblyProducts()
-  }, [])
+  }, [filters])
 
-  // 定義表格列
-  const columns = [
+  // 定義篩選選項
+  const filterOptions: FilterOption[] = [
     {
-      accessorKey: "part_no",
-      header: "產品編號",
+      id: "customer",
+      label: "客戶",
+      type: "select",
+      options: [
+        { value: "all", label: "所有客戶" },
+        // 這裡可以動態加載客戶列表
+      ],
     },
     {
-      accessorKey: "component_name",
-      header: "產品名稱",
-    },
-    {
-      accessorKey: "customer_id",
-      header: "客戶",
-    },
-    {
-      accessorKey: "factory_id",
-      header: "工廠",
-    },
-    {
-      accessorKey: "status",
-      header: "狀態",
-    },
-    {
-      id: "actions",
-      cell: ({ row }: { row: { original: Product } }) => {
-        const product = row.original
-
-        // 顯示組件名稱
-        let componentNames = ""
-        if (product.pid_part_no && Array.isArray(product.pid_part_no)) {
-          componentNames = product.pid_part_no
-            .map((comp) => (typeof comp === "object" ? comp.description : ""))
-            .filter((name) => name)
-            .join(", ")
-        }
-
-        return (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/products/all/${encodeURIComponent(product.part_no)}?tab=assembly`)}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              詳情
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/products/${encodeURIComponent(product.part_no)}/edit?tab=composite`)}
-            >
-              <FileEdit className="h-4 w-4 mr-1" />
-              編輯
-            </Button>
-          </div>
-        )
-      },
+      id: "status",
+      label: "狀態",
+      type: "select",
+      options: [
+        { value: "active", label: "活躍" },
+        { value: "inactive", label: "非活躍" },
+        { value: "discontinued", label: "已停產" },
+      ],
     },
   ]
+
+  const handleFilterChange = (newFilters: Record<string, any>) => {
+    setFilters(newFilters)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,18 +121,27 @@ export default function AssemblyProductsPage() {
         </Link>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>組合產品列表</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <p className="text-center text-red-500 py-4">{error}</p>
-          ) : (
-            <DataTable columns={columns} data={products} loading={loading} />
-          )}
-        </CardContent>
-      </Card>
+      <div className="rounded-md border">
+        <div className="p-4">
+          <h2 className="text-lg font-medium mb-2">搜尋與篩選</h2>
+          <AdvancedFilter
+            options={filterOptions}
+            onFilterChange={handleFilterChange}
+            placeholder="搜尋產品編號、名稱、客戶或工廠..."
+          />
+        </div>
+      </div>
+
+      {error ? (
+        <p className="text-center text-red-500 py-4">{error}</p>
+      ) : (
+        <ProductsTable
+          products={products}
+          isLoading={loading}
+          onEdit={(product) => router.push(`/products/${encodeURIComponent(product.part_no)}/edit?tab=composite`)}
+          onView={(product) => router.push(`/products/all/${encodeURIComponent(product.part_no)}?tab=assembly`)}
+        />
+      )}
     </div>
   )
 }
