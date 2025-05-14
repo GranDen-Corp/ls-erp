@@ -167,37 +167,37 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
 
   // 解析組合件的零件編號和名稱
   const parseAssemblyParts = (product: Product) => {
-    if (!product.is_assembly || !product.pid_part_no) return []
+    if (!product.is_assembly || !product.sub_part_no) return []
 
-    let components: Array<{ part_number?: string; description?: string }> = []
+    let components: Array<{ part_no?: string; description?: string }> = []
 
     try {
-      // 處理不同格式的 pid_part_no
-      if (Array.isArray(product.pid_part_no)) {
+      // 處理不同格式的 sub_part_no
+      if (Array.isArray(product.sub_part_no)) {
         // 如果是數組，直接使用
-        components = product.pid_part_no
-      } else if (typeof product.pid_part_no === "string") {
+        components = product.sub_part_no
+      } else if (typeof product.sub_part_no === "string") {
         // 如果是字符串，嘗試解析為 JSON
         try {
-          const parsed = JSON.parse(product.pid_part_no)
+          const parsed = JSON.parse(product.sub_part_no)
           if (Array.isArray(parsed)) {
             components = parsed
           }
         } catch (e) {
-          console.error("解析 pid_part_no 字符串時出錯:", e)
+          console.error("解析 sub_part_no 字符串時出錯:", e)
         }
-      } else if (product.pid_part_no && typeof product.pid_part_no === "object") {
+      } else if (product.sub_part_no && typeof product.sub_part_no === "object") {
         // 如果是單個對象，放入數組
-        components = [product.pid_part_no]
+        components = [product.sub_part_no]
       }
     } catch (e) {
-      console.error("解析組合部件時出錯:", e, product.pid_part_no)
+      console.error("解析組合部件時出錯:", e, product.sub_part_no)
       return []
     }
 
     // 查找每個部件的產品名稱
     return components.map((component) => {
-      const partNo = component.part_number || ""
+      const partNo = component.part_no || ""
       const componentProduct = processedProducts.find((p) => p.part_no === partNo)
       return {
         partNo,
@@ -344,11 +344,12 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                         {product.is_assembly && assemblyParts.length > 0 && (
                           <div className="text-xs text-gray-500 mt-1">
                             {assemblyParts
-                              .filter((part) => part.componentName || part.description) // 只顯示有名稱或描述的部件
-                              .map((part, index, filteredArray) => (
+                              .filter((part) => part.partNo) // 只顯示有部件編號的部件
+                              .map((part, index) => (
                                 <span key={`part-${index}-${part.partNo}`}>
                                   {index > 0 && "; "}
-                                  {part.description || part.componentName}
+                                  {part.partNo}
+                                  {part.componentName ? ` (${part.componentName})` : ""}
                                 </span>
                               ))}
                           </div>

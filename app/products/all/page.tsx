@@ -91,21 +91,21 @@ export default function ProductsPage() {
         // 處理產品數據
         const processedProducts =
           data?.map((product) => {
-            let pidPartNo = product.pid_part_no
+            let subPartNo = product.sub_part_no
 
-            // 如果 pid_part_no 是字符串，嘗試解析為 JSON
-            if (typeof pidPartNo === "string") {
+            // 如果 sub_part_no 是字符串，嘗試解析為 JSON
+            if (typeof subPartNo === "string") {
               try {
-                pidPartNo = JSON.parse(pidPartNo)
+                subPartNo = JSON.parse(subPartNo)
               } catch (e) {
-                console.error("解析 pid_part_no 時出錯:", e)
-                pidPartNo = []
+                console.error("解析 sub_part_no 時出錯:", e)
+                subPartNo = []
               }
             }
 
             return {
               ...product,
-              pid_part_no: pidPartNo,
+              sub_part_no: subPartNo,
             }
           }) || []
 

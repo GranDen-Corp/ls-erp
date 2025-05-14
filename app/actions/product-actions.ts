@@ -67,6 +67,7 @@ export async function saveProduct(formData: any) {
       moq: formData.moq,
       lead_time: formData.leadTime,
       packaging_requirements: formData.packagingRequirements,
+      sub_part_no: formData.isCompositeProduct ? formData.selectedComponents : null,
     }
 
     // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄

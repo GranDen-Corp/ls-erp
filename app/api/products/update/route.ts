@@ -68,6 +68,9 @@ export async function POST(request: Request) {
       moq: data.moq,
       lead_time: data.leadTime,
       packaging_requirements: data.packagingRequirements,
+
+      // 組合產品相關欄位
+      sub_part_no: data.isCompositeProduct ? data.selectedComponents : null,
     }
 
     // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄

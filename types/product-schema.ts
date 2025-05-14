@@ -215,4 +215,16 @@ export interface Product {
   moq: number
   leadTime: string
   packagingRequirements: string
+  sub_part_no?:
+    | {
+        id: string
+        productId: string
+        productName: string
+        productPN: string
+        quantity: number
+        unitPrice: number
+        factoryId: string
+        factoryName: string
+      }[]
+    | string
 }

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, FileText } from "lucide-react"
+import { ArrowLeft, FileText, Edit } from "lucide-react"
 import Link from "next/link"
 import { ProductSpecifications } from "@/components/products/product-specifications"
 import { ProductOrderHistory } from "@/components/products/product-order-history"
@@ -55,6 +55,53 @@ export default async function ProductDetailPage({
     ]
   }
 
+  // 解析組合產品的部件列表
+  let subPartsList = ""
+  if (product.is_assembly && product.sub_part_no) {
+    try {
+      let subParts = []
+      if (typeof product.sub_part_no === "string") {
+        try {
+          // 嘗試解析 JSON 字符串
+          const parsed = JSON.parse(product.sub_part_no)
+          if (Array.isArray(parsed)) {
+            subParts = parsed
+              .map((item) => {
+                if (typeof item === "string") return item
+                return item.part_no || item.part_number || ""
+              })
+              .filter(Boolean)
+          } else if (parsed && typeof parsed === "object") {
+            if (parsed.part_no) {
+              subParts = [parsed.part_no]
+            } else if (parsed.part_number) {
+              subParts = [parsed.part_number]
+            }
+          }
+        } catch (e) {
+          // 如果不是 JSON 字符串，則假設它是單個部件編號或逗號分隔的列表
+          if (product.sub_part_no.includes(",")) {
+            subParts = product.sub_part_no.split(",").map((p) => p.trim())
+          } else if (product.sub_part_no.trim()) {
+            subParts = [product.sub_part_no.trim()]
+          }
+        }
+      } else if (Array.isArray(product.sub_part_no)) {
+        subParts = product.sub_part_no
+          .map((item) => {
+            if (typeof item === "string") return item
+            return item.part_no || item.part_number || ""
+          })
+          .filter(Boolean)
+      }
+
+      subPartsList = subParts.join("; ")
+    } catch (e) {
+      console.error("解析部件列表時出錯:", e)
+      subPartsList = ""
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -64,14 +111,25 @@ export default async function ProductDetailPage({
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">{product.component_name || product.part_no}</h1>
+          <div>
+            <h1 className="text-2xl font-bold">{product.component_name || product.part_no}</h1>
+            {product.is_assembly && subPartsList && <p className="text-sm text-gray-500 mt-1">組件: {subPartsList}</p>}
+          </div>
         </div>
-        <Link href={`/products/${productId}/inquiry`}>
-          <Button variant="outline">
-            <FileText className="mr-2 h-4 w-4" />
-            生成詢價單
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/products/${productId}/inquiry`}>
+            <Button variant="outline">
+              <FileText className="mr-2 h-4 w-4" />
+              生成詢價單
+            </Button>
+          </Link>
+          <Link href={`/products/all/${encodeURIComponent(productId)}/edit`}>
+            <Button variant="default">
+              <Edit className="mr-2 h-4 w-4" />
+              編輯產品
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -176,7 +234,7 @@ export default async function ProductDetailPage({
       </div>
 
       {/* 組合產品部件資訊 - 只有當產品是組合產品時才顯示 */}
-      <ProductComponentsInfo isAssembly={product.is_assembly} pidPartNo={product.pid_part_no} />
+      <ProductComponentsInfo isAssembly={product.is_assembly} subPartNo={product.sub_part_no} />
 
       <Card>
         <CardHeader>

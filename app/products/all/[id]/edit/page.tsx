@@ -55,6 +55,7 @@ export default async function EditProductPage({ params }: { params: { id: string
     images: product.images || [],
     isAssembly: product.is_assembly || false,
     components: product.components || [],
+    subPartNo: product.sub_part_no || [],
     assemblyTime: product.assembly_time || 30,
     assemblyCostPerHour: product.assembly_cost_per_hour || 10,
     additionalCosts: product.additional_costs || 0,
@@ -86,6 +87,11 @@ export default async function EditProductPage({ params }: { params: { id: string
     sampleDate: product.sample_date || "",
   }
 
+  console.log("組合產品資訊:", {
+    isAssembly: product.is_assembly,
+    subPartNo: product.sub_part_no,
+  })
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
@@ -102,7 +108,13 @@ export default async function EditProductPage({ params }: { params: { id: string
           <CardTitle>編輯產品資訊</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProductForm productId={productId} initialValues={formattedProduct} isEdit={true} defaultTab="basic" />
+          <ProductForm
+            productId={productId}
+            initialValues={formattedProduct}
+            isEdit={true}
+            defaultTab="basic"
+            isAssembly={product.is_assembly}
+          />
         </CardContent>
       </Card>
     </div>

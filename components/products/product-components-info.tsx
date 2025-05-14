@@ -10,11 +10,11 @@ import Link from "next/link"
 
 interface ProductComponentsInfoProps {
   isAssembly: boolean
-  pidPartNo: any // 接受不同格式的 pid_part_no 數據
+  subPartNo: any // 接受不同格式的 sub_part_no 數據
   customerId?: string // 產品的客戶ID
 }
 
-export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: ProductComponentsInfoProps) {
+export function ProductComponentsInfo({ isAssembly, subPartNo, customerId }: ProductComponentsInfoProps) {
   const [components, setComponents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
@@ -28,33 +28,33 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
         return
       }
 
-      // 如果沒有 pid_part_no 數據，不顯示任何內容
-      if (!pidPartNo) {
+      // 如果沒有 sub_part_no 數據，不顯示任何內容
+      if (!subPartNo) {
         setComponents([])
         setLoading(false)
         return
       }
 
       try {
-        // 解析 pid_part_no 數據
+        // 解析 sub_part_no 數據
         let partNumbers: string[] = []
         let partData: any[] = []
 
-        console.log("原始 pidPartNo 數據:", pidPartNo)
-        console.log("pidPartNo 類型:", typeof pidPartNo)
+        console.log("原始 subPartNo 數據:", subPartNo)
+        console.log("subPartNo 類型:", typeof subPartNo)
 
-        if (Array.isArray(pidPartNo)) {
-          partData = pidPartNo
-          partNumbers = pidPartNo
+        if (Array.isArray(subPartNo)) {
+          partData = subPartNo
+          partNumbers = subPartNo
             .map((item) => {
               if (typeof item === "string") return item
               return item.part_no || item.part_number || ""
             })
             .filter(Boolean)
-        } else if (typeof pidPartNo === "string") {
+        } else if (typeof subPartNo === "string") {
           try {
             // 嘗試解析 JSON 字符串
-            const parsed = JSON.parse(pidPartNo)
+            const parsed = JSON.parse(subPartNo)
             console.log("解析後的 JSON:", parsed)
 
             if (Array.isArray(parsed)) {
@@ -76,21 +76,21 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
           } catch (e) {
             console.error("JSON 解析失敗:", e)
             // 如果不是 JSON 字符串，則假設它是單個部件編號或逗號分隔的列表
-            if (pidPartNo.includes(",")) {
-              const parts = pidPartNo.split(",").map((p) => p.trim())
+            if (subPartNo.includes(",")) {
+              const parts = subPartNo.split(",").map((p) => p.trim())
               partData = parts.map((p) => ({ part_no: p }))
               partNumbers = parts
-            } else if (pidPartNo.trim()) {
-              partData = [{ part_no: pidPartNo.trim() }]
-              partNumbers = [pidPartNo.trim()]
+            } else if (subPartNo.trim()) {
+              partData = [{ part_no: subPartNo.trim() }]
+              partNumbers = [subPartNo.trim()]
             }
           }
-        } else if (pidPartNo && typeof pidPartNo === "object") {
-          partData = [pidPartNo]
-          if (pidPartNo.part_no) {
-            partNumbers = [pidPartNo.part_no]
-          } else if (pidPartNo.part_number) {
-            partNumbers = [pidPartNo.part_number]
+        } else if (subPartNo && typeof subPartNo === "object") {
+          partData = [subPartNo]
+          if (subPartNo.part_no) {
+            partNumbers = [subPartNo.part_no]
+          } else if (subPartNo.part_number) {
+            partNumbers = [subPartNo.part_number]
           }
         }
 
@@ -162,7 +162,7 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
     }
 
     fetchComponentDetails()
-  }, [isAssembly, pidPartNo, customerId, supabase])
+  }, [isAssembly, subPartNo, customerId, supabase])
 
   // 如果不是組合產品，不顯示任何內容
   if (!isAssembly) {

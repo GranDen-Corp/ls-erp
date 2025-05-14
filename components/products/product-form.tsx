@@ -170,7 +170,85 @@ interface Product {
   moq: number
   lead_time: string
   packaging_requirements: string
-  pid_part_no?: ProductComponent[] | string
+  sub_part_no?: ProductComponent[] | string
+}
+
+// 產品表單值類型
+interface ProductFormValues {
+  customer_id: string
+  part_no: string
+  factory_id: string
+  component_name: string
+  specification: string
+  customs_code: string
+  end_customer: string
+  product_type: string
+  classification_code: string
+  vehicle_drawing_no: string
+  customer_drawing_no: string
+  product_period: string
+  description: string
+  status: string
+  created_date: string
+  last_order_date: string
+  last_price: number
+  currency: string
+  specifications: ProductSpecification[]
+  sample_status: string
+  sample_date: string
+  original_drawing_version: string
+  drawing_version: string
+  customer_original_drawing: DocumentRecord
+  jinzhan_drawing: DocumentRecord
+  customer_drawing: DocumentRecord
+  factory_drawing: DocumentRecord
+  customer_drawing_version: string
+  factory_drawing_version: string
+  images: string[]
+  isAssembly: boolean
+  subPartNo?: any
+  components?: any[]
+  assembly_time: number
+  assembly_cost_per_hour: number
+  additional_costs: number
+  important_documents: {
+    PPAP: DocumentRecord
+    PSW: DocumentRecord
+    capacityAnalysis: DocumentRecord
+  }
+  part_management: {
+    safetyPart: boolean
+    automotivePart: boolean
+    CBAMPart: boolean
+    clockRequirement: boolean
+  }
+  compliance_status: {
+    RoHS: ComplianceStatus
+    REACh: ComplianceStatus
+    EUPOP: ComplianceStatus
+    TSCA: ComplianceStatus
+    CP65: ComplianceStatus
+    PFAS: ComplianceStatus
+    CMRT: ComplianceStatus
+    EMRT: ComplianceStatus
+  }
+  edit_notes: Note[]
+  process_data: ProcessRecord[]
+  order_requirements: string
+  purchase_requirements: string
+  special_requirements: Note[]
+  process_notes: Note[]
+  has_mold: boolean
+  mold_cost: string
+  refundable_mold_quantity: string
+  mold_returned: boolean
+  accounting_note: string
+  quality_notes: Note[]
+  order_history: OrderHistoryRecord[]
+  resume_notes: Note[]
+  moq: number
+  lead_time: string
+  packaging_requirements: string
 }
 
 // 默認的空文件對象
@@ -426,7 +504,7 @@ export function ProductForm({
       setProduct((prev) => ({
         ...prev,
         orderRequirements: prev.orderRequirements || orderReqs,
-        purchaseRequirements: prev.purchaseRequirements || purchaseReqs,
+        purchaseRequirements: prev.purchaseReqs,
       }))
     } else {
       // 如果沒有初始值，也要根據默認製程資料生成要求
@@ -497,31 +575,32 @@ export function ProductForm({
   // 初始化組合產品部件
   useEffect(() => {
     // 如果是組合產品，自動勾選 checkbox
-    if (initialValues?.is_assembly) {
+    if (initialValues?.isAssembly || initialValues?.is_assembly) {
       setIsCompositeProduct(true)
 
       // 如果有部件資料，解析並顯示
-      if (initialValues?.pid_part_no) {
+      if (initialValues?.subPartNo || initialValues?.sub_part_no) {
         try {
           let components: ProductComponent[] = []
+          const subPartNoData = initialValues?.subPartNo || initialValues?.sub_part_no
 
-          // 處理不同格式的 pid_part_no
-          if (typeof initialValues.pid_part_no === "string") {
+          // 處理不同格式的 sub_part_no
+          if (typeof subPartNoData === "string") {
             try {
               // 嘗試解析JSON字符串
-              components = JSON.parse(initialValues.pid_part_no)
+              components = JSON.parse(subPartNoData)
             } catch (e) {
-              console.error("解析 pid_part_no 字符串時出錯:", e)
+              console.error("解析 sub_part_no 字符串時出錯:", e)
               // 如果解析失敗，可能是逗號分隔的字符串
-              if (typeof initialValues.pid_part_no === "string" && initialValues.pid_part_no.includes(",")) {
-                components = initialValues.pid_part_no.split(",").map((part) => ({
+              if (typeof subPartNoData === "string" && subPartNoData.includes(",")) {
+                components = subPartNoData.split(",").map((part) => ({
                   part_no: part.trim(),
                   description: "",
                 }))
               }
             }
-          } else if (Array.isArray(initialValues.pid_part_no)) {
-            components = initialValues.pid_part_no
+          } else if (Array.isArray(subPartNoData)) {
+            components = subPartNoData
           }
 
           if (Array.isArray(components) && components.length > 0) {
@@ -759,13 +838,13 @@ export function ProductForm({
 
   const ProcessDialog = React.memo(() => {
     // 使用本地狀態來管理表單輸入，避免父組件狀態更新導致重新渲染
-    const [localProcess, setLocalProcess] = useState<Omit<ProcessRecord, "id">>(() => ({
+    const [localProcess, setLocalProcess] = useState<Omit<ProcessRecord, "id">>({
       process: newProcess.process,
       vendor: newProcess.vendor,
       capacity: newProcess.capacity,
       requirements: newProcess.requirements,
       report: newProcess.report,
-    }))
+    })
 
     // 當對話框打開時，同步外部狀態到本地狀態
     useEffect(() => {
@@ -1612,16 +1691,6 @@ export function ProductForm({
       return
     }
 
-    if (!product.factoryName.id) {
-      toast({
-        title: "錯誤",
-        description: "請選擇供應商編號",
-        variant: "destructive",
-      })
-      setActiveTab("basic")
-      return
-    }
-
     setIsLoading(true)
 
     try {
@@ -1678,7 +1747,7 @@ export function ProductForm({
         important_documents: product.importantDocuments,
         part_management: product.partManagement,
         compliance_status: product.complianceStatus,
-        edit_notes: product.editNotes,
+        edit_notes: product.edit_notes,
 
         // 製程資料
         process_data: product.processData,
@@ -1703,7 +1772,7 @@ export function ProductForm({
         packaging_requirements: product.packagingRequirements,
 
         // 組合產品相關欄位
-        pid_part_no: isCompositeProduct ? selectedComponents : null,
+        sub_part_no: isCompositeProduct ? selectedComponents : null,
       }
 
       // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
@@ -1918,40 +1987,12 @@ export function ProductForm({
                         ))}
                       </SelectContent>
                     </Select>{" "}
-                    <Select
-                      value={product.customerName?.name || ""}
-                      onValueChange={(value) => {
-                        const selectedCustomer = customersData.find((c) => c.name === value)
-                        if (selectedCustomer) {
-                          setProduct((prev) => ({
-                            ...prev,
-                            customerName: {
-                              id: selectedCustomer.id,
-                              name: selectedCustomer.name,
-                              code: selectedCustomer.code,
-                            },
-                          }))
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="選擇客戶名稱" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customersData.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.name}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input value={product.customerName?.name || ""} readOnly placeholder="客戶名稱將自動顯示" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="factoryCode" className="flex items-center">
-                    <span className="text-red-500 mr-1">*</span>供應商編號
-                  </Label>
+                  <Label htmlFor="factoryCode">供應商編號</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Select
                       value={product.factoryName?.id || ""}
@@ -1981,33 +2022,7 @@ export function ProductForm({
                       </SelectContent>
                     </Select>
 
-                    <Select
-                      value={product.factoryName?.name || ""}
-                      onValueChange={(value) => {
-                        const selectedFactory = factories.find((f) => f.name === value)
-                        if (selectedFactory) {
-                          setProduct((prev) => ({
-                            ...prev,
-                            factoryName: {
-                              id: selectedFactory.id,
-                              name: selectedFactory.name,
-                              code: selectedFactory.code,
-                            },
-                          }))
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="選擇供應商名稱" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {factories.map((factory) => (
-                          <SelectItem key={factory.id} value={factory.name}>
-                            {factory.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input value={product.factoryName?.name || ""} readOnly placeholder="供應商名稱將自動顯示" />
                   </div>
                 </div>
               </div>
@@ -2962,158 +2977,6 @@ export function ProductForm({
                     ))
                   ) : (
                     <div className="text-center py-4 text-gray-500">尚未添加任何品質備註</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 訂單歷史 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">訂單歷史</h3>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setIsOrderHistoryDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加訂單記錄
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>訂單號碼</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>訂單數量</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>操作</Label>
-                    </div>
-                  </div>
-
-                  {product.orderHistory && product.orderHistory.length > 0 ? (
-                    product.orderHistory.map((order, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div>
-                          <Input
-                            value={order.orderNumber || ""}
-                            onChange={(e) => handleOrderHistoryChange(index, "orderNumber", e.target.value)}
-                            placeholder="輸入訂單號碼"
-                            className="border-0 bg-transparent"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="number"
-                            value={order.quantity || 0}
-                            onChange={(e) => handleOrderHistoryChange(index, "quantity", Number(e.target.value))}
-                            placeholder="輸入訂單數量"
-                            className="border-0 bg-transparent text-center"
-                          />
-                        </div>
-                        <div className="text-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveOrderHistory(index)}
-                          >
-                            <X className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何訂單記錄</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 履歷備註 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">履歷備註</h3>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setIsResumeNoteDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加備註
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>備註內容</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>日期</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>使用者</Label>
-                    </div>
-                  </div>
-
-                  {product.resumeNotes && product.resumeNotes.length > 0 ? (
-                    product.resumeNotes.map((note, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{note.content}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.date}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.user}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何履歷備註</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* 商業條款頁籤 */}
-        <TabsContent value="commercial" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-6">
-            {/* 產品規格 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">產品規格</h3>
-                    <Button type="button" size="sm" variant="outline" onClick={() => {}}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加規格
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>規格名稱</Label>
-                    </div>
-                    <div>
-                      <Label>規格數值</Label>
-                    </div>
-                  </div>
-
-                  {product.specifications && product.specifications.length > 0 ? (
-                    product.specifications.map((spec, index) => (
-                      <div key={index} className="grid grid-cols-2 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{spec.name}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm">{spec.value}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何產品規格</div>
                   )}
                 </div>
               </CardContent>

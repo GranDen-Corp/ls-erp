@@ -172,4 +172,5 @@ export interface Product {
   moq: number
   leadTime: string
   packagingRequirements: string
+  sub_part_no?: ProductComponent[] | string
 }
