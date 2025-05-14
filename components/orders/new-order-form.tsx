@@ -19,6 +19,7 @@ import {
   XCircle,
   CalendarDays,
   Search,
+  X,
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -106,6 +107,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [orderNumberStatus, setOrderNumberStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle")
     const [orderNumberMessage, setOrderNumberMessage] = useState<string>("")
     const [productSearchTerm, setProductSearchTerm] = useState<string>("")
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([])
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -223,6 +225,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       // 重置產品選擇
       setSelectedProductId("")
       setProductSearchTerm("")
+      setSelectedProducts([]) // 清空已選產品
     }, [selectedCustomerId, customers, products])
 
     // 檢查訂單編號是否重複
@@ -290,6 +293,25 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       return orderItems.some((item) => item.productId === productId)
     }
 
+    // 檢查產品是否已被選中
+    const isProductSelected = (productId: string) => {
+      return selectedProducts.includes(productId)
+    }
+
+    // 切換產品選擇狀態
+    const toggleProductSelection = (productId: string) => {
+      if (isProductSelected(productId)) {
+        setSelectedProducts(selectedProducts.filter((id) => id !== productId))
+      } else {
+        setSelectedProducts([...selectedProducts, productId])
+      }
+    }
+
+    // 清除所有選擇
+    const clearAllSelections = () => {
+      setSelectedProducts([])
+    }
+
     // 過濾搜索結果
     const filteredRegularProducts = regularProducts.filter((product) => {
       if (!productSearchTerm) return true
@@ -330,32 +352,35 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       setSelectedProductId("")
     }
 
-    // 處理單個產品選擇
-    const handleAddRegularProduct = (productId: string) => {
-      const product = products.find((p) => p.id === productId)
-      if (!product) {
-        console.error(`找不到產品 ID: ${productId}`)
-        return
-      }
+    // 處理添加選中的產品
+    const handleAddSelectedProducts = () => {
+      // 如果沒有選中的產品，直接返回
+      if (selectedProducts.length === 0) return
 
-      // 檢查產品是否已添加
-      if (isProductAdded(product.id)) {
-        alert(`產品 ${getProductPartNo(product)} 已添加到訂單中`)
-        return
-      }
+      // 獲取選中的產品並添加到訂單中
+      const newItems = selectedProducts
+        .filter((productId) => !isProductAdded(productId)) // 過濾掉已添加的產品
+        .map((productId) => {
+          const product = products.find((p) => p.id === productId)
+          if (!product) return null
 
-      // 創建新的訂單項目
-      const newItem: OrderItem = {
-        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        productId: product.id,
-        productName: getProductName(product),
-        productPartNo: getProductPartNo(product),
-        quantity: 1,
-        unitPrice: product.unit_price || 0,
-        isAssembly: false,
-      }
+          return {
+            id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${productId}`,
+            productId: product.id,
+            productName: getProductName(product),
+            productPartNo: getProductPartNo(product),
+            quantity: 1,
+            unitPrice: product.unit_price || 0,
+            isAssembly: false,
+          }
+        })
+        .filter(Boolean) as OrderItem[]
 
-      setOrderItems([...orderItems, newItem])
+      if (newItems.length > 0) {
+        setOrderItems([...orderItems, ...newItems])
+        // 清空選擇
+        setSelectedProducts([])
+      }
     }
 
     const handleRemoveProduct = (itemId: string) => {
@@ -687,14 +712,31 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             </TabsList>
 
             <TabsContent value="regular" className="space-y-4 pt-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="搜尋產品編號或名稱..."
-                  value={productSearchTerm}
-                  onChange={(e) => setProductSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="搜尋產品編號或名稱..."
+                    value={productSearchTerm}
+                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearAllSelections}
+                    disabled={selectedProducts.length === 0}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    清除選擇
+                  </Button>
+                  <Button size="sm" onClick={handleAddSelectedProducts} disabled={selectedProducts.length === 0}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    添加選中產品 ({selectedProducts.length})
+                  </Button>
+                </div>
               </div>
 
               <div className="border rounded-md p-4">
@@ -702,32 +744,31 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                   {filteredRegularProducts.length > 0 ? (
                     filteredRegularProducts.map((product) => {
                       const isAdded = isProductAdded(product.id)
+                      const isSelected = isProductSelected(product.id)
                       return (
                         <div
                           key={product.id}
                           className={`flex items-center space-x-2 p-2 border rounded-md ${
-                            isAdded ? "bg-gray-100 border-gray-300" : ""
+                            isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
                           }`}
                         >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleProductSelection(product.id)}
+                            disabled={isAdded}
+                            className="mr-2"
+                          />
                           <div className="flex-1">
                             <div className="font-medium text-sm">{getProductPartNo(product)}</div>
                             <div className="text-sm">{getProductName(product)}</div>
                             <div className="text-xs text-muted-foreground">單價: {product.unit_price || 0} USD</div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAddRegularProduct(product.id)}
-                            disabled={isAdded}
-                            className="h-8 text-xs"
-                          >
-                            {isAdded ? (
-                              <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                            ) : (
-                              <Plus className="h-3 w-3 mr-1" />
-                            )}
-                            {isAdded ? "已添加" : "添加"}
-                          </Button>
+                          {isAdded && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              已添加
+                            </Badge>
+                          )}
                         </div>
                       )
                     })
