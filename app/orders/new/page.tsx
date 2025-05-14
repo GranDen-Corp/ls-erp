@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { OrderForm } from "@/components/orders/order-form"
+import { NewOrderForm } from "@/components/orders/new-order-form"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 import { generateOrderNumber } from "@/lib/order-utils"
 
-export default function NewOrderPage() {
+export default function NewOrderTestPage() {
   const router = useRouter()
   const [formattedDate, setFormattedDate] = useState<string>(
     format(new Date(), "yyyy/MM/dd HH:mm:ss", { locale: zhTW }),
@@ -19,6 +19,7 @@ export default function NewOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const formRef = useRef<any>(null)
   const [orderNumber, setOrderNumber] = useState<string>("")
   const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState<boolean>(true)
 
@@ -50,15 +51,16 @@ export default function NewOrderPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async () => {
+    if (!formRef.current) return
+
     setIsSubmitting(true)
     setSubmitError(null)
     setSubmitSuccess(false)
 
     try {
-      // 在這裡處理訂單提交邏輯
-      // ...
-
+      const result = await formRef.current.submitOrder()
+      console.log("訂單提交成功:", result)
       setSubmitSuccess(true)
 
       // 3秒後跳轉到訂單列表
@@ -84,7 +86,7 @@ export default function NewOrderPage() {
           <Button variant="outline" onClick={() => router.push("/orders")}>
             取消
           </Button>
-          <Button onClick={() => handleSubmit({})} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? "處理中..." : "儲存訂單"}
           </Button>
         </div>
@@ -112,7 +114,12 @@ export default function NewOrderPage() {
           <CardDescription>填寫訂單詳細資訊，包括客戶、產品和交付條件等。</CardDescription>
         </CardHeader>
         <CardContent>
-          <OrderForm orderNumber={orderNumber} isLoadingOrderNumber={isLoadingOrderNumber} onSubmit={handleSubmit} />
+          <NewOrderForm
+            ref={formRef}
+            orderNumber={orderNumber}
+            isLoadingOrderNumber={isLoadingOrderNumber}
+            onSubmit={handleSubmit}
+          />
         </CardContent>
       </Card>
     </div>

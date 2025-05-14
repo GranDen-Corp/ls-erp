@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrdersTable } from "@/components/orders/orders-table"
 import Link from "next/link"
-import { PlusCircle, Zap } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 
 export default function OrdersPage() {
   return (
@@ -11,12 +11,6 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">訂單管理</h1>
         <div className="flex gap-2">
-          <Link href="/orders/new-test">
-            <Button variant="outline">
-              <Zap className="mr-2 h-4 w-4" />
-              新增訂單Test
-            </Button>
-          </Link>
           <Link href="/orders/new">
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
