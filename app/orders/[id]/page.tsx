@@ -5,65 +5,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrderStatusUpdate } from "@/components/orders/order-status-update"
 import { OrderStatusHistory } from "@/components/orders/order-status-history"
 import { OrderShipmentBatches } from "@/components/orders/order-shipment-batches"
+import { supabaseClient } from "@/lib/supabase-client"
 
-// 模擬從API獲取訂單數據
-async function getOrder(id: string) {
-  // 這裡應該是從API獲取數據
-  const order = {
-    id,
-    orderNumber: "ORD-2023-" + id.substring(0, 4),
-    customerId: "CUST-001",
-    customerName: "ABC Electronics Co., Ltd.",
-    orderDate: "2023-01-15",
-    deliveryDate: "2023-03-30",
-    status: "processing",
-    totalAmount: 15000,
-    items: [
-      {
-        id: "item-1",
-        productId: "PROD-001",
-        productName: "Wireless Headphones",
-        quantity: 300,
-        unitPrice: 50,
-        totalPrice: 15000,
-      },
-    ],
-    shipmentBatches: [
-      {
-        id: "batch-1",
-        orderId: id,
-        batchNumber: 1,
-        quantity: 100,
-        plannedShipDate: "2023-01-10",
-        actualShipDate: "2023-01-10",
-        status: "delivered",
-        isDelayed: false,
-        notes: "第一批出貨",
-      },
-      {
-        id: "batch-2",
-        orderId: id,
-        batchNumber: 2,
-        quantity: 200,
-        plannedShipDate: "2023-03-10",
-        status: "pending",
-        isDelayed: false,
-        notes: "第二批出貨",
-      },
-    ],
-    notes: "客戶要求分批出貨",
+// 從 Supabase 獲取訂單數據
+async function getOrder(orderId: string) {
+  try {
+    // 使用 order_id 欄位查詢訂單
+    const { data, error } = await supabaseClient.from("orders").select("*").eq("order_id", orderId).single()
+
+    if (error) {
+      console.error("獲取訂單數據失敗:", error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error("獲取訂單數據時出錯:", error)
+    return null
   }
-
-  return order
 }
 
 // 模擬從API獲取訂單狀態歷史
-async function getOrderStatusHistory(id: string) {
+async function getOrderStatusHistory(orderId: string) {
   // 這裡應該是從API獲取數據
   return [
     {
       id: "hist-1",
-      orderId: id,
+      orderId: orderId,
       status: "created",
       timestamp: "2023-01-15T10:30:00Z",
       userId: "user-1",
@@ -72,7 +40,7 @@ async function getOrderStatusHistory(id: string) {
     },
     {
       id: "hist-2",
-      orderId: id,
+      orderId: orderId,
       status: "processing",
       timestamp: "2023-01-16T09:15:00Z",
       userId: "user-2",
@@ -103,9 +71,10 @@ export default async function OrderPage({
     <div className="container mx-auto py-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">
-          訂單 #{order.orderNumber}
-          <span className="ml-2 text-lg font-normal text-muted-foreground">{order.customerName}</span>
+          訂單 #{order.order_id}
+          <span className="ml-2 text-lg font-normal text-muted-foreground">{order.customer_name}</span>
         </h1>
+        <div className="text-sm text-muted-foreground">流水號: {order.order_sid}</div>
       </div>
 
       <div className="grid gap-6">
@@ -124,17 +93,17 @@ export default async function OrderPage({
                 <CardContent>
                   <dl className="grid grid-cols-2 gap-2 text-sm">
                     <dt className="font-medium">訂單號</dt>
-                    <dd>{order.orderNumber}</dd>
+                    <dd>{order.order_id}</dd>
                     <dt className="font-medium">客戶</dt>
-                    <dd>{order.customerName}</dd>
+                    <dd>{order.customer_name}</dd>
                     <dt className="font-medium">訂單日期</dt>
-                    <dd>{order.orderDate}</dd>
+                    <dd>{order.order_date}</dd>
                     <dt className="font-medium">交貨日期</dt>
-                    <dd>{order.deliveryDate}</dd>
+                    <dd>{order.delivery_date}</dd>
                     <dt className="font-medium">狀態</dt>
                     <dd>{order.status}</dd>
                     <dt className="font-medium">總金額</dt>
-                    <dd>${order.totalAmount.toLocaleString()}</dd>
+                    <dd>${order.amount?.toLocaleString()}</dd>
                   </dl>
                 </CardContent>
               </Card>
@@ -165,21 +134,29 @@ export default async function OrderPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {order.items.map((item) => (
+                      {order.items?.map((item: any) => (
                         <tr key={item.id} className="border-b">
-                          <td className="px-4 py-2">{item.productName}</td>
+                          <td className="px-4 py-2">{item.product_name}</td>
                           <td className="px-4 py-2 text-right">{item.quantity}</td>
-                          <td className="px-4 py-2 text-right">${item.unitPrice}</td>
-                          <td className="px-4 py-2 text-right">${item.totalPrice.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right">${item.unit_price}</td>
+                          <td className="px-4 py-2 text-right">
+                            ${(item.quantity * item.unit_price).toLocaleString()}
+                          </td>
                         </tr>
-                      ))}
+                      )) || (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-2 text-center">
+                            無訂單項目
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                     <tfoot>
                       <tr>
                         <td colSpan={3} className="px-4 py-2 text-right font-medium">
                           總計
                         </td>
-                        <td className="px-4 py-2 text-right font-medium">${order.totalAmount.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right font-medium">${order.amount?.toLocaleString()}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -189,7 +166,7 @@ export default async function OrderPage({
           </TabsContent>
 
           <TabsContent value="status" className="space-y-4">
-            <OrderStatusUpdate orderId={order.id} currentStatus={order.status} />
+            <OrderStatusUpdate orderId={order.order_id} currentStatus={order.status} />
             <OrderStatusHistory history={statusHistory} />
           </TabsContent>
 
@@ -200,16 +177,16 @@ export default async function OrderPage({
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  此訂單總數量為 {order.items.reduce((sum, item) => sum + item.quantity, 0)} 件，可根據需要分批出貨。
+                  此訂單總數量為 {order.total_quantity || "未知"} 件，可根據需要分批出貨。
                   每個批次可以設定不同的計劃出貨日期和數量。
                 </p>
               </CardContent>
             </Card>
 
             <OrderShipmentBatches
-              orderId={order.id}
-              totalQuantity={order.items.reduce((sum, item) => sum + item.quantity, 0)}
-              batches={order.shipmentBatches || []}
+              orderId={order.order_id}
+              totalQuantity={order.total_quantity || 0}
+              batches={order.shipment_batches || []}
               onAddBatch={(batch) => {
                 console.log("Add batch", batch)
                 // 這裡應該是調用API添加批次

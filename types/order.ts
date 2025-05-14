@@ -24,8 +24,10 @@ export interface ShipmentBatch {
 }
 
 export interface Order {
-  id: string
-  orderNumber: string
+  order_sid: number // 新增流水編號作為主鍵
+  id?: string // 保留原有 id 欄位，但標記為可選
+  order_id: string // 原本的 order_id，現在為 text 類型
+  orderNumber?: string // 保留原有 orderNumber 欄位，但標記為可選
   customerId: string
   customerName: string
   orderDate: string

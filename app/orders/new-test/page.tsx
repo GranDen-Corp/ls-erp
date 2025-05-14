@@ -9,10 +9,10 @@ import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { generateOrderNumber } from "@/lib/order-utils"
 
 export default function NewOrderTestPage() {
   const router = useRouter()
-  const [timestamp, setTimestamp] = useState<number>(Date.now())
   const [formattedDate, setFormattedDate] = useState<string>(
     format(new Date(), "yyyy/MM/dd HH:mm:ss", { locale: zhTW }),
   )
@@ -20,14 +20,33 @@ export default function NewOrderTestPage() {
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const formRef = useRef<any>(null)
+  const [orderNumber, setOrderNumber] = useState<string>("")
+  const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState<boolean>(true)
 
-  // 更新時間戳
+  // 更新時間和訂單編號
   useEffect(() => {
-    const interval = setInterval(() => {
+    const updateDateTime = () => {
       const now = new Date()
-      setTimestamp(now.getTime())
       setFormattedDate(format(now, "yyyy/MM/dd HH:mm:ss", { locale: zhTW }))
-    }, 1000)
+    }
+
+    const interval = setInterval(updateDateTime, 1000)
+
+    // 獲取訂單編號
+    const fetchOrderNumber = async () => {
+      try {
+        setIsLoadingOrderNumber(true)
+        const newOrderNumber = await generateOrderNumber()
+        setOrderNumber(newOrderNumber)
+      } catch (err) {
+        console.error("獲取訂單編號失敗:", err)
+        setOrderNumber("L-YYYYMMDD-XXXXX (生成失敗)")
+      } finally {
+        setIsLoadingOrderNumber(false)
+      }
+    }
+
+    fetchOrderNumber()
 
     return () => clearInterval(interval)
   }, [])
@@ -60,7 +79,7 @@ export default function NewOrderTestPage() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">新增訂單 Test</h1>
+          <h1 className="text-3xl font-bold tracking-tight">新增訂單</h1>
           <p className="text-muted-foreground">建立新訂單 - 當前時間: {formattedDate}</p>
         </div>
         <div className="flex gap-2">
@@ -95,7 +114,12 @@ export default function NewOrderTestPage() {
           <CardDescription>填寫訂單詳細資訊，包括客戶、產品和交付條件等。</CardDescription>
         </CardHeader>
         <CardContent>
-          <NewOrderTestForm ref={formRef} timestamp={timestamp} onSubmit={handleSubmit} />
+          <NewOrderTestForm
+            ref={formRef}
+            orderNumber={orderNumber}
+            isLoadingOrderNumber={isLoadingOrderNumber}
+            onSubmit={handleSubmit}
+          />
         </CardContent>
       </Card>
     </div>

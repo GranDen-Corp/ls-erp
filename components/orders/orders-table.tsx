@@ -114,56 +114,31 @@ export function OrdersTable() {
           setProducts(productMap)
         }
 
-        // 3. 獲取訂單資料 - 嘗試多種方式
-        let ordersData = null
-        let ordersError = null
-
-        // 嘗試方式1: 使用order_id排序
+        // 3. 獲取訂單資料 - 使用新的資料表結構
         try {
-          const result = await supabaseClient.from("orders").select("*").order("order_id", { ascending: false })
-          if (!result.error) {
-            ordersData = result.data
-          } else if (result.error.message.includes("does not exist")) {
-            // 如果order_id不存在，嘗試方式2
-            console.log("order_id欄位不存在，嘗試其他排序方式")
+          const { data: ordersData, error: ordersError } = await supabaseClient
+            .from("orders")
+            .select("*")
+            .order("order_sid", { ascending: false }) // 使用新的 order_sid 欄位排序
+
+          if (ordersError) {
+            console.error("獲取訂單資料失敗:", ordersError)
+            setError("獲取訂單資料失敗，請稍後再試。")
+          } else if (ordersData) {
+            // 檢查訂單資料的結構，確定可用的欄位
+            if (ordersData.length > 0) {
+              console.log("訂單資料欄位:", Object.keys(ordersData[0]))
+            }
+
+            setOrders(ordersData)
+            setFilteredOrders(ordersData)
           } else {
-            // 其他錯誤
-            ordersError = result.error
+            setOrders([])
+            setFilteredOrders([])
           }
         } catch (err) {
-          console.error("嘗試使用order_id排序失敗:", err)
-        }
-
-        // 如果方式1失敗，嘗試方式2: 不排序
-        if (!ordersData && !ordersError) {
-          try {
-            const result = await supabaseClient.from("orders").select("*")
-            if (!result.error) {
-              ordersData = result.data
-            } else {
-              ordersError = result.error
-            }
-          } catch (err) {
-            console.error("嘗試不排序獲取訂單失敗:", err)
-            ordersError = err instanceof Error ? err : new Error(String(err))
-          }
-        }
-
-        // 處理最終結果
-        if (ordersError) {
-          console.error("獲取訂單資料失敗:", ordersError)
-          setError("獲取訂單資料失敗，請稍後再試。")
-        } else if (ordersData) {
-          // 檢查訂單資料的結構，確定可用的欄位
-          if (ordersData.length > 0) {
-            console.log("訂單資料欄位:", Object.keys(ordersData[0]))
-          }
-
-          setOrders(ordersData)
-          setFilteredOrders(ordersData)
-        } else {
-          setOrders([])
-          setFilteredOrders([])
+          console.error("獲取訂單資料時出錯:", err)
+          setError("獲取訂單資料時發生錯誤，請稍後再試。")
         }
       } catch (error) {
         console.error("獲取資料時出錯:", error)
@@ -368,7 +343,7 @@ export function OrdersTable() {
     }
   }
 
-  // 查看訂單詳情
+  // 查看訂單詳情 - 使用 order_id 而不是 order_sid
   const viewOrderDetails = (orderId: string) => {
     router.push(`/orders/${orderId}`)
   }
@@ -414,6 +389,7 @@ export function OrdersTable() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>流水號</TableHead>
                   <TableHead>訂單編號</TableHead>
                   <TableHead>客戶</TableHead>
                   <TableHead>客戶PO編號</TableHead>
@@ -424,11 +400,12 @@ export function OrdersTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order, index) => {
+                {filteredOrders.map((order) => {
                   const status = getOrderStatus(order)
                   const isAssembly = hasAssemblyProduct(order)
                   return (
-                    <TableRow key={order.id || order.order_id || index}>
+                    <TableRow key={order.order_sid}>
+                      <TableCell>{order.order_sid}</TableCell>
                       <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
                       <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
                       <TableCell>{order.po_id || "-"}</TableCell>
@@ -443,11 +420,7 @@ export function OrdersTable() {
                         <Badge className={`${status.color} text-white`}>{status.text}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => viewOrderDetails(order.order_id || order.id || index.toString())}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => viewOrderDetails(order.order_id)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
