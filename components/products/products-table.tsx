@@ -313,7 +313,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                 const assemblyParts = parseAssemblyParts(product)
 
                 return (
-                  <TableRow key={`${product.customer_id}-${product.part_no}-${product.factory_id}`}>
+                  <TableRow key={`${product.customer_id}-${product.part_no}`}>
                     <TableCell>
                       <ProductImagePreview
                         images={
@@ -392,9 +392,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Link
-                              href={`/products/all/${encodeURIComponent(product.part_no)}/edit${
-                                product.is_assembly ? "?tab=assembly" : ""
-                              }`}
+                              href={`/products/all/${encodeURIComponent(product.part_no)}/edit`}
                               className="flex items-center"
                             >
                               <Pencil className="mr-2 h-4 w-4" />

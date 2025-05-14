@@ -102,7 +102,7 @@ export default async function EditProductPage({ params }: { params: { id: string
           <CardTitle>編輯產品資訊</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProductForm productId={productId} initialValues={formattedProduct} isEdit={true} />
+          <ProductForm productId={productId} initialValues={formattedProduct} isEdit={true} defaultTab="basic" />
         </CardContent>
       </Card>
     </div>

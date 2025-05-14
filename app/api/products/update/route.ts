@@ -8,10 +8,10 @@ export async function POST(request: Request) {
 
     // 準備要更新的資料
     const productData = {
-      // 組合主鍵欄位
+      // 組合主鍵欄位 - 已修改，移除 factory_id 作為主鍵的一部分
       customer_id: data.customerName?.id || data.customer_id,
       part_no: data.partNo,
-      factory_id: data.factoryName?.id || data.factory_id,
+      factory_id: data.factoryName?.id || data.factory_id, // 仍然保留，但不再是主鍵的一部分
 
       // 基本資訊
       component_name: data.componentName,
@@ -30,12 +30,10 @@ export async function POST(request: Request) {
       last_price: data.lastPrice,
       currency: data.currency,
 
-      // 產品規格
+      // 其他欄位保持不變
       specifications: data.specifications,
       sample_status: data.sampleStatus,
       sample_date: data.sampleDate,
-
-      // 圖面資訊
       original_drawing_version: data.originalDrawingVersion,
       drawing_version: data.drawingVersion,
       customer_original_drawing: data.customerOriginalDrawing,
@@ -44,31 +42,21 @@ export async function POST(request: Request) {
       factory_drawing: data.factoryDrawing,
       customer_drawing_version: data.customerDrawingVersion,
       factory_drawing_version: data.factoryDrawingVersion,
-
-      // 產品圖片
       images: data.images,
-
-      // 組裝資訊
       is_assembly: data.isAssembly,
       components: data.components,
       assembly_time: data.assemblyTime,
       assembly_cost_per_hour: data.assemblyCostPerHour,
       additional_costs: data.additionalCosts,
-
-      // 文件與認證
       important_documents: data.importantDocuments,
       part_management: data.partManagement,
       compliance_status: data.complianceStatus,
       edit_notes: data.editNotes,
-
-      // 製程資料
       process_data: data.processData,
       order_requirements: data.orderRequirements,
       purchase_requirements: data.purchaseRequirements,
       special_requirements: data.specialRequirements,
       process_notes: data.processNotes,
-
-      // 履歷資料
       has_mold: data.hasMold,
       mold_cost: data.moldCost,
       refundable_mold_quantity: data.refundableMoldQuantity,
@@ -77,16 +65,15 @@ export async function POST(request: Request) {
       quality_notes: data.qualityNotes,
       order_history: data.orderHistory,
       resume_notes: data.resumeNotes,
-
-      // 商業條款
       moq: data.moq,
       lead_time: data.leadTime,
       packaging_requirements: data.packagingRequirements,
     }
 
     // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
+    // 修改 onConflict 參數，移除 factory_id
     const { data: result, error } = await supabase.from("products").upsert(productData, {
-      onConflict: "customer_id,part_no,factory_id",
+      onConflict: "customer_id,part_no",
       returning: "minimal",
     })
 

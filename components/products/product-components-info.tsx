@@ -40,36 +40,61 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
         let partNumbers: string[] = []
         let partData: any[] = []
 
+        console.log("原始 pidPartNo 數據:", pidPartNo)
+        console.log("pidPartNo 類型:", typeof pidPartNo)
+
         if (Array.isArray(pidPartNo)) {
           partData = pidPartNo
           partNumbers = pidPartNo
-            .map((item) => (typeof item === "string" ? item : item.part_number || ""))
+            .map((item) => {
+              if (typeof item === "string") return item
+              return item.part_no || item.part_number || ""
+            })
             .filter(Boolean)
         } else if (typeof pidPartNo === "string") {
           try {
+            // 嘗試解析 JSON 字符串
             const parsed = JSON.parse(pidPartNo)
+            console.log("解析後的 JSON:", parsed)
+
             if (Array.isArray(parsed)) {
               partData = parsed
               partNumbers = parsed
-                .map((item) => (typeof item === "string" ? item : item.part_number || ""))
+                .map((item) => {
+                  if (typeof item === "string") return item
+                  return item.part_no || item.part_number || ""
+                })
                 .filter(Boolean)
             } else if (parsed && typeof parsed === "object") {
               partData = [parsed]
-              partNumbers = [parsed.part_number].filter(Boolean)
+              if (parsed.part_no) {
+                partNumbers = [parsed.part_no]
+              } else if (parsed.part_number) {
+                partNumbers = [parsed.part_number]
+              }
             }
           } catch (e) {
-            // 如果不是 JSON 字符串，則假設它是單個部件編號
-            if (pidPartNo.trim()) {
-              partData = [{ part_number: pidPartNo.trim() }]
+            console.error("JSON 解析失敗:", e)
+            // 如果不是 JSON 字符串，則假設它是單個部件編號或逗號分隔的列表
+            if (pidPartNo.includes(",")) {
+              const parts = pidPartNo.split(",").map((p) => p.trim())
+              partData = parts.map((p) => ({ part_no: p }))
+              partNumbers = parts
+            } else if (pidPartNo.trim()) {
+              partData = [{ part_no: pidPartNo.trim() }]
               partNumbers = [pidPartNo.trim()]
             }
           }
         } else if (pidPartNo && typeof pidPartNo === "object") {
           partData = [pidPartNo]
-          if (pidPartNo.part_number) {
+          if (pidPartNo.part_no) {
+            partNumbers = [pidPartNo.part_no]
+          } else if (pidPartNo.part_number) {
             partNumbers = [pidPartNo.part_number]
           }
         }
+
+        console.log("處理後的部件編號:", partNumbers)
 
         if (partNumbers.length === 0) {
           setComponents([])
@@ -78,7 +103,6 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
         }
 
         // 從數據庫中獲取部件詳細信息
-        // 只使用 part_no 和 customer_id 進行查詢
         let query = supabase.from("products").select("part_no, component_name, customer_id").in("part_no", partNumbers)
 
         // 如果有客戶ID，則添加客戶ID過濾條件
@@ -92,6 +116,8 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
           console.error("獲取部件詳細信息時出錯:", error)
           setComponents([])
         } else {
+          console.log("從數據庫獲取的部件詳情:", data)
+
           // 將查詢結果與原始 pid_part_no 數據合併
           const mergedComponents = partNumbers.map((partNo) => {
             // 查找匹配的部件詳情，優先使用相同客戶ID的部件
@@ -107,7 +133,7 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
             const originalData = partData.find(
               (item) =>
                 (typeof item === "string" && item === partNo) ||
-                (item && typeof item === "object" && item.part_number === partNo),
+                (item && typeof item === "object" && (item.part_no === partNo || item.part_number === partNo)),
             )
 
             if (originalData && typeof originalData === "object") {
@@ -124,6 +150,7 @@ export function ProductComponentsInfo({ isAssembly, pidPartNo, customerId }: Pro
             }
           })
 
+          console.log("合併後的組件數據:", mergedComponents)
           setComponents(mergedComponents)
         }
       } catch (e) {
