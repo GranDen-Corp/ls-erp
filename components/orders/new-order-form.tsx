@@ -17,9 +17,9 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  CalendarDays,
   Search,
   X,
+  Clock,
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -64,8 +64,10 @@ interface Product {
 
 interface ShipmentBatch {
   id: string
+  productPartNo: string // 關聯的產品編號
   batchNumber: number
   plannedShipDate: Date | undefined
+  quantity: number // 批次數量
   notes?: string
 }
 
@@ -77,6 +79,7 @@ interface OrderItem {
   quantity: number
   unitPrice: number
   isAssembly: boolean
+  shipmentBatches: ShipmentBatch[] // 每個產品的批次列表
 }
 
 interface NewOrderFormProps {
@@ -113,14 +116,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
-    const [shipmentBatches, setShipmentBatches] = useState<ShipmentBatch[]>([
-      {
-        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        batchNumber: 1,
-        plannedShipDate: addDays(new Date(), 30),
-        notes: "",
-      },
-    ])
+    const [currentManagingProductPartNo, setCurrentManagingProductPartNo] = useState<string>("")
 
     // 當系統生成的訂單編號變更時，更新自定義訂單編號的初始值
     useEffect(() => {
@@ -335,6 +331,18 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       return partNo.includes(searchTerm) || name.includes(searchTerm)
     })
 
+    // 創建默認批次
+    const createDefaultBatch = (productPartNo: string, quantity: number): ShipmentBatch => {
+      return {
+        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        productPartNo,
+        batchNumber: 1,
+        plannedShipDate: addDays(new Date(), 30), // 預設30天後交期
+        quantity, // 默認批次數量等於產品總數量
+        notes: "",
+      }
+    }
+
     const handleAddAssemblyProduct = () => {
       if (!selectedProductPartNo) return
 
@@ -350,14 +358,18 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       // 如果已經有組件產品，先移除它們
       const nonAssemblyItems = orderItems.filter((item) => !item.isAssembly)
 
+      // 默認數量
+      const defaultQuantity = 1
+
       const newItem: OrderItem = {
         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         productKey: getProductKey(product),
         productName: getProductName(product),
         productPartNo: getProductPartNo(product),
-        quantity: 1,
+        quantity: defaultQuantity,
         unitPrice: product.unit_price || 0,
         isAssembly: true,
+        shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
       }
 
       setOrderItems([...nonAssemblyItems, newItem])
@@ -397,14 +409,18 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         const newItems = selectedProductsData
           .filter((product) => !isProductAdded(product.part_no))
           .map((product) => {
+            // 默認數量
+            const defaultQuantity = 1
+
             return {
               id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${product.part_no}`,
               productKey: getProductKey(product),
               productName: getProductName(product),
               productPartNo: getProductPartNo(product),
-              quantity: 1,
+              quantity: defaultQuantity,
               unitPrice: product.unit_price || 0,
               isAssembly: isProductAssembly(product),
+              shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
             }
           })
 
@@ -429,6 +445,48 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       setOrderItems(
         orderItems.map((item) => {
           if (item.id === itemId) {
+            // 如果修改的是數量，同時更新批次數量
+            if (field === "quantity") {
+              // 獲取當前總批次數量
+              const currentTotalBatchQuantity = item.shipmentBatches.reduce((sum, batch) => sum + batch.quantity, 0)
+
+              // 如果只有一個批次，直接更新批次數量
+              if (item.shipmentBatches.length === 1) {
+                return {
+                  ...item,
+                  [field]: value,
+                  shipmentBatches: [
+                    {
+                      ...item.shipmentBatches[0],
+                      quantity: value,
+                    },
+                  ],
+                }
+              }
+
+              // 如果有多個批次，保持批次數量比例不變
+              if (currentTotalBatchQuantity > 0) {
+                const ratio = value / currentTotalBatchQuantity
+                const updatedBatches = item.shipmentBatches.map((batch) => ({
+                  ...batch,
+                  quantity: Math.round(batch.quantity * ratio),
+                }))
+
+                // 確保批次總數量等於產品數量
+                const totalBatchQuantity = updatedBatches.reduce((sum, batch) => sum + batch.quantity, 0)
+                if (totalBatchQuantity !== value) {
+                  const diff = value - totalBatchQuantity
+                  updatedBatches[0].quantity += diff
+                }
+
+                return {
+                  ...item,
+                  [field]: value,
+                  shipmentBatches: updatedBatches,
+                }
+              }
+            }
+
             return { ...item, [field]: value }
           }
           return item
@@ -441,37 +499,130 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     }
 
     // 批次管理相關函數
-    const openBatchManagement = () => {
+    const openBatchManagement = (productPartNo: string) => {
+      setCurrentManagingProductPartNo(productPartNo)
       setIsManagingBatches(true)
     }
 
+    // 獲取當前管理的產品項目
+    const getCurrentItem = () => {
+      return orderItems.find((item) => item.productPartNo === currentManagingProductPartNo)
+    }
+
+    // 獲取當前產品的批次列表
+    const getCurrentBatches = () => {
+      const item = getCurrentItem()
+      return item ? item.shipmentBatches : []
+    }
+
+    // 添加批次
     const addBatch = () => {
-      const nextBatchNumber =
-        shipmentBatches.length > 0 ? Math.max(...shipmentBatches.map((b) => b.batchNumber)) + 1 : 1
+      const item = getCurrentItem()
+      if (!item) return
+
+      const batches = [...item.shipmentBatches]
+      const nextBatchNumber = batches.length > 0 ? Math.max(...batches.map((b) => b.batchNumber)) + 1 : 1
+
+      // 計算剩餘可分配數量
+      const allocatedQuantity = batches.reduce((sum, batch) => sum + batch.quantity, 0)
+      const remainingQuantity = Math.max(0, item.quantity - allocatedQuantity)
 
       const newBatch: ShipmentBatch = {
         id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        productPartNo: item.productPartNo,
         batchNumber: nextBatchNumber,
         plannedShipDate: addDays(new Date(), 30), // 預設30天後交期
+        quantity: remainingQuantity,
         notes: "",
       }
 
-      setShipmentBatches([...shipmentBatches, newBatch])
-    }
-
-    const removeBatch = (batchId: string) => {
-      setShipmentBatches(shipmentBatches.filter((batch) => batch.id !== batchId))
-    }
-
-    const updateBatch = (batchId: string, field: keyof ShipmentBatch, value: any) => {
-      setShipmentBatches(
-        shipmentBatches.map((batch) => {
-          if (batch.id === batchId) {
-            return { ...batch, [field]: value }
+      // 更新產品的批次列表
+      setOrderItems(
+        orderItems.map((orderItem) => {
+          if (orderItem.id === item.id) {
+            return {
+              ...orderItem,
+              shipmentBatches: [...batches, newBatch],
+            }
           }
-          return batch
+          return orderItem
         }),
       )
+    }
+
+    // 移除批次
+    const removeBatch = (batchId: string) => {
+      const item = getCurrentItem()
+      if (!item) return
+
+      // 獲取要刪除的批次
+      const batchToRemove = item.shipmentBatches.find((batch) => batch.id === batchId)
+      if (!batchToRemove) return
+
+      // 計算剩餘批次
+      const remainingBatches = item.shipmentBatches.filter((batch) => batch.id !== batchId)
+
+      // 如果刪除後沒有批次，創建一個新的默認批次
+      if (remainingBatches.length === 0) {
+        remainingBatches.push(createDefaultBatch(item.productPartNo, item.quantity))
+      } else if (remainingBatches.length === 1) {
+        // 如果只剩一個批次，將刪除批次的數量添加到剩餘批次
+        remainingBatches[0].quantity += batchToRemove.quantity
+      }
+
+      // 更新產品的批次列表
+      setOrderItems(
+        orderItems.map((orderItem) => {
+          if (orderItem.id === item.id) {
+            return {
+              ...orderItem,
+              shipmentBatches: remainingBatches,
+            }
+          }
+          return orderItem
+        }),
+      )
+    }
+
+    // 更新批次
+    const updateBatch = (batchId: string, field: keyof ShipmentBatch, value: any) => {
+      const item = getCurrentItem()
+      if (!item) return
+
+      // 更新產品的批次列表
+      setOrderItems(
+        orderItems.map((orderItem) => {
+          if (orderItem.id === item.id) {
+            return {
+              ...orderItem,
+              shipmentBatches: orderItem.shipmentBatches.map((batch) => {
+                if (batch.id === batchId) {
+                  return { ...batch, [field]: value }
+                }
+                return batch
+              }),
+            }
+          }
+          return orderItem
+        }),
+      )
+    }
+
+    // 計算已分配的數量
+    const calculateAllocatedQuantity = () => {
+      const item = getCurrentItem()
+      if (!item) return 0
+
+      return item.shipmentBatches.reduce((sum, batch) => sum + batch.quantity, 0)
+    }
+
+    // 計算剩餘可分配數量
+    const calculateRemainingQuantity = () => {
+      const item = getCurrentItem()
+      if (!item) return 0
+
+      const allocatedQuantity = calculateAllocatedQuantity()
+      return Math.max(0, item.quantity - allocatedQuantity)
     }
 
     // 解析組合產品的部件
@@ -501,6 +652,12 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       return null
     }
 
+    // 獲取產品的批次數量
+    const getProductBatchesCount = (productPartNo: string) => {
+      const item = orderItems.find((item) => item.productPartNo === productPartNo)
+      return item ? item.shipmentBatches.length : 0
+    }
+
     const handleSubmitOrder = async () => {
       if (!selectedCustomerId) {
         throw new Error("請選擇客戶")
@@ -514,8 +671,20 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         throw new Error("請輸入客戶PO編號")
       }
 
-      if (shipmentBatches.length === 0) {
-        throw new Error("請至少設置一個出貨批次")
+      // 檢查每個產品是否都有批次設置
+      const itemsWithoutBatches = orderItems.filter((item) => item.shipmentBatches.length === 0)
+      if (itemsWithoutBatches.length > 0) {
+        throw new Error(`以下產品沒有設置批次出貨: ${itemsWithoutBatches.map((item) => item.productPartNo).join(", ")}`)
+      }
+
+      // 檢查批次數量是否等於產品數量
+      for (const item of orderItems) {
+        const totalBatchQuantity = item.shipmentBatches.reduce((sum, batch) => sum + batch.quantity, 0)
+        if (totalBatchQuantity !== item.quantity) {
+          throw new Error(
+            `產品 ${item.productPartNo} 的批次總數量 (${totalBatchQuantity}) 不等於產品數量 (${item.quantity})`,
+          )
+        }
       }
 
       // 檢查訂單編號
@@ -579,24 +748,26 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         }
 
         // 處理產品和批次資料
-        const partsList = orderItems.map((item) => ({
-          part_no: item.productPartNo,
-          description: item.productName,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          is_assembly: item.isAssembly,
-        }))
+        const partsList = orderItems.map((item) => {
+          // 處理批次資料
+          const batchesList = item.shipmentBatches.map((batch) => ({
+            batch_number: batch.batchNumber,
+            planned_ship_date: batch.plannedShipDate ? batch.plannedShipDate.toISOString() : null,
+            quantity: batch.quantity,
+            notes: batch.notes,
+          }))
+
+          return {
+            part_no: item.productPartNo,
+            description: item.productName,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            is_assembly: item.isAssembly,
+            shipment_batches: batchesList,
+          }
+        })
 
         orderData.part_no_list = JSON.stringify(partsList)
-
-        // 處理批次資料
-        const batchesList = shipmentBatches.map((batch) => ({
-          batch_number: batch.batchNumber,
-          planned_ship_date: batch.plannedShipDate ? batch.plannedShipDate.toISOString() : null,
-          notes: batch.notes,
-        }))
-
-        orderData.shipment_batches = JSON.stringify(batchesList)
 
         // 提交訂單
         const { data, error } = await supabase.from("orders").insert(orderData).select()
@@ -931,6 +1102,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                   <TableHead className="text-right">數量</TableHead>
                   <TableHead className="text-right">單價 (USD)</TableHead>
                   <TableHead className="text-right">金額 (USD)</TableHead>
+                  <TableHead className="text-right">批次</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -968,6 +1140,17 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                     </TableCell>
                     <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openBatchManagement(item.productPartNo)}
+                        className="h-8 px-2"
+                      >
+                        <Clock className="h-3.5 w-3.5 mr-1" />
+                        批次 ({item.shipmentBatches.length})
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(item.id)}>
                         <Trash className="h-4 w-4" />
                       </Button>
@@ -976,7 +1159,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 ))}
                 {orderItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       尚未新增產品
                     </TableCell>
                   </TableRow>
@@ -985,11 +1168,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             </Table>
           </div>
 
-          <div className="flex justify-between items-center">
-            <Button variant="outline" onClick={openBatchManagement} disabled={orderItems.length === 0}>
-              <CalendarDays className="mr-2 h-4 w-4" />
-              管理批次出貨 ({shipmentBatches.length})
-            </Button>
+          <div className="flex justify-end items-center">
             <div className="w-72 space-y-1">
               <div className="flex justify-between">
                 <span>小計:</span>
@@ -1020,29 +1199,46 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         <Dialog open={isManagingBatches} onOpenChange={(open) => !open && setIsManagingBatches(false)}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
-              <DialogTitle>管理批次出貨</DialogTitle>
-              <DialogDescription>設置訂單的批次出貨計劃</DialogDescription>
+              <DialogTitle>管理批次出貨 - {currentManagingProductPartNo}</DialogTitle>
+              <DialogDescription>設置產品的批次出貨計劃</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 my-4">
               <Card>
                 <CardHeader className="py-3">
-                  <CardTitle className="text-base">批次列表</CardTitle>
+                  <CardTitle className="text-base flex justify-between items-center">
+                    <span>批次列表</span>
+                    <div className="text-sm font-normal flex items-center gap-2">
+                      <span>總數量: {getCurrentItem()?.quantity || 0}</span>
+                      <span>已分配: {calculateAllocatedQuantity()}</span>
+                      <span>剩餘: {calculateRemainingQuantity()}</span>
+                    </div>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>批次編號</TableHead>
+                        <TableHead>數量</TableHead>
                         <TableHead>計劃出貨日</TableHead>
                         <TableHead>備註</TableHead>
                         <TableHead className="text-right">操作</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {shipmentBatches.map((batch) => (
+                      {getCurrentBatches().map((batch) => (
                         <TableRow key={batch.id}>
                           <TableCell>{batch.batchNumber}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={batch.quantity}
+                              onChange={(e) => updateBatch(batch.id, "quantity", Number.parseInt(e.target.value) || 1)}
+                              className="w-20"
+                            />
+                          </TableCell>
                           <TableCell>
                             <DatePicker
                               date={batch.plannedShipDate}
@@ -1062,7 +1258,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                               variant="ghost"
                               size="icon"
                               onClick={() => removeBatch(batch.id)}
-                              disabled={shipmentBatches.length === 1} // 至少保留一個批次
+                              disabled={getCurrentBatches().length === 1} // 至少保留一個批次
                             >
                               <Trash className="h-4 w-4" />
                             </Button>
@@ -1074,7 +1270,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </CardContent>
               </Card>
 
-              <Button onClick={addBatch} className="w-full">
+              <Button onClick={addBatch} className="w-full" disabled={calculateRemainingQuantity() <= 0}>
                 <Plus className="mr-2 h-4 w-4" />
                 新增批次
               </Button>
