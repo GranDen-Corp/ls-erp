@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import type React from "react"
+import { useState, useEffect, useCallback } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -836,7 +837,7 @@ export function ProductForm({
     )
   }
 
-  const ProcessDialog = React.memo(() => {
+  const ProcessDialog = () => {
     // 使用本地狀態來管理表單輸入，避免父組件狀態更新導致重新渲染
     const [localProcess, setLocalProcess] = useState<Omit<ProcessRecord, "id">>({
       process: newProcess.process,
@@ -947,7 +948,7 @@ export function ProductForm({
         </DialogContent>
       </Dialog>
     )
-  })
+  }
 
   const SpecialReqDialog = () => {
     const [open, setOpen] = useState(false)
@@ -1803,7 +1804,7 @@ export function ProductForm({
         // 履歷資料
         has_mold: product.hasMold,
         mold_cost: product.moldCost,
-        refundable_mold_quantity: product.refundableMoldQuantity,
+        refundableMoldQuantity: product.refundableMoldQuantity,
         mold_returned: product.moldReturned,
         accounting_note: product.accountingNote,
         quality_notes: product.qualityNotes,
@@ -2230,7 +2231,18 @@ export function ProductForm({
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">圖面資訊</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">圖面資訊</h3>
+                    <div className="w-1/3">
+                      <Label htmlFor="syncedCustomerDrawingNo">客戶圖號</Label>
+                      <Input
+                        id="syncedCustomerDrawingNo"
+                        value={product.customerDrawingNo || ""}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -2371,18 +2383,6 @@ export function ProductForm({
                           選擇圖面連結
                         </Button>
                       </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="syncedCustomerDrawingNo">客戶圖號</Label>
-                      <Input
-                        id="syncedCustomerDrawingNo"
-                        value={product.customerDrawingNo || ""}
-                        readOnly
-                        className="bg-gray-50"
-                      />
-                      <p className="text-xs text-gray-500">此欄位自動同步自基本資料中的客戶圖號</p>
                     </div>
                   </div>
                 </div>
@@ -3221,17 +3221,186 @@ export function ProductForm({
       <ComplianceDialog />
       <ComponentSelectorDialog />
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting || isLoading}>
-          {isSubmitting || isLoading ? (
-            <>
-              保存中...
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-            </>
-          ) : (
-            "保存產品"
-          )}
-        </Button>
+      <div className="space-y-4">
+        <div className="flex justify-end space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // Prepare the data that would be saved
+              const productData = {
+                // 組合主鍵欄位
+                customer_id: product.customerName.id,
+                part_no: product.partNo,
+                factory_id: product.factoryName.id,
+
+                // 基本資訊
+                component_name: product.componentName,
+                specification: product.specification,
+                customs_code: product.customsCode,
+                end_customer: product.endCustomer,
+                product_type: product.productType,
+                classification_code: product.classificationCode,
+                vehicle_drawing_no: product.vehicleDrawingNo,
+                customer_drawing_no: product.customerDrawingNo,
+                product_period: product.productPeriod,
+                description: product.description,
+                status: product.status,
+                created_date: product.createdDate || new Date().toISOString().split("T")[0],
+                last_order_date: product.lastOrderDate,
+                last_price: product.lastPrice,
+                currency: product.currency,
+
+                // 產品規格
+                specifications: product.specifications,
+                sample_status: product.sampleStatus,
+                sample_date: product.sampleDate,
+
+                // 圖面資訊
+                original_drawing_version: product.originalDrawingVersion,
+                drawing_version: product.drawingVersion,
+                customer_original_drawing: product.customerOriginalDrawing,
+                jinzhan_drawing: product.jinzhanDrawing,
+                customer_drawing: product.customerDrawing,
+                factory_drawing: product.factoryDrawing,
+                customer_drawing_version: product.customerDrawingVersion,
+                factory_drawing_version: product.factoryDrawingVersion,
+
+                // 產品圖片
+                images: product.images,
+
+                // 組裝資訊
+                is_assembly: isCompositeProduct,
+                components: product.components,
+                assembly_time: product.assemblyTime,
+                assembly_cost_per_hour: product.assemblyCostPerHour,
+                additional_costs: product.additionalCosts,
+
+                // 文件與認證
+                important_documents: product.importantDocuments,
+                part_management: product.partManagement,
+                compliance_status: product.complianceStatus,
+                edit_notes: product.edit_notes,
+
+                // 製程資料
+                process_data: product.processData,
+                order_requirements: product.orderRequirements,
+                purchase_requirements: product.purchaseRequirements,
+                special_requirements: product.specialRequirements,
+                process_notes: product.processNotes,
+
+                // 履歷資料
+                has_mold: product.hasMold,
+                mold_cost: product.moldCost,
+                refundableMoldQuantity: product.refundableMoldQuantity,
+                moldReturned: product.moldReturned,
+                accounting_note: product.accountingNote,
+                quality_notes: product.qualityNotes,
+                order_history: product.orderHistory,
+                resume_notes: product.resumeNotes,
+
+                // 商業條款
+                moq: product.moq,
+                lead_time: product.leadTime,
+                packaging_requirements: product.packagingRequirements,
+
+                // 組合產品相關欄位
+                sub_part_no: isCompositeProduct ? selectedComponents : null,
+              }
+
+              // Set the test data to be displayed
+              const testDataElement = document.getElementById("saveTestData") as HTMLTextAreaElement
+              if (testDataElement) {
+                const mappingExplanation = `
+# 產品資料儲存測試結果
+## 資料庫欄位對應說明
+
+以下是表單欄位與資料庫欄位的對應關係：
+
+### 基本資訊
+- 零件名稱 → component_name
+- Part No. → part_no
+- 海關碼 → customs_code
+- 終端客戶 → end_customer
+- 客戶編號 → customer_id
+- 供應商編號 → factory_id
+- 規格 → specification
+- 產品類別 → product_type
+- 今湛分類碼 → classification_code
+- 車廠圖號 → vehicle_drawing_no
+- 客戶圖號 → customer_drawing_no
+- 產品別稱 → product_period
+- 產品描述 → description
+
+### 組合產品
+- 此為組合產品 → is_assembly
+- 組件產品列表 → sub_part_no
+
+### 圖面資訊
+- 原圖版次 → original_drawing_version
+- 客戶原圖 → customer_original_drawing
+- 繪圖版次 → drawing_version
+- 客戶圖版次 → customer_drawing_version
+- 工廠圖版次 → factory_drawing_version
+- 今湛繪圖 → jinzhan_drawing
+- 客戶圖 → customer_drawing
+- 工廠圖 → factory_drawing
+
+### 文件與認證
+- 重要文件 → important_documents
+- 零件管理特性 → part_management
+- 符合性要求 → compliance_status
+- 編輯備註 → edit_notes
+
+### 製程資料
+- 製程資料 → process_data
+- 訂單零件要求 → order_requirements
+- 採購單零件要求 → purchase_requirements
+- 特殊要求與測試 → special_requirements
+- 製程備註 → process_notes
+
+### 履歷資料
+- 有模具 → has_mold
+- 模具費用 → mold_cost
+- 可退模具數量 → refundable_mold_quantity
+- 模具已退回 → mold_returned
+- 會計備註 → accounting_note
+- 品質備註 → quality_notes
+- 訂單歷史 → order_history
+- 履歷備註 → resume_notes
+
+### 商業條款
+- 最小訂購量 → moq
+- 交貨時間 → lead_time
+- 包裝要求 → packaging_requirements
+
+## 完整JSON資料
+`
+                testDataElement.value = mappingExplanation + JSON.stringify(productData, null, 2)
+              }
+            }}
+          >
+            保存Test
+          </Button>
+          <Button type="submit" disabled={isSubmitting || isLoading}>
+            {isSubmitting || isLoading ? (
+              <>
+                保存中...
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              </>
+            ) : (
+              "保存產品"
+            )}
+          </Button>
+        </div>
+        <div>
+          <Textarea
+            id="saveTestData"
+            className="font-mono text-xs h-64"
+            readOnly
+            placeholder="點擊「保存Test」按鈕查看將要儲存的資料"
+          />
+        </div>
       </div>
     </form>
   )
