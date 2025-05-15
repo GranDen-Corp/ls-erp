@@ -136,7 +136,7 @@ export function ProductDataTable() {
         {
           label: "客戶",
           key: "customer_id",
-          render: (value: any, row: any) => {
+          render: (value: any) => {
             const customer = customers[value]
             return customer ? customer.customer_short_name || customer.customer_name || customer.name : value || "-"
           },
@@ -144,7 +144,7 @@ export function ProductDataTable() {
         {
           label: "工廠",
           key: "factory_id",
-          render: (value: any, row: any) => {
+          render: (value: any) => {
             const supplier = suppliers[value]
             return supplier ? supplier.supplier_name || supplier.factory_name || supplier.name : value || "-"
           },
@@ -410,6 +410,7 @@ export function ProductDataTable() {
       detailTabs={detailTabs}
       filterOptions={filterOptions}
       isLoading={loading}
+      showAllColumns={true}
     />
   )
 }

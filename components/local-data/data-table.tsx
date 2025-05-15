@@ -4,12 +4,23 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Download, Filter, RefreshCw, Upload, ArrowUpDown, Eye, Loader2 } from "lucide-react"
-import { supabaseClient } from "@/lib/supabase-client"
+import {
+  Search,
+  Download,
+  Filter,
+  RefreshCw,
+  Upload,
+  ArrowUpDown,
+  Eye,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
+import { createClient } from "@/lib/supabase-client"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +28,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import * as XLSX from "xlsx"
@@ -34,13 +46,14 @@ type ColumnDef = {
   sortable?: boolean
   filterable?: boolean
   width?: string
+  hidden?: boolean
 }
 
 // 資料表屬性類型
 interface DataTableProps {
   title: string
   tableName: string
-  columns: ColumnDef[]
+  columns?: ColumnDef[]
   detailTabs?: {
     id: string
     label: string
@@ -51,18 +64,33 @@ interface DataTableProps {
     label: string
     options: { value: string; label: string }[]
   }[]
+  isLoading?: boolean
+  showAllColumns?: boolean
 }
 
-export function DataTable({ title, tableName, columns, detailTabs = [], filterOptions = [] }: DataTableProps) {
+export function DataTable({
+  title,
+  tableName,
+  columns = [],
+  detailTabs = [],
+  filterOptions = [],
+  isLoading: externalLoading,
+  showAllColumns = false,
+}: DataTableProps) {
   const [data, setData] = useState<DataItem[]>([])
+  const [allColumns, setAllColumns] = useState<ColumnDef[]>([])
+  const [visibleColumns, setVisibleColumns] = useState<ColumnDef[]>(columns)
   const [searchTerm, setSearchTerm] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(externalLoading !== undefined ? externalLoading : true)
   const [error, setError] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<DataItem | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(detailTabs.length > 0 ? detailTabs[0].id : "")
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
+  const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false)
+  const [pageSize, setPageSize] = useState(20)
+  const [currentPage, setCurrentPage] = useState(0)
 
   // 匯出相關狀態
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
@@ -77,21 +105,43 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
 
   // 從Supabase獲取資料
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (externalLoading !== undefined) {
+      setIsLoading(externalLoading)
+    } else {
+      fetchData()
+    }
+  }, [externalLoading])
 
   const fetchData = async () => {
     try {
       setIsLoading(true)
       setError(null)
 
-      const { data, error } = await supabaseClient.from(tableName).select("*")
+      const supabase = createClient()
+      const { data, error } = await supabase.from(tableName).select("*")
 
       if (error) {
         throw new Error(`獲取資料時出錯: ${error.message}`)
       }
 
       setData(data || [])
+
+      // 如果沒有提供欄位定義或需要顯示所有欄位，則從資料中提取欄位
+      if (columns.length === 0 || showAllColumns) {
+        if (data && data.length > 0) {
+          const firstItem = data[0]
+          const extractedColumns: ColumnDef[] = Object.keys(firstItem).map((key) => ({
+            key,
+            title: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+            sortable: true,
+          }))
+          setAllColumns(extractedColumns)
+          setVisibleColumns(extractedColumns)
+        }
+      } else {
+        setAllColumns(columns)
+        setVisibleColumns(columns.filter((col) => !col.hidden))
+      }
     } catch (err) {
       console.error(`獲取${title}時出錯:`, err)
       setError(err instanceof Error ? err.message : `獲取${title}時出錯`)
@@ -146,10 +196,31 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
     })
   })
 
+  // 分頁資料
+  const paginatedData = filteredData.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+  const totalPages = Math.ceil(filteredData.length / pageSize)
+
   // 處理查看詳情
   const handleViewDetails = (item: DataItem) => {
     setSelectedItem(item)
     setIsDetailDialogOpen(true)
+  }
+
+  // 處理欄位顯示切換
+  const toggleColumnVisibility = (key: string) => {
+    setVisibleColumns((prev) => {
+      const columnExists = prev.some((col) => col.key === key)
+
+      if (columnExists) {
+        return prev.filter((col) => col.key !== key)
+      } else {
+        const columnToAdd = allColumns.find((col) => col.key === key)
+        if (columnToAdd) {
+          return [...prev, columnToAdd]
+        }
+      }
+      return prev
+    })
   }
 
   // 處理匯出功能
@@ -200,9 +271,9 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
   // 匯出為CSV
   const exportToCSV = (data: DataItem[], filename: string) => {
     // 準備CSV內容
-    const headers = columns.map((col) => col.title).join(",")
+    const headers = visibleColumns.map((col) => col.title).join(",")
     const rows = data.map((item) => {
-      return columns
+      return visibleColumns
         .map((col) => {
           const value = item[col.key]
           // 處理包含逗號的字串
@@ -231,9 +302,9 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
   const exportToExcel = (data: DataItem[], filename: string) => {
     // 準備Excel工作表資料
     const wsData = [
-      columns.map((col) => col.title),
+      visibleColumns.map((col) => col.title),
       ...data.map((item) =>
-        columns.map((col) => (item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : "")),
+        visibleColumns.map((col) => (item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : "")),
       ),
     ]
 
@@ -298,7 +369,8 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
       }
 
       // 將資料寫入Supabase
-      const { error } = await supabaseClient.from(tableName).upsert(importedData)
+      const supabase = createClient()
+      const { error } = await supabase.from(tableName).upsert(importedData)
 
       if (error) {
         throw new Error(`寫入資料時出錯: ${error.message}`)
@@ -458,7 +530,7 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
         <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>{title}詳細資料</DialogTitle>
-            <DialogDescription>{columns[0] && selectedItem[columns[0].key]}</DialogDescription>
+            <DialogDescription>{visibleColumns[0] && selectedItem[visibleColumns[0].key]}</DialogDescription>
           </DialogHeader>
 
           {detailTabs.length > 0 ? (
@@ -495,7 +567,7 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
           ) : (
             <ScrollArea className="h-[60vh] pr-4">
               <div className="grid grid-cols-2 gap-4">
-                {columns.map((column, index) => (
+                {allColumns.map((column, index) => (
                   <div key={index} className="space-y-2">
                     <p className="text-sm font-medium">{column.title}</p>
                     <div>
@@ -662,6 +734,36 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
     )
   }
 
+  // 渲染欄位選擇器
+  const renderColumnSelector = () => {
+    return (
+      <DropdownMenu open={isColumnSelectorOpen} onOpenChange={setIsColumnSelectorOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            顯示欄位
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56">
+          <DropdownMenuLabel>選擇顯示欄位</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <div className="max-h-[300px] overflow-y-auto">
+            {allColumns.map((column) => (
+              <DropdownMenuCheckboxItem
+                key={column.key}
+                checked={visibleColumns.some((col) => col.key === column.key)}
+                onCheckedChange={() => toggleColumnVisibility(column.key)}
+              >
+                {column.title}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setVisibleColumns(allColumns)}>顯示所有欄位</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -733,7 +835,7 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
                         <SelectValue placeholder="全部" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="not-empty">全部</SelectItem>
+                        <SelectItem value="all">全部</SelectItem>
                         {filter.options.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
@@ -750,6 +852,8 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          {renderColumnSelector()}
 
           <Button variant="outline" size="icon" onClick={() => fetchData()}>
             <RefreshCw className="h-4 w-4" />
@@ -769,62 +873,111 @@ export function DataTable({ title, tableName, columns, detailTabs = [], filterOp
         </div>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.map((column) => (
-                  <TableHead
-                    key={column.key}
-                    className={column.sortable ? "cursor-pointer select-none" : ""}
-                    style={column.width ? { width: column.width } : {}}
-                    onClick={column.sortable ? () => handleSort(column.key) : undefined}
-                  >
-                    <div className="flex items-center">
-                      {column.title}
-                      {column.sortable && <ArrowUpDown className="ml-1 h-4 w-4" />}
-                    </div>
-                  </TableHead>
-                ))}
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData.length === 0 ? (
+        <div className="rounded-md border overflow-hidden">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <Table>
+              <TableHeader className="bg-gray-50">
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} className="text-center">
-                    沒有找到符合條件的{title}
-                  </TableCell>
+                  {visibleColumns.map((column) => (
+                    <TableHead
+                      key={column.key}
+                      className={`${column.sortable ? "cursor-pointer select-none" : ""} px-4 py-3 text-left font-medium text-gray-700`}
+                      style={column.width ? { width: column.width, minWidth: column.width } : { minWidth: "150px" }}
+                      onClick={column.sortable ? () => handleSort(column.key) : undefined}
+                    >
+                      <div className="flex items-center">
+                        {column.title}
+                        {column.sortable && <ArrowUpDown className="ml-1 h-4 w-4" />}
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead
+                    className="text-right sticky right-0 bg-gray-50 shadow-sm"
+                    style={{ width: "80px", minWidth: "80px" }}
+                  >
+                    操作
+                  </TableHead>
                 </TableRow>
-              ) : (
-                filteredData.map((item, index) => (
-                  <TableRow key={index}>
-                    {columns.map((column) => (
-                      <TableCell key={column.key}>
-                        {column.render
-                          ? column.render(item[column.key], item)
-                          : item[column.key] !== undefined && item[column.key] !== null
-                            ? String(item[column.key])
-                            : "-"}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(item)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {paginatedData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={visibleColumns.length + 1} className="text-center">
+                      沒有找到符合條件的{title}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  paginatedData.map((item, index) => (
+                    <TableRow key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      {visibleColumns.map((column) => (
+                        <TableCell key={column.key} className="px-4 py-2 border-r border-gray-100">
+                          {column.render
+                            ? column.render(item[column.key], item)
+                            : item[column.key] !== undefined && item[column.key] !== null
+                              ? String(item[column.key])
+                              : "-"}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-right sticky right-0 bg-white shadow-sm">
+                        <Button variant="ghost" size="icon" onClick={() => handleViewDetails(item)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
+
+        {/* 分頁控制 */}
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center space-x-2">
+            <Select
+              value={pageSize.toString()}
+              onValueChange={(value) => {
+                setPageSize(Number(value))
+                setCurrentPage(0)
+              }}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="每頁顯示" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 筆</SelectItem>
+                <SelectItem value="20">20 筆</SelectItem>
+                <SelectItem value="50">50 筆</SelectItem>
+                <SelectItem value="100">100 筆</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-500">共 {filteredData.length} 筆資料</span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+              disabled={currentPage === 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">
+              第 {currentPage + 1} / {totalPages || 1} 頁
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+              disabled={currentPage >= totalPages - 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">
-          共 {filteredData.length} 筆{title}
-        </div>
-      </CardFooter>
 
       {renderDetailDialog()}
       {renderExportDialog()}

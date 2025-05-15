@@ -4,15 +4,42 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-interface Contact {
-  name: string
-  title: string
-  email: string
-  phone: string
-  primary: boolean
+interface Factory {
+  factory_id: string
+  factory_name: string
+  quality_contact1?: string
+  quality_contact2?: string
+  factory_phone?: string
+  factory_fax?: string
+  [key: string]: any
 }
 
-export function FactoryContactInfo({ contacts }: { contacts: Contact[] }) {
+export function FactoryContactInfo({ factory }: { factory: Factory }) {
+  // 從 factory 物件中提取聯絡人資訊
+  const contacts = []
+
+  // 如果有 quality_contact1，添加為主要聯絡人
+  if (factory.quality_contact1) {
+    contacts.push({
+      name: factory.quality_contact1,
+      title: "品質主管",
+      email: factory.quality_email1 || "-",
+      phone: factory.quality_phone1 || factory.factory_phone || "-",
+      primary: true,
+    })
+  }
+
+  // 如果有 quality_contact2，添加為次要聯絡人
+  if (factory.quality_contact2) {
+    contacts.push({
+      name: factory.quality_contact2,
+      title: "品質工程師",
+      email: factory.quality_email2 || "-",
+      phone: factory.quality_phone2 || factory.factory_phone || "-",
+      primary: false,
+    })
+  }
+
   return (
     <Card>
       <CardContent className="pt-6">

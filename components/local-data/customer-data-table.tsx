@@ -191,6 +191,7 @@ export function CustomerDataTable() {
       columns={columns}
       detailTabs={detailTabs}
       filterOptions={filterOptions}
+      showAllColumns={true}
     />
   )
 }

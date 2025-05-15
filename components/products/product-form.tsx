@@ -1179,6 +1179,8 @@ export function ProductForm({
 
   const ComplianceDialog = () => {
     const [open, setOpen] = useState(false)
+    const [regulationType, setRegulationType] = useState<string>("standard") // "standard" or "containment"
+
     return (
       <Dialog open={isComplianceDialogOpen} onOpenChange={setIsComplianceDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
@@ -1194,27 +1196,68 @@ export function ProductForm({
                 onChange={(e) => setNewCompliance({ ...newCompliance, regulation: e.target.value })}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="complianceStatus">符合狀態</Label>
-              <RadioGroup
-                value={newCompliance.status}
-                onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value })}
-                className="flex space-x-4"
-              >
+              <Label>法規類型</Label>
+              <RadioGroup value={regulationType} onValueChange={setRegulationType} className="flex space-x-4">
                 <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="符合" id="comply" />
-                  <Label htmlFor="comply" className="text-sm">
-                    符合
+                  <RadioGroupItem value="standard" id="type-standard" />
+                  <Label htmlFor="type-standard" className="text-sm">
+                    標準法規 (符合/不符)
                   </Label>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="不符" id="not-comply" />
-                  <Label htmlFor="not-comply" className="text-sm">
-                    不符
+                  <RadioGroupItem value="containment" id="type-containment" />
+                  <Label htmlFor="type-containment" className="text-sm">
+                    含有物質法規 (含有/不含有)
                   </Label>
                 </div>
               </RadioGroup>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="complianceStatus">符合狀態</Label>
+              {regulationType === "standard" ? (
+                <RadioGroup
+                  value={newCompliance.status}
+                  onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value })}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="符合" id="comply" />
+                    <Label htmlFor="comply" className="text-sm">
+                      符合
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="不符" id="not-comply" />
+                    <Label htmlFor="not-comply" className="text-sm">
+                      不符
+                    </Label>
+                  </div>
+                </RadioGroup>
+              ) : (
+                <RadioGroup
+                  value={newCompliance.status}
+                  onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value })}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="含有" id="has" />
+                    <Label htmlFor="has" className="text-sm">
+                      含有
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="不含有" id="not-has" />
+                    <Label htmlFor="not-has" className="text-sm">
+                      不含有
+                    </Label>
+                  </div>
+                </RadioGroup>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="complianceSubstances">含有物質</Label>
               <Input
@@ -1223,6 +1266,7 @@ export function ProductForm({
                 onChange={(e) => setNewCompliance({ ...newCompliance, substances: e.target.value })}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="complianceReason">理由</Label>
               <Input
@@ -2082,7 +2126,7 @@ export function ProductForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="productPeriod">產品期稿</Label>
+                  <Label htmlFor="productPeriod">產品別稱</Label>
                   <Input
                     id="productPeriod"
                     value={product.productPeriod || ""}
@@ -2329,6 +2373,18 @@ export function ProductForm({
                       </div>
                     </div>
                   </div>
+                  <div className="grid grid-cols-1 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="syncedCustomerDrawingNo">客戶圖號</Label>
+                      <Input
+                        id="syncedCustomerDrawingNo"
+                        value={product.customerDrawingNo || ""}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                      <p className="text-xs text-gray-500">此欄位自動同步自基本資料中的客戶圖號</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -2342,9 +2398,30 @@ export function ProductForm({
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">重要文件</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">重要文件</h3>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const newDocKey = `customDoc_${Date.now()}`
+                        setProduct((prev) => ({
+                          ...prev,
+                          importantDocuments: {
+                            ...(prev.importantDocuments || {}),
+                            [newDocKey]: { document: "", filename: "", title: "新文件" },
+                          },
+                        }))
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      新增文件
+                    </Button>
+                  </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* 標準文件 */}
                     <div className="space-y-2">
                       <Label htmlFor="PPAP">PPAP認可資料夾</Label>
                       <div className="flex items-center gap-2">
@@ -2402,6 +2479,94 @@ export function ProductForm({
                         </Button>
                       </div>
                     </div>
+
+                    {/* 自定義文件 */}
+                    {product.importantDocuments &&
+                      Object.entries(product.importantDocuments).map(([key, doc]) => {
+                        if (key === "PPAP" || key === "PSW" || key === "capacityAnalysis") return null
+
+                        return (
+                          <div key={key} className="space-y-2 border-t pt-4">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={(doc as any).title || key}
+                                  onChange={(e) => {
+                                    setProduct((prev) => ({
+                                      ...prev,
+                                      importantDocuments: {
+                                        ...(prev.importantDocuments || {}),
+                                        [key]: {
+                                          ...((prev.importantDocuments || {})[key] || {}),
+                                          title: e.target.value,
+                                        },
+                                      },
+                                    }))
+                                  }}
+                                  className="w-48"
+                                  placeholder="文件標題"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setProduct((prev) => {
+                                    const newDocs = { ...(prev.importantDocuments || {}) }
+                                    delete newDocs[key]
+                                    return {
+                                      ...prev,
+                                      importantDocuments: newDocs,
+                                    }
+                                  })
+                                }}
+                              >
+                                <X className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="file"
+                                id={`customDoc_${key}`}
+                                onChange={(e) => {
+                                  const files = e.target.files
+                                  if (!files || files.length === 0) return
+
+                                  const file = files[0]
+                                  const fileData = {
+                                    path: URL.createObjectURL(file),
+                                    filename: file.name,
+                                  }
+
+                                  setProduct((prev) => ({
+                                    ...prev,
+                                    importantDocuments: {
+                                      ...(prev.importantDocuments || {}),
+                                      [key]: {
+                                        ...((prev.importantDocuments || {})[key] || {}),
+                                        document: fileData.path,
+                                        filename: fileData.filename,
+                                      },
+                                    },
+                                  }))
+
+                                  e.target.value = ""
+                                }}
+                                className="hidden"
+                              />
+                              <Input readOnly value={(doc as any).filename || "未選擇文件"} className="flex-1" />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => document.getElementById(`customDoc_${key}`)?.click()}
+                              >
+                                選擇文件連結
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
                   </div>
                 </div>
               </CardContent>
@@ -2426,12 +2591,10 @@ export function ProductForm({
 
                   <div className="grid grid-cols-1 gap-4">
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-2">
+                      <div>
                         <Label>特性名稱</Label>
                       </div>
-                      <div className="text-right">
-                        <Label>狀態</Label>
-                      </div>
+                      <div className="text-right"></div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
@@ -2475,7 +2638,7 @@ export function ProductForm({
 
                     <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
                       <div className="col-span-2">
-                        <Label htmlFor="clockRequirement">時鐘要求</Label>
+                        <Label htmlFor="clockRequirement">熔鑄地要求</Label>
                       </div>
                       <div className="flex justify-end">
                         <Checkbox
@@ -2528,7 +2691,26 @@ export function ProductForm({
                         <div>
                           <Label>{regulation}</Label>
                         </div>
-                        <div className="text-center">
+                        {regulation === "PFAS" || regulation === "CMRT" || regulation === "EMRT" ? (
+                          <RadioGroup
+                            value={product.complianceStatus?.[regulation]?.status || ""}
+                            onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
+                            className="flex justify-center space-x-4"
+                          >
+                            <div className="flex items-center space-x-1">
+                              <RadioGroupItem value="含有" id={`${regulation}-has`} />
+                              <Label htmlFor={`${regulation}-has`} className="text-sm">
+                                含有
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <RadioGroupItem value="不含有" id={`${regulation}-not-has`} />
+                              <Label htmlFor={`${regulation}-not-has`} className="text-sm">
+                                不含有
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        ) : (
                           <RadioGroup
                             value={product.complianceStatus?.[regulation]?.status || ""}
                             onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
@@ -2547,7 +2729,7 @@ export function ProductForm({
                               </Label>
                             </div>
                           </RadioGroup>
-                        </div>
+                        )}
                         <div>
                           <Input
                             value={product.complianceStatus?.[regulation]?.substances || ""}
@@ -2654,7 +2836,7 @@ export function ProductForm({
                         <tr className="bg-gray-100">
                           <th className="border px-4 py-2 text-left">製程</th>
                           <th className="border px-4 py-2 text-left">廠商</th>
-                          <th className="border px-4 py-2 text-left">產能(SH)</th>
+                          <th className="border px-4 py-2 text-left">產能(8H)</th>
                           <th className="border px-4 py-2 text-left">要求</th>
                           <th className="border px-4 py-2 text-left">報告</th>
                           <th className="border px-4 py-2 text-center">操作</th>
@@ -2774,10 +2956,10 @@ export function ProductForm({
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">特殊要求</h3>
+                    <h3 className="text-lg font-medium">特殊要求與測試</h3>
                     <Button type="button" size="sm" variant="outline" onClick={() => setIsSpecialReqDialogOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
-                      添加特殊要求
+                      新增特殊要求與測試
                     </Button>
                   </div>
 

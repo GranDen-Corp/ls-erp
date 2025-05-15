@@ -236,6 +236,7 @@ export function SupplierDataTable() {
       columns={columns}
       detailTabs={detailTabs}
       filterOptions={filterOptions}
+      showAllColumns={true}
     />
   )
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { DataTable } from "./data-table"
-import { supabaseClient } from "@/lib/supabase-client"
+import { createClient } from "@/lib/supabase-client"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -17,8 +17,9 @@ export function OrderDataTable() {
   useEffect(() => {
     async function fetchCustomers() {
       try {
+        const supabase = createClient()
         // 嘗試獲取customers資料表的資料
-        const { data, error } = await supabaseClient.from("customers").select("*")
+        const { data, error } = await supabase.from("customers").select("*")
 
         if (error) {
           console.error("獲取客戶資料失敗:", error)
@@ -43,13 +44,15 @@ export function OrderDataTable() {
               : Object.keys(firstRow).find((key) => key.includes("id")) || "id"
 
         const nameField =
-          "name" in firstRow
-            ? "name"
-            : "customer_name" in firstRow
-              ? "customer_name"
-              : "company" in firstRow
-                ? "company"
-                : Object.keys(firstRow).find((key) => key.includes("name")) || "name"
+          "customer_short_name" in firstRow
+            ? "customer_short_name"
+            : "name" in firstRow
+              ? "name"
+              : "customer_name" in firstRow
+                ? "customer_name"
+                : "company" in firstRow
+                  ? "company"
+                  : Object.keys(firstRow).find((key) => key.includes("name")) || "name"
 
         data.forEach((customer) => {
           const id = customer[idField]
@@ -70,9 +73,10 @@ export function OrderDataTable() {
     // 檢查orders資料表是否存在
     async function checkOrdersTable() {
       try {
+        const supabase = createClient()
         // 使用正確的語法來檢查資料表是否存在
         // 只選擇一條記錄來檢查資料表是否存在
-        const { data, error } = await supabaseClient.from("orders").select("*").limit(1)
+        const { data, error } = await supabase.from("orders").select("*").limit(1)
 
         if (error) {
           console.error("檢查orders資料表失敗:", error)
@@ -232,5 +236,14 @@ export function OrderDataTable() {
     },
   ]
 
-  return <DataTable title="訂單" tableName="orders" columns={columns} detailTabs={detailTabs} isLoading={isLoading} />
+  return (
+    <DataTable
+      title="訂單"
+      tableName="orders"
+      columns={columns}
+      detailTabs={detailTabs}
+      isLoading={isLoading}
+      showAllColumns={true}
+    />
+  )
 }
