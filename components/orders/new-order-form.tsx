@@ -52,12 +52,13 @@ interface Customer {
 
 interface Product {
   id: string
-  part_no?: string
+  part_no: string
   component_name?: string
   description?: string
   is_assembly?: boolean
   customer_id?: string
   unit_price?: number
+  sub_part_no?: any
   [key: string]: any
 }
 
@@ -70,7 +71,7 @@ interface ShipmentBatch {
 
 interface OrderItem {
   id: string
-  productId: string
+  productKey: string // 使用 customer_id + part_no 作為唯一標識
   productName: string
   productPartNo: string
   quantity: number
@@ -92,7 +93,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [customerProducts, setCustomerProducts] = useState<Product[]>([])
     const [regularProducts, setRegularProducts] = useState<Product[]>([])
     const [assemblyProducts, setAssemblyProducts] = useState<Product[]>([])
-    const [selectedProductId, setSelectedProductId] = useState<string>("")
+    const [selectedProductPartNo, setSelectedProductPartNo] = useState<string>("")
     const [orderItems, setOrderItems] = useState<OrderItem[]>([])
     const [poNumber, setPoNumber] = useState<string>("")
     const [paymentTerm, setPaymentTerm] = useState<string>("")
@@ -107,7 +108,8 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [orderNumberStatus, setOrderNumberStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle")
     const [orderNumberMessage, setOrderNumberMessage] = useState<string>("")
     const [productSearchTerm, setProductSearchTerm] = useState<string>("")
-    const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]) // 使用 part_no 作為標識
+    const [loadingSelectedProducts, setLoadingSelectedProducts] = useState<boolean>(false)
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -167,11 +169,14 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             }
           })
 
+          // 確保每個產品都有 part_no
+          const processedProducts = (productsData || []).filter((product) => product.part_no)
+
           setCustomers(processedCustomers)
-          setProducts(productsData || [])
+          setProducts(processedProducts)
 
           console.log("已載入客戶資料:", processedCustomers.length, "筆")
-          console.log("已載入產品資料:", productsData?.length || 0, "筆")
+          console.log("已載入產品資料:", processedProducts.length, "筆")
         } catch (err: any) {
           console.error("獲取資料失敗:", err)
           setError(err.message || "獲取資料失敗")
@@ -223,7 +228,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       }
 
       // 重置產品選擇
-      setSelectedProductId("")
+      setSelectedProductPartNo("")
       setProductSearchTerm("")
       setSelectedProducts([]) // 清空已選產品
     }, [selectedCustomerId, customers, products])
@@ -284,26 +289,33 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       return product.part_no || ""
     }
 
+    // 生成產品的唯一鍵 (customer_id + part_no)
+    const getProductKey = (product: Product) => {
+      const customerId = product.customer_id || ""
+      const partNo = product.part_no || ""
+      return `${customerId}:${partNo}`
+    }
+
     const isProductAssembly = (product: Product) => {
       return product.is_assembly === true
     }
 
     // 檢查產品是否已添加到訂單中
-    const isProductAdded = (productId: string) => {
-      return orderItems.some((item) => item.productId === productId)
+    const isProductAdded = (partNo: string) => {
+      return orderItems.some((item) => item.productPartNo === partNo)
     }
 
     // 檢查產品是否已被選中
-    const isProductSelected = (productId: string) => {
-      return selectedProducts.includes(productId)
+    const isProductSelected = (partNo: string) => {
+      return selectedProducts.includes(partNo)
     }
 
     // 切換產品選擇狀態
-    const toggleProductSelection = (productId: string) => {
-      if (isProductSelected(productId)) {
-        setSelectedProducts(selectedProducts.filter((id) => id !== productId))
+    const toggleProductSelection = (partNo: string) => {
+      if (isProductSelected(partNo)) {
+        setSelectedProducts(selectedProducts.filter((pn) => pn !== partNo))
       } else {
-        setSelectedProducts([...selectedProducts, productId])
+        setSelectedProducts([...selectedProducts, partNo])
       }
     }
 
@@ -324,13 +336,13 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     })
 
     const handleAddAssemblyProduct = () => {
-      if (!selectedProductId) return
+      if (!selectedProductPartNo) return
 
-      const product = products.find((p) => p.id === selectedProductId)
+      const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
       if (!product) return
 
       // 檢查產品是否已添加
-      if (isProductAdded(product.id)) {
+      if (isProductAdded(product.part_no)) {
         alert(`產品 ${getProductPartNo(product)} 已添加到訂單中`)
         return
       }
@@ -340,7 +352,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
       const newItem: OrderItem = {
         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        productId: product.id,
+        productKey: getProductKey(product),
         productName: getProductName(product),
         productPartNo: getProductPartNo(product),
         quantity: 1,
@@ -349,37 +361,63 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       }
 
       setOrderItems([...nonAssemblyItems, newItem])
-      setSelectedProductId("")
+      setSelectedProductPartNo("")
     }
 
     // 處理添加選中的產品
-    const handleAddSelectedProducts = () => {
+    const handleAddSelectedProducts = async () => {
       // 如果沒有選中的產品，直接返回
       if (selectedProducts.length === 0) return
 
-      // 獲取選中的產品並添加到訂單中
-      const newItems = selectedProducts
-        .filter((productId) => !isProductAdded(productId)) // 過濾掉已添加的產品
-        .map((productId) => {
-          const product = products.find((p) => p.id === productId)
-          if (!product) return null
+      setLoadingSelectedProducts(true)
 
-          return {
-            id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${productId}`,
-            productId: product.id,
-            productName: getProductName(product),
-            productPartNo: getProductPartNo(product),
-            quantity: 1,
-            unitPrice: product.unit_price || 0,
-            isAssembly: false,
-          }
-        })
-        .filter(Boolean) as OrderItem[]
+      try {
+        const supabase = createClient()
 
-      if (newItems.length > 0) {
-        setOrderItems([...orderItems, ...newItems])
-        // 清空選擇
-        setSelectedProducts([])
+        // 從Supabase獲取選中產品的詳細資訊
+        // 使用 customer_id 和 part_no 的複合條件查詢
+        const { data: selectedProductsData, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("customer_id", selectedCustomerId)
+          .in("part_no", selectedProducts)
+
+        if (error) {
+          throw new Error(`獲取產品詳細資訊失敗: ${error.message}`)
+        }
+
+        console.log("獲取到的產品詳細資訊:", selectedProductsData)
+
+        if (!selectedProductsData || selectedProductsData.length === 0) {
+          alert("未找到符合條件的產品")
+          return
+        }
+
+        // 將獲取到的產品添加到訂單中
+        const newItems = selectedProductsData
+          .filter((product) => !isProductAdded(product.part_no))
+          .map((product) => {
+            return {
+              id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${product.part_no}`,
+              productKey: getProductKey(product),
+              productName: getProductName(product),
+              productPartNo: getProductPartNo(product),
+              quantity: 1,
+              unitPrice: product.unit_price || 0,
+              isAssembly: isProductAssembly(product),
+            }
+          })
+
+        if (newItems.length > 0) {
+          setOrderItems([...orderItems, ...newItems])
+          // 清空選擇
+          setSelectedProducts([])
+        }
+      } catch (err: any) {
+        console.error("添加產品失敗:", err)
+        alert(`添加產品失敗: ${err.message}`)
+      } finally {
+        setLoadingSelectedProducts(false)
       }
     }
 
@@ -434,6 +472,33 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           return batch
         }),
       )
+    }
+
+    // 解析組合產品的部件
+    const parseSubPartNo = (product: Product) => {
+      if (!product.sub_part_no) return null
+
+      try {
+        let subParts = product.sub_part_no
+        if (typeof subParts === "string") {
+          subParts = JSON.parse(subParts)
+        }
+
+        if (Array.isArray(subParts) && subParts.length > 0) {
+          return (
+            <div className="text-xs text-muted-foreground mt-1">
+              部件:{" "}
+              {subParts
+                .map((part) => `${part.productPN || part.part_no} (${part.productName || part.component_name})`)
+                .join("; ")}
+            </div>
+          )
+        }
+      } catch (err) {
+        console.error("解析sub_part_no失敗:", err)
+      }
+
+      return null
     }
 
     const handleSubmitOrder = async () => {
@@ -515,7 +580,6 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         // 處理產品和批次資料
         const partsList = orderItems.map((item) => ({
-          product_id: item.productId,
           part_no: item.productPartNo,
           description: item.productName,
           quantity: item.quantity,
@@ -732,9 +796,22 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                     <X className="h-4 w-4 mr-1" />
                     清除選擇
                   </Button>
-                  <Button size="sm" onClick={handleAddSelectedProducts} disabled={selectedProducts.length === 0}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    添加選中產品 ({selectedProducts.length})
+                  <Button
+                    size="sm"
+                    onClick={handleAddSelectedProducts}
+                    disabled={selectedProducts.length === 0 || loadingSelectedProducts}
+                  >
+                    {loadingSelectedProducts ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        處理中...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-1" />
+                        添加選中產品 ({selectedProducts.length})
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -743,24 +820,29 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {filteredRegularProducts.length > 0 ? (
                     filteredRegularProducts.map((product) => {
-                      const isAdded = isProductAdded(product.id)
-                      const isSelected = isProductSelected(product.id)
+                      const partNo = getProductPartNo(product)
+                      const isAdded = isProductAdded(partNo)
+                      const isSelected = isProductSelected(partNo)
                       return (
                         <div
-                          key={product.id}
-                          className={`flex items-center space-x-2 p-2 border rounded-md ${
+                          key={partNo}
+                          className={`flex items-start space-x-2 p-2 border rounded-md ${
                             isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
                           }`}
+                          onClick={() => !isAdded && toggleProductSelection(partNo)}
+                          style={{ cursor: isAdded ? "default" : "pointer" }}
                         >
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={() => toggleProductSelection(product.id)}
+                            onCheckedChange={() => toggleProductSelection(partNo)}
                             disabled={isAdded}
-                            className="mr-2"
+                            className="mt-1 mr-2"
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div className="flex-1">
-                            <div className="font-medium text-sm">{getProductPartNo(product)}</div>
+                            <div className="font-medium text-sm">{partNo}</div>
                             <div className="text-sm">{getProductName(product)}</div>
+                            {parseSubPartNo(product)}
                             <div className="text-xs text-muted-foreground">單價: {product.unit_price || 0} USD</div>
                           </div>
                           {isAdded && (
@@ -768,6 +850,21 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                               <CheckCircle className="h-3 w-3 mr-1" />
                               已添加
                             </Badge>
+                          )}
+                          {isProductAssembly(product) && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                    <Layers className="h-3 w-3 mr-1" />
+                                    組件
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>此產品是組合產品，包含多個部件</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </div>
                       )
@@ -789,26 +886,30 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               <div className="flex items-end gap-4">
                 <div className="flex-1 space-y-2">
                   <Label htmlFor="assemblyProduct">選擇組件產品</Label>
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={!selectedCustomerId}>
+                  <Select
+                    value={selectedProductPartNo}
+                    onValueChange={setSelectedProductPartNo}
+                    disabled={!selectedCustomerId}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder={selectedCustomerId ? "選擇組件產品" : "請先選擇客戶"} />
                     </SelectTrigger>
                     <SelectContent>
                       {assemblyProducts
-                        .filter((product) => !isProductAdded(product.id))
+                        .filter((product) => !isProductAdded(product.part_no))
                         .map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
+                          <SelectItem key={product.part_no} value={product.part_no}>
                             {getProductPartNo(product)} - {getProductName(product)}
                           </SelectItem>
                         ))}
                       {assemblyProducts.length > 0 &&
-                        assemblyProducts.filter((product) => !isProductAdded(product.id)).length === 0 && (
+                        assemblyProducts.filter((product) => !isProductAdded(product.part_no)).length === 0 && (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">所有組件產品已添加</div>
                         )}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleAddAssemblyProduct} disabled={!selectedProductId} className="w-32">
+                <Button onClick={handleAddAssemblyProduct} disabled={!selectedProductPartNo} className="w-32">
                   <Plus className="mr-2 h-4 w-4" />
                   新增組件
                 </Button>

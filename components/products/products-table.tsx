@@ -61,28 +61,44 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
       try {
         if (product.images) {
           if (typeof product.images === "string") {
-            images = JSON.parse(product.images)
-          } else {
+            try {
+              images = JSON.parse(product.images)
+            } catch (e) {
+              console.error("解析產品圖片字符串時出錯:", e)
+              images = []
+            }
+          } else if (Array.isArray(product.images)) {
             images = product.images
           }
         }
       } catch (e) {
-        console.error("解析產品圖片時出錯:", e)
+        console.error("處理產品圖片時出錯:", e)
         images = []
       }
 
+      // 確保每個圖片對象都有必要的屬性
+      const validImages = images
+        .filter((img) => img && typeof img === "object")
+        .map((img, index) => ({
+          id: img.id || `img-${index}`,
+          url: img.url || "/diverse-products-still-life.png",
+          alt: img.alt || product.component_name || "產品圖片",
+          isThumbnail: img.isThumbnail || false,
+        }))
+
       return {
         ...product,
-        images: images.length
-          ? images
-          : [
-              {
-                id: "default",
-                url: "/diverse-products-still-life.png",
-                alt: product.component_name || "產品圖片",
-                isThumbnail: true,
-              },
-            ],
+        images:
+          validImages.length > 0
+            ? validImages
+            : [
+                {
+                  id: "default",
+                  url: "/diverse-products-still-life.png",
+                  alt: product.component_name || "產品圖片",
+                  isThumbnail: true,
+                },
+              ],
       }
     })
 

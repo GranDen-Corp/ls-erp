@@ -21,25 +21,34 @@ interface ProductImagePreviewProps {
 export function ProductImagePreview({ images, thumbnailSize = "medium", className = "" }: ProductImagePreviewProps) {
   const [open, setOpen] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [imgError, setImgError] = useState(false)
 
-  if (!images || images.length === 0) {
+  // 確保 images 是有效的數組
+  const validImages = Array.isArray(images) && images.length > 0 ? images : []
+
+  // 如果沒有有效的圖片或發生錯誤，顯示預設圖示
+  if (validImages.length === 0 || imgError) {
     return (
-      <div className={`bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center ${className}`}>
+      <div
+        className={`bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center ${className} ${
+          thumbnailSize === "small" ? "h-10 w-10" : thumbnailSize === "medium" ? "h-16 w-16" : "h-24 w-24"
+        }`}
+      >
         <ZoomIn className="h-8 w-8 text-gray-400" />
       </div>
     )
   }
 
-  const currentImage = images[currentImageIndex]
+  const currentImage = validImages[currentImageIndex]
 
   const handlePrevious = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))
+    setCurrentImageIndex((prev) => (prev === 0 ? validImages.length - 1 : prev - 1))
   }
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))
+    setCurrentImageIndex((prev) => (prev === validImages.length - 1 ? 0 : prev + 1))
   }
 
   // 根據縮圖大小設置尺寸
@@ -49,6 +58,18 @@ export function ProductImagePreview({ images, thumbnailSize = "medium", classNam
     large: "h-24 w-24",
   }
 
+  // 安全的圖片 URL
+  const safeImageUrl = (url: string) => {
+    if (!url) return "/diverse-products-still-life.png"
+
+    // 如果是相對路徑，確保它以 / 開頭
+    if (!url.startsWith("http") && !url.startsWith("/")) {
+      return `/${url}`
+    }
+
+    return url
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -56,10 +77,12 @@ export function ProductImagePreview({ images, thumbnailSize = "medium", classNam
           className={`relative cursor-pointer rounded-md overflow-hidden ${sizeClasses[thumbnailSize]} ${className}`}
         >
           <Image
-            src={images[0].url || "/placeholder.svg"}
-            alt={images[0].alt}
+            src={safeImageUrl(currentImage.url) || "/placeholder.svg"}
+            alt={currentImage.alt || "產品圖片"}
             fill
             className="object-cover hover:scale-105 transition-transform"
+            onError={() => setImgError(true)}
+            unoptimized // 避免 Next.js 圖片優化可能導致的問題
           />
         </div>
       </DialogTrigger>
@@ -76,15 +99,17 @@ export function ProductImagePreview({ images, thumbnailSize = "medium", classNam
 
           <div className="relative h-[70vh] w-full">
             <Image
-              src={currentImage.url || "/placeholder.svg"}
-              alt={currentImage.alt}
+              src={safeImageUrl(currentImage.url) || "/placeholder.svg"}
+              alt={currentImage.alt || "產品圖片"}
               fill
               className="object-contain"
               priority
+              onError={() => setImgError(true)}
+              unoptimized // 避免 Next.js 圖片優化可能導致的問題
             />
           </div>
 
-          {images.length > 1 && (
+          {validImages.length > 1 && (
             <div className="absolute inset-y-0 left-0 flex items-center">
               <Button
                 variant="ghost"
@@ -97,7 +122,7 @@ export function ProductImagePreview({ images, thumbnailSize = "medium", classNam
             </div>
           )}
 
-          {images.length > 1 && (
+          {validImages.length > 1 && (
             <div className="absolute inset-y-0 right-0 flex items-center">
               <Button
                 variant="ghost"
@@ -110,11 +135,11 @@ export function ProductImagePreview({ images, thumbnailSize = "medium", classNam
             </div>
           )}
 
-          {images.length > 1 && (
+          {validImages.length > 1 && (
             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-              {images.map((image, index) => (
+              {validImages.map((image, index) => (
                 <button
-                  key={image.id}
+                  key={image.id || index}
                   className={`h-2 w-2 rounded-full transition-all ${
                     index === currentImageIndex ? "bg-primary w-4" : "bg-gray-300 dark:bg-gray-600"
                   }`}

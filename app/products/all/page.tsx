@@ -91,21 +91,57 @@ export default function ProductsPage() {
         // 處理產品數據
         const processedProducts =
           data?.map((product) => {
+            // 處理 sub_part_no
             let subPartNo = product.sub_part_no
-
-            // 如果 sub_part_no 是字符串，嘗試解析為 JSON
-            if (typeof subPartNo === "string") {
-              try {
+            try {
+              if (typeof subPartNo === "string" && subPartNo) {
                 subPartNo = JSON.parse(subPartNo)
-              } catch (e) {
-                console.error("解析 sub_part_no 時出錯:", e)
-                subPartNo = []
               }
+            } catch (e) {
+              console.error("解析 sub_part_no 時出錯:", e)
+              subPartNo = []
             }
+
+            // 處理 images
+            let images = product.images
+            try {
+              if (typeof images === "string" && images) {
+                images = JSON.parse(images)
+              }
+            } catch (e) {
+              console.error("解析 images 時出錯:", e)
+              images = []
+            }
+
+            // 確保 images 是數組
+            if (!Array.isArray(images)) {
+              images = []
+            }
+
+            // 確保每個圖片對象都有必要的屬性
+            const validImages = images
+              .filter((img) => img && typeof img === "object")
+              .map((img, index) => ({
+                id: img.id || `img-${index}`,
+                url: img.url || "/diverse-products-still-life.png",
+                alt: img.alt || product.component_name || "產品圖片",
+                isThumbnail: img.isThumbnail || false,
+              }))
 
             return {
               ...product,
               sub_part_no: subPartNo,
+              images:
+                validImages.length > 0
+                  ? validImages
+                  : [
+                      {
+                        id: "default",
+                        url: "/diverse-products-still-life.png",
+                        alt: product.component_name || "產品圖片",
+                        isThumbnail: true,
+                      },
+                    ],
             }
           }) || []
 
