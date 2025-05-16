@@ -43,12 +43,17 @@ import {
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { CustomerCombobox } from "@/components/ui/customer-combobox"
+import { ProductCombobox } from "@/components/ui/product-combobox"
+import { CustomerDataDebug } from "@/components/debug/customer-data-debug"
 
 interface Customer {
   id: string
   customer_id?: string
   name?: string
   customer_name?: string
+  customer_full_name?: string
+  customer_short_name?: string
   payment_term?: string
   delivery_terms?: string
   [key: string]: any
@@ -131,6 +136,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [productSearchTerm, setProductSearchTerm] = useState<string>("")
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]) // 使用 part_no 作為標識
     const [loadingSelectedProducts, setLoadingSelectedProducts] = useState<boolean>(false)
+    const [customerDebugInfo, setCustomerDebugInfo] = useState<string>("")
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -266,7 +272,9 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       },
     }))
 
-    // 獲取客戶和產品資料
+    // 修改客戶資料獲取和處理邏輯，確保統一使用 customer_id 作為主鍵
+
+    // 修改獲取客戶資料的部分
     useEffect(() => {
       const fetchData = async () => {
         setLoading(true)
@@ -276,36 +284,69 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           const supabase = createClient()
 
           // 獲取客戶資料
-          const { data: customersData, error: customersError } = await supabase.from("customers").select("*")
+          const { data: customersData, error: customersError } = await supabase
+            .from("customers")
+            .select("*")
+            .order("customer_full_name", { ascending: true })
 
-          if (customersError) throw new Error(`獲取客戶資料失敗: ${customersError.message}`)
+          if (customersError) {
+            console.error("獲取客戶資料失敗:", customersError)
+            throw new Error(`獲取客戶資料失敗: ${customersError.message}`)
+          }
+
+          // 處理客戶資料，確保有正確的ID和名稱欄位
+          const processedCustomers = (customersData || []).map((customer) => {
+            // 確保每個客戶都有一個有效的ID和名稱
+            const processedCustomer = {
+              ...customer,
+              // 統一使用 customer_id 作為主要ID
+              id: customer.customer_id || "",
+              // 使用 customer_full_name 作為主要名稱，如果沒有則依序嘗試其他欄位
+              name:
+                customer.customer_full_name ||
+                customer.name ||
+                customer.customer_short_name ||
+                customer.customer_name ||
+                `客戶 ${customer.customer_id}`,
+            }
+
+            return processedCustomer
+          })
+
+          // 記錄和設置數據
+          console.log("已載入客戶資料:", processedCustomers.length, "筆")
+          console.log(
+            "客戶資料範例:",
+            processedCustomers.slice(0, 3).map((c) => ({
+              id: c.id,
+              customer_id: c.customer_id,
+              name: c.name,
+            })),
+          )
+
+          // 設置調試信息
+          const debugInfo = `已載入 ${processedCustomers.length} 筆客戶資料。
+前3筆客戶: ${processedCustomers
+            .slice(0, 3)
+            .map((c) => `${c.name} (ID: ${c.customer_id})`)
+            .join(", ")}`
+          setCustomerDebugInfo(debugInfo)
+
+          setCustomers(processedCustomers)
 
           // 獲取產品資料
           const { data: productsData, error: productsError } = await supabase.from("products").select("*")
 
-          if (productsError) throw new Error(`獲取產品資料失敗: ${productsError.message}`)
-
-          // 處理客戶資料，確保有正確的ID和名稱欄位
-          const processedCustomers = (customersData || []).map((customer) => {
-            // 確保每個客戶都有一個有效的ID
-            const id = customer.customer_id || customer.id || ""
-            // 確保每個客戶都有一個顯示名稱
-            const name = customer.name || customer.customer_name || `客戶 ${id}`
-
-            return {
-              ...customer,
-              id: id,
-              name: name,
-            }
-          })
+          if (productsError) {
+            console.error("獲取產品資料失敗:", productsError)
+            throw new Error(`獲取產品資料失敗: ${productsError.message}`)
+          }
 
           // 確保每個產品都有 part_no
           const processedProducts = (productsData || []).filter((product) => product.part_no)
 
-          setCustomers(processedCustomers)
           setProducts(processedProducts)
 
-          console.log("已載入客戶資料:", processedCustomers.length, "筆")
           console.log("已載入產品資料:", processedProducts.length, "筆")
         } catch (err: any) {
           console.error("獲取資料失敗:", err)
@@ -321,9 +362,21 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     // 當客戶變更時，更新可選產品列表和客戶預設值
     useEffect(() => {
       if (selectedCustomerId) {
+        // 查找選定的客戶
+        const selectedCustomer = customers.find((customer) => customer.customer_id === selectedCustomerId)
+
+        // 設置客戶相關的默認值
+        if (selectedCustomer) {
+          console.log("已選擇客戶:", selectedCustomer)
+          setPaymentTerm(selectedCustomer.payment_term || "")
+          setDeliveryTerms(selectedCustomer.delivery_terms || "")
+        } else {
+          console.warn("找不到選擇的客戶:", selectedCustomerId)
+        }
+
         // 過濾該客戶的產品
         const filteredProducts = products.filter((product) => {
-          const productCustomerId = product.customer_id || product.customerId
+          const productCustomerId = product.customer_id
           return productCustomerId === selectedCustomerId
         })
 
@@ -338,17 +391,6 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         console.log(`客戶 ${selectedCustomerId} 的產品:`, filteredProducts.length, "筆")
         console.log("普通產品:", regular.length, "筆")
         console.log("組件產品:", assembly.length, "筆")
-
-        // 設置客戶預設值
-        const selectedCustomer = customers.find((c) => {
-          const customerId = c.id || c.customer_id
-          return customerId === selectedCustomerId
-        })
-
-        if (selectedCustomer) {
-          setPaymentTerm(selectedCustomer.payment_term || "")
-          setDeliveryTerms(selectedCustomer.delivery_terms || "")
-        }
       } else {
         setCustomerProducts([])
         setRegularProducts([])
@@ -361,7 +403,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       setSelectedProductPartNo("")
       setProductSearchTerm("")
       setSelectedProducts([]) // 清空已選產品
-    }, [selectedCustomerId, customers, products])
+    }, [selectedCustomerId, products, customers])
 
     // 檢查訂單編號是否重複
     const checkOrderNumberDuplicate = async () => {
@@ -403,12 +445,24 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       }
     }
 
-    const getCustomerName = (customer: Customer) => {
-      return customer.name || customer.customer_name || `客戶 ${customer.id}`
+    // 修改 getCustomerName 函數，確保使用正確的名稱顯示
+    const getCustomerId = (customer: Customer) => {
+      // 優先使用 customer_id，如果沒有則使用 id
+      const id = customer.customer_id || customer.id || ""
+      return id
     }
 
-    const getCustomerId = (customer: Customer) => {
-      return customer.id || customer.customer_id || ""
+    // 修改 getCustomerName 函數，確保使用正確的名稱顯示
+    const getCustomerName = (customer: Customer) => {
+      // 優先使用 customer_full_name，然後是 customer_short_name，然後是 name 或 customer_name
+      const name =
+        customer.customer_full_name ||
+        customer.name ||
+        customer.customer_short_name ||
+        customer.customer_name ||
+        `客戶 ${customer.customer_id || customer.id}`
+
+      return name
     }
 
     const getProductName = (product: Product) => {
@@ -1003,7 +1057,12 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     }
 
     if (loading) {
-      return <div className="flex justify-center p-4">載入中...</div>
+      return (
+        <div className="flex flex-col items-center justify-center p-8 space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-center text-muted-foreground">正在載入客戶和產品資料...</p>
+        </div>
+      )
     }
 
     if (error) {
@@ -1117,21 +1176,65 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               placeholder="請輸入客戶PO編號"
             />
           </div>
+          {/* 修改客戶選擇部分 */}
           <div className="space-y-2">
             <Label htmlFor="customer">客戶</Label>
-            <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="選擇客戶" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={getCustomerId(customer)} value={getCustomerId(customer)}>
-                    {getCustomerName(customer)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomerCombobox
+              options={customers.map((customer) => ({
+                value: customer.customer_id || "",
+                label:
+                  customer.customer_full_name ||
+                  customer.name ||
+                  customer.customer_short_name ||
+                  `客戶 ${customer.customer_id}`,
+                data: customer,
+              }))}
+              value={selectedCustomerId}
+              onValueChange={(value, data) => {
+                console.log("選擇客戶:", value, data)
+                setSelectedCustomerId(value)
+                if (data) {
+                  setPaymentTerm(data.payment_term || "")
+                  setDeliveryTerms(data.delivery_terms || "")
+                }
+              }}
+              placeholder="選擇客戶..."
+              emptyMessage={loading ? "載入中..." : customers.length === 0 ? "找不到客戶" : "找不到符合的客戶"}
+              disabled={loading}
+              className="w-full"
+            />
+            {customers.length === 0 && !loading && (
+              <Alert variant="warning" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>警告</AlertTitle>
+                <AlertDescription>未能載入客戶資料。請確保您已連接到資料庫並且有權限訪問客戶資料表。</AlertDescription>
+              </Alert>
+            )}
           </div>
+          {selectedCustomerId && customers.length > 0 && (
+            <div className="mt-2 p-3 bg-gray-50 rounded-md border text-sm">
+              {(() => {
+                const customer = customers.find(
+                  (c) => c.customer_id === selectedCustomerId || c.id === selectedCustomerId,
+                )
+                if (!customer) return <p>找不到客戶資料</p>
+
+                return (
+                  <div className="space-y-1">
+                    <div className="font-medium">{getCustomerName(customer)}</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                      <div>ID: {customer.customer_id || customer.id}</div>
+                      {customer.customer_phone && <div>電話: {customer.customer_phone}</div>}
+                      {customer.payment_term && <div>付款條件: {customer.payment_term}</div>}
+                      {customer.delivery_terms && <div>交貨條件: {customer.delivery_terms}</div>}
+                      {customer.customer_address && <div className="col-span-2">地址: {customer.customer_address}</div>}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+          {process.env.NODE_ENV !== "production" && <CustomerDataDebug customers={customers} loading={loading} />}
           <div className="space-y-2">
             <Label htmlFor="paymentTerm">付款條件</Label>
             <Input
@@ -1151,6 +1254,15 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             />
           </div>
         </div>
+
+        {/* 調試信息 - 僅在開發環境顯示 */}
+        {process.env.NODE_ENV !== "production" && customerDebugInfo && (
+          <Alert className="mt-4 bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-500" />
+            <AlertTitle>客戶資料調試信息</AlertTitle>
+            <AlertDescription className="text-xs whitespace-pre-line">{customerDebugInfo}</AlertDescription>
+          </Alert>
+        )}
 
         <Separator />
 
@@ -1278,28 +1390,25 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               <div className="flex items-end gap-4">
                 <div className="flex-1 space-y-2">
                   <Label htmlFor="assemblyProduct">選擇組件產品</Label>
-                  <Select
+                  <ProductCombobox
+                    options={assemblyProducts
+                      .filter((product) => !isProductAdded(product.part_no))
+                      .map((product) => ({
+                        value: getProductPartNo(product),
+                        label: getProductName(product),
+                        description: product.description,
+                        isAssembly: true,
+                        price: product.unit_price,
+                        data: product,
+                      }))}
                     value={selectedProductPartNo}
-                    onValueChange={setSelectedProductPartNo}
-                    disabled={!selectedCustomerId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={selectedCustomerId ? "選擇組件產品" : "請先選擇客戶"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assemblyProducts
-                        .filter((product) => !isProductAdded(product.part_no))
-                        .map((product) => (
-                          <SelectItem key={product.part_no} value={product.part_no}>
-                            {getProductPartNo(product)} - {getProductName(product)}
-                          </SelectItem>
-                        ))}
-                      {assemblyProducts.length > 0 &&
-                        assemblyProducts.filter((product) => !isProductAdded(product.part_no)).length === 0 && (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">所有組件產品已添加</div>
-                        )}
-                    </SelectContent>
-                  </Select>
+                    onValueChange={(value, data) => {
+                      setSelectedProductPartNo(value)
+                    }}
+                    placeholder={selectedCustomerId ? "搜尋或選擇組件產品" : "請先選擇客戶"}
+                    emptyMessage={assemblyProducts.length > 0 ? "找不到符合的組件產品" : "此客戶沒有組件產品"}
+                    disabled={!selectedCustomerId || assemblyProducts.length === 0}
+                  />
                 </div>
                 <Button onClick={handleAddAssemblyProduct} disabled={!selectedProductPartNo} className="w-32">
                   <Plus className="mr-2 h-4 w-4" />
