@@ -20,6 +20,9 @@ import {
   Search,
   X,
   Clock,
+  Info,
+  Calendar,
+  DollarSign,
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +41,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Customer {
   id: string
@@ -69,6 +73,15 @@ interface ShipmentBatch {
   plannedShipDate: Date | undefined
   quantity: number // 批次數量
   notes?: string
+  status?: string // 批次狀態
+  trackingNumber?: string // 追蹤號碼
+  actualShipDate?: Date // 實際出貨日期
+  estimatedArrivalDate?: Date // 預計到達日期
+  customsInfo?: {
+    clearanceDate?: Date
+    customsNumber?: string
+    customsFees?: number
+  } // 海關資訊
 }
 
 interface OrderItem {
@@ -80,6 +93,11 @@ interface OrderItem {
   unitPrice: number
   isAssembly: boolean
   shipmentBatches: ShipmentBatch[] // 每個產品的批次列表
+  specifications?: string // 產品規格
+  remarks?: string // 產品備註
+  currency?: string // 貨幣
+  discount?: number // 折扣
+  taxRate?: number // 稅率
 }
 
 interface NewOrderFormProps {
@@ -117,6 +135,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
     const [currentManagingProductPartNo, setCurrentManagingProductPartNo] = useState<string>("")
+    const [batchManagementTab, setBatchManagementTab] = useState<string>("basic")
 
     // 當系統生成的訂單編號變更時，更新自定義訂單編號的初始值
     useEffect(() => {
@@ -198,23 +217,42 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           }
         }
 
-        // 處理產品和批次資料
+        // 處理產品和批次資料 - 優化的JSONB結構
         const partsList = orderItems.map((item) => {
-          // 處理批次資料
+          // 處理批次資料 - 增強的批次資訊
           const batchesList = item.shipmentBatches.map((batch) => ({
             batch_number: batch.batchNumber,
             planned_ship_date: batch.plannedShipDate ? batch.plannedShipDate.toISOString() : null,
             quantity: batch.quantity,
-            notes: batch.notes,
+            notes: batch.notes || null,
+            status: batch.status || "pending", // 默認狀態為待處理
+            tracking_number: batch.trackingNumber || null,
+            actual_ship_date: batch.actualShipDate ? batch.actualShipDate.toISOString() : null,
+            estimated_arrival_date: batch.estimatedArrivalDate ? batch.estimatedArrivalDate.toISOString() : null,
+            customs_info: batch.customsInfo || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }))
 
+          // 返回產品完整資訊
           return {
             part_no: item.productPartNo,
             description: item.productName,
             quantity: item.quantity,
             unit_price: item.unitPrice,
             is_assembly: item.isAssembly,
+            specifications: item.specifications || null,
+            remarks: item.remarks || null,
+            currency: item.currency || "USD",
+            discount: item.discount || 0,
+            tax_rate: item.taxRate || 0,
+            total_price: calculateItemTotal(item),
             shipment_batches: batchesList,
+            metadata: {
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              version: "1.0",
+            },
           }
         })
 
@@ -436,6 +474,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         plannedShipDate: addDays(new Date(), 30), // 預設30天後交期
         quantity, // 默認批次數量等於產品總數量
         notes: "",
+        status: "pending", // 默認狀態
       }
     }
 
@@ -466,6 +505,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         unitPrice: product.unit_price || 0,
         isAssembly: true,
         shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
+        currency: "USD", // 默認貨幣
       }
 
       setOrderItems([...nonAssemblyItems, newItem])
@@ -517,6 +557,8 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               unitPrice: product.unit_price || 0,
               isAssembly: isProductAssembly(product),
               shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
+              currency: "USD", // 默認貨幣
+              specifications: product.specifications || "",
             }
           })
 
@@ -590,13 +632,24 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       )
     }
 
+    // 計算單個產品項目的總價
+    const calculateItemTotal = (item: OrderItem) => {
+      const basePrice = item.quantity * item.unitPrice
+      const discountAmount = item.discount ? basePrice * (item.discount / 100) : 0
+      const priceAfterDiscount = basePrice - discountAmount
+      const taxAmount = item.taxRate ? priceAfterDiscount * (item.taxRate / 100) : 0
+      return priceAfterDiscount + taxAmount
+    }
+
+    // 計算訂單總價
     const calculateTotal = () => {
-      return orderItems.reduce((total, item) => total + item.quantity * item.unitPrice, 0)
+      return orderItems.reduce((total, item) => total + calculateItemTotal(item), 0)
     }
 
     // 批次管理相關函數
     const openBatchManagement = (productPartNo: string) => {
       setCurrentManagingProductPartNo(productPartNo)
+      setBatchManagementTab("basic") // 重置為基本信息標籤
       setIsManagingBatches(true)
     }
 
@@ -630,6 +683,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         plannedShipDate: addDays(new Date(), 30), // 預設30天後交期
         quantity: remainingQuantity,
         notes: "",
+        status: "pending", // 默認狀態
       }
 
       // 更新產品的批次列表
@@ -693,6 +747,16 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               ...orderItem,
               shipmentBatches: orderItem.shipmentBatches.map((batch) => {
                 if (batch.id === batchId) {
+                  if (field === "customsInfo") {
+                    // 處理嵌套對象
+                    return {
+                      ...batch,
+                      customsInfo: {
+                        ...batch.customsInfo,
+                        ...value,
+                      },
+                    }
+                  }
                   return { ...batch, [field]: value }
                 }
                 return batch
@@ -752,6 +816,48 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const getProductBatchesCount = (productPartNo: string) => {
       const item = orderItems.find((item) => item.productPartNo === productPartNo)
       return item ? item.shipmentBatches.length : 0
+    }
+
+    // 批次狀態選項
+    const batchStatusOptions = [
+      { value: "pending", label: "待處理" },
+      { value: "scheduled", label: "已排程" },
+      { value: "in_production", label: "生產中" },
+      { value: "ready", label: "準備出貨" },
+      { value: "shipped", label: "已出貨" },
+      { value: "delivered", label: "已送達" },
+      { value: "delayed", label: "延遲" },
+      { value: "cancelled", label: "已取消" },
+    ]
+
+    // 獲取批次狀態顯示名稱
+    const getBatchStatusLabel = (status: string) => {
+      const option = batchStatusOptions.find((opt) => opt.value === status)
+      return option ? option.label : status
+    }
+
+    // 獲取批次狀態顏色
+    const getBatchStatusColor = (status: string) => {
+      switch (status) {
+        case "pending":
+          return "bg-gray-500"
+        case "scheduled":
+          return "bg-blue-500"
+        case "in_production":
+          return "bg-indigo-500"
+        case "ready":
+          return "bg-green-500"
+        case "shipped":
+          return "bg-purple-500"
+        case "delivered":
+          return "bg-teal-500"
+        case "delayed":
+          return "bg-amber-500"
+        case "cancelled":
+          return "bg-red-500"
+        default:
+          return "bg-gray-500"
+      }
     }
 
     const handleSubmitOrder = async () => {
@@ -843,23 +949,42 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           }
         }
 
-        // 處理產品和批次資料
+        // 處理產品和批次資料 - 優化的JSONB結構
         const partsList = orderItems.map((item) => {
-          // 處理批次資料
+          // 處理批次資料 - 增強的批次資訊
           const batchesList = item.shipmentBatches.map((batch) => ({
             batch_number: batch.batchNumber,
             planned_ship_date: batch.plannedShipDate ? batch.plannedShipDate.toISOString() : null,
             quantity: batch.quantity,
-            notes: batch.notes,
+            notes: batch.notes || null,
+            status: batch.status || "pending", // 默認狀態為待處理
+            tracking_number: batch.trackingNumber || null,
+            actual_ship_date: batch.actualShipDate ? batch.actualShipDate.toISOString() : null,
+            estimated_arrival_date: batch.estimatedArrivalDate ? batch.estimatedArrivalDate.toISOString() : null,
+            customs_info: batch.customsInfo || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }))
 
+          // 返回產品完整資訊
           return {
             part_no: item.productPartNo,
             description: item.productName,
             quantity: item.quantity,
             unit_price: item.unitPrice,
             is_assembly: item.isAssembly,
+            specifications: item.specifications || null,
+            remarks: item.remarks || null,
+            currency: item.currency || "USD",
+            discount: item.discount || 0,
+            tax_rate: item.taxRate || 0,
+            total_price: calculateItemTotal(item),
             shipment_batches: batchesList,
+            metadata: {
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              version: "1.0",
+            },
           }
         })
 
@@ -1234,7 +1359,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                         className="w-24 text-right"
                       />
                     </TableCell>
-                    <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{calculateItemTotal(item).toFixed(2)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="outline"
@@ -1293,83 +1418,256 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         {/* 批次管理對話框 */}
         <Dialog open={isManagingBatches} onOpenChange={(open) => !open && setIsManagingBatches(false)}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>管理批次出貨 - {currentManagingProductPartNo}</DialogTitle>
               <DialogDescription>設置產品的批次出貨計劃</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 my-4">
-              <Card>
-                <CardHeader className="py-3">
-                  <CardTitle className="text-base flex justify-between items-center">
-                    <span>批次列表</span>
-                    <div className="text-sm font-normal flex items-center gap-2">
-                      <span>總數量: {getCurrentItem()?.quantity || 0}</span>
-                      <span>已分配: {calculateAllocatedQuantity()}</span>
-                      <span>剩餘: {calculateRemainingQuantity()}</span>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>批次編號</TableHead>
-                        <TableHead>數量</TableHead>
-                        <TableHead>計劃出貨日</TableHead>
-                        <TableHead>備註</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getCurrentBatches().map((batch) => (
-                        <TableRow key={batch.id}>
-                          <TableCell>{batch.batchNumber}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={batch.quantity}
-                              onChange={(e) => updateBatch(batch.id, "quantity", Number.parseInt(e.target.value) || 1)}
-                              className="w-20"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <DatePicker
-                              date={batch.plannedShipDate}
-                              setDate={(date) => updateBatch(batch.id, "plannedShipDate", date)}
-                              placeholder="選擇出貨日期"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={batch.notes || ""}
-                              onChange={(e) => updateBatch(batch.id, "notes", e.target.value)}
-                              placeholder="備註"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeBatch(batch.id)}
-                              disabled={getCurrentBatches().length === 1} // 至少保留一個批次
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+              <Tabs value={batchManagementTab} onValueChange={setBatchManagementTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="basic" className="flex items-center">
+                    <Info className="mr-2 h-4 w-4" />
+                    基本資訊
+                  </TabsTrigger>
+                  <TabsTrigger value="shipping" className="flex items-center">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    出貨資訊
+                  </TabsTrigger>
+                  <TabsTrigger value="customs" className="flex items-center">
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    海關資訊
+                  </TabsTrigger>
+                </TabsList>
 
-              <Button onClick={addBatch} className="w-full" disabled={calculateRemainingQuantity() <= 0}>
-                <Plus className="mr-2 h-4 w-4" />
-                新增批次
-              </Button>
+                <TabsContent value="basic" className="space-y-4 pt-4">
+                  <Card>
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-base flex justify-between items-center">
+                        <span>批次列表</span>
+                        <div className="text-sm font-normal flex items-center gap-2">
+                          <span>總數量: {getCurrentItem()?.quantity || 0}</span>
+                          <span>已分配: {calculateAllocatedQuantity()}</span>
+                          <span>剩餘: {calculateRemainingQuantity()}</span>
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[300px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>批次編號</TableHead>
+                              <TableHead>數量</TableHead>
+                              <TableHead>計劃出貨日</TableHead>
+                              <TableHead>狀態</TableHead>
+                              <TableHead>備註</TableHead>
+                              <TableHead className="text-right">操作</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {getCurrentBatches().map((batch) => (
+                              <TableRow key={batch.id}>
+                                <TableCell>{batch.batchNumber}</TableCell>
+                                <TableCell>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={batch.quantity}
+                                    onChange={(e) =>
+                                      updateBatch(batch.id, "quantity", Number.parseInt(e.target.value) || 1)
+                                    }
+                                    className="w-20"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <DatePicker
+                                    date={batch.plannedShipDate}
+                                    setDate={(date) => updateBatch(batch.id, "plannedShipDate", date)}
+                                    placeholder="選擇出貨日期"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Select
+                                    value={batch.status || "pending"}
+                                    onValueChange={(value) => updateBatch(batch.id, "status", value)}
+                                  >
+                                    <SelectTrigger className="w-[130px]">
+                                      <SelectValue placeholder="選擇狀態" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {batchStatusOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={batch.notes || ""}
+                                    onChange={(e) => updateBatch(batch.id, "notes", e.target.value)}
+                                    placeholder="備註"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeBatch(batch.id)}
+                                    disabled={getCurrentBatches().length === 1} // 至少保留一個批次
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </CardContent>
+                    <CardFooter className="flex justify-center p-4">
+                      <Button onClick={addBatch} className="w-full" disabled={calculateRemainingQuantity() <= 0}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        新增批次
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="shipping" className="space-y-4 pt-4">
+                  <Card>
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-base">出貨資訊設定</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[300px] pr-4">
+                        <div className="space-y-6">
+                          {getCurrentBatches().map((batch) => (
+                            <div key={batch.id} className="space-y-4 border-b pb-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-medium">
+                                  批次 {batch.batchNumber} ({batch.quantity} 件)
+                                </h3>
+                                <Badge className={`${getBatchStatusColor(batch.status || "pending")} text-white`}>
+                                  {getBatchStatusLabel(batch.status || "pending")}
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`tracking-${batch.id}`}>追蹤號碼</Label>
+                                  <Input
+                                    id={`tracking-${batch.id}`}
+                                    value={batch.trackingNumber || ""}
+                                    onChange={(e) => updateBatch(batch.id, "trackingNumber", e.target.value)}
+                                    placeholder="輸入追蹤號碼"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor={`planned-date-${batch.id}`}>計劃出貨日期</Label>
+                                  <DatePicker
+                                    date={batch.plannedShipDate}
+                                    setDate={(date) => updateBatch(batch.id, "plannedShipDate", date)}
+                                    placeholder="選擇計劃出貨日期"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor={`actual-date-${batch.id}`}>實際出貨日期</Label>
+                                  <DatePicker
+                                    date={batch.actualShipDate}
+                                    setDate={(date) => updateBatch(batch.id, "actualShipDate", date)}
+                                    placeholder="選擇實際出貨日期"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor={`arrival-date-${batch.id}`}>預計到達日期</Label>
+                                  <DatePicker
+                                    date={batch.estimatedArrivalDate}
+                                    setDate={(date) => updateBatch(batch.id, "estimatedArrivalDate", date)}
+                                    placeholder="選擇預計到達日期"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="customs" className="space-y-4 pt-4">
+                  <Card>
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-base">海關資訊設定</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[300px] pr-4">
+                        <div className="space-y-6">
+                          {getCurrentBatches().map((batch) => (
+                            <div key={batch.id} className="space-y-4 border-b pb-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-medium">
+                                  批次 {batch.batchNumber} ({batch.quantity} 件)
+                                </h3>
+                                <Badge className={`${getBatchStatusColor(batch.status || "pending")} text-white`}>
+                                  {getBatchStatusLabel(batch.status || "pending")}
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`customs-number-${batch.id}`}>海關編號</Label>
+                                  <Input
+                                    id={`customs-number-${batch.id}`}
+                                    value={batch.customsInfo?.customsNumber || ""}
+                                    onChange={(e) =>
+                                      updateBatch(batch.id, "customsInfo", { customsNumber: e.target.value })
+                                    }
+                                    placeholder="輸入海關編號"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor={`customs-date-${batch.id}`}>清關日期</Label>
+                                  <DatePicker
+                                    date={batch.customsInfo?.clearanceDate}
+                                    setDate={(date) => updateBatch(batch.id, "customsInfo", { clearanceDate: date })}
+                                    placeholder="選擇清關日期"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor={`customs-fees-${batch.id}`}>海關費用</Label>
+                                  <Input
+                                    id={`customs-fees-${batch.id}`}
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={batch.customsInfo?.customsFees || ""}
+                                    onChange={(e) =>
+                                      updateBatch(batch.id, "customsInfo", {
+                                        customsFees: Number.parseFloat(e.target.value) || 0,
+                                      })
+                                    }
+                                    placeholder="輸入海關費用"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
 
             <DialogFooter>

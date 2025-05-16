@@ -132,6 +132,11 @@ export function ProductDataTable() {
       sortable: true,
     },
     {
+      key: "product_period",
+      title: "產品別稱",
+      sortable: true,
+    },
+    {
       key: "description",
       title: "產品描述",
       sortable: true,
@@ -150,6 +155,81 @@ export function ProductDataTable() {
       key: "is_assembly",
       title: "組裝件",
       render: (value: boolean) => <Badge variant={value ? "default" : "outline"}>{value ? "是" : "否"}</Badge>,
+      sortable: true,
+    },
+    {
+      key: "customs_code",
+      title: "海關碼",
+      sortable: true,
+    },
+    {
+      key: "end_customer",
+      title: "終端客戶",
+      sortable: true,
+    },
+    {
+      key: "classification_code",
+      title: "分類碼",
+      sortable: true,
+    },
+    {
+      key: "packaging_requirements",
+      title: "包裝要求",
+      sortable: true,
+    },
+    {
+      key: "original_drawing_version",
+      title: "原圖版次",
+      sortable: true,
+    },
+    {
+      key: "drawing_version",
+      title: "圖面版次",
+      sortable: true,
+    },
+    {
+      key: "customer_drawing_version",
+      title: "客戶圖版次",
+      sortable: true,
+    },
+    {
+      key: "factory_drawing_version",
+      title: "工廠圖版次",
+      sortable: true,
+    },
+    {
+      key: "sample_status",
+      title: "樣品狀態",
+      sortable: true,
+    },
+    {
+      key: "sample_date",
+      title: "樣品日期",
+      sortable: true,
+    },
+    {
+      key: "order_requirements",
+      title: "訂單要求",
+      sortable: true,
+    },
+    {
+      key: "purchase_requirements",
+      title: "採購要求",
+      sortable: true,
+    },
+    {
+      key: "assembly_time",
+      title: "組裝時間(分鐘)",
+      sortable: true,
+    },
+    {
+      key: "assembly_cost_per_hour",
+      title: "組裝人工成本(每小時)",
+      sortable: true,
+    },
+    {
+      key: "additional_costs",
+      title: "額外成本",
       sortable: true,
     },
     {

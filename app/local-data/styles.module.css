@@ -1,0 +1,53 @@
+.tableContainer {
+  position: relative;
+  width: 100%;
+  overflow: auto;
+}
+
+.tableContainer table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.tableContainer th,
+.tableContainer td {
+  white-space: nowrap;
+  padding: 0.75rem 1rem;
+}
+
+.tableContainer th:last-child,
+.tableContainer td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+}
+
+.tableContainer th:last-child {
+  background-color: #f9fafb;
+}
+
+.tableContainer tr:nth-child(odd) td:last-child {
+  background-color: white;
+}
+
+.tableContainer tr:nth-child(even) td:last-child {
+  background-color: #f9fafb;
+}
+
+.tableContainer::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tableContainer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tableContainer::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.tableContainer::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

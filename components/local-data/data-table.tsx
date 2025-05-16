@@ -31,7 +31,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import * as XLSX from "xlsx"
@@ -987,15 +987,15 @@ export function DataTable({
         {renderKeyIntegrityWarnings()}
 
         <div className="rounded-md border overflow-hidden">
-          <ScrollArea className="w-full" style={{ overflow: "auto" }}>
+          <div className="overflow-x-auto" style={{ width: "100%" }}>
             <div style={{ minWidth: "100%", width: "max-content" }}>
               <Table>
-                <TableHeader className="bg-gray-50">
+                <TableHeader className="bg-gray-50 sticky top-0 z-10">
                   <TableRow>
                     {visibleColumns.map((column) => (
                       <TableHead
                         key={column.key}
-                        className={`${column.sortable ? "cursor-pointer select-none" : ""} px-4 py-3 text-left font-medium text-gray-700`}
+                        className={`${column.sortable ? "cursor-pointer select-none" : ""} px-4 py-3 text-left font-medium text-gray-700 whitespace-nowrap`}
                         style={column.width ? { width: column.width, minWidth: column.width } : { minWidth: "150px" }}
                         onClick={column.sortable ? () => handleSort(column.key) : undefined}
                       >
@@ -1024,7 +1024,7 @@ export function DataTable({
                     paginatedData.map((item, index) => (
                       <TableRow key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         {visibleColumns.map((column) => (
-                          <TableCell key={column.key} className="px-4 py-2 border-r border-gray-100">
+                          <TableCell key={column.key} className="px-4 py-2 border-r border-gray-100 whitespace-nowrap">
                             {column.render
                               ? column.render(item[column.key], item)
                               : item[column.key] !== undefined && item[column.key] !== null
@@ -1043,8 +1043,7 @@ export function DataTable({
                 </TableBody>
               </Table>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
         </div>
 
         {/* 分頁控制 */}

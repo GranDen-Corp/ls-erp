@@ -52,6 +52,11 @@ export function SupplierDataTable() {
       sortable: true,
     },
     {
+      key: "factory_full_name",
+      title: "供應商全名",
+      sortable: true,
+    },
+    {
       key: "supplier_type",
       title: "類型",
       render: (value: string) => (
@@ -76,15 +81,179 @@ export function SupplierDataTable() {
       sortable: true,
     },
     {
+      key: "category2",
+      title: "次要分類",
+      sortable: true,
+    },
+    {
+      key: "category3",
+      title: "第三分類",
+      sortable: true,
+    },
+    {
+      key: "tax_id",
+      title: "統一編號",
+      sortable: true,
+    },
+    {
+      key: "factory_address",
+      title: "地址",
+      sortable: true,
+    },
+    {
+      key: "invoice_address",
+      title: "發票地址",
+      sortable: true,
+    },
+    {
+      key: "factory_phone",
+      title: "電話",
+      sortable: true,
+    },
+    {
+      key: "factory_fax",
+      title: "傳真",
+      sortable: true,
+    },
+    {
+      key: "quality_contact1",
+      title: "品管聯絡人",
+      sortable: true,
+    },
+    {
+      key: "quality_contact2",
+      title: "備用品管聯絡人",
+      sortable: true,
+    },
+    {
       key: "iso9001_certified",
       title: "ISO 9001",
       render: (value: string, item: any) => renderCertificationStatus(value, item.iso9001_expiry),
       sortable: true,
     },
     {
+      key: "iso9001_expiry",
+      title: "ISO 9001 有效期",
+      sortable: true,
+    },
+    {
       key: "iatf16949_certified",
       title: "IATF 16949",
       render: (value: string, item: any) => renderCertificationStatus(value, item.iatf16949_expiry),
+      sortable: true,
+    },
+    {
+      key: "iatf16949_expiry",
+      title: "IATF 16949 有效期",
+      sortable: true,
+    },
+    {
+      key: "iso17025_certified",
+      title: "ISO 17025",
+      render: (value: string, item: any) => renderCertificationStatus(value, item.iso17025_expiry),
+      sortable: true,
+    },
+    {
+      key: "iso17025_expiry",
+      title: "ISO 17025 有效期",
+      sortable: true,
+    },
+    {
+      key: "cqi9_certified",
+      title: "CQI-9 (熱處理)",
+      render: (value: string, item: any) => renderCertificationStatus(value, item.cqi9_expiry),
+      sortable: true,
+    },
+    {
+      key: "cqi9_expiry",
+      title: "CQI-9 有效期",
+      sortable: true,
+    },
+    {
+      key: "cqi11_certified",
+      title: "CQI-11 (電鍍)",
+      render: (value: string, item: any) => renderCertificationStatus(value, item.cqi11_expiry),
+      sortable: true,
+    },
+    {
+      key: "cqi11_expiry",
+      title: "CQI-11 有效期",
+      sortable: true,
+    },
+    {
+      key: "cqi12_certified",
+      title: "CQI-12 (塗裝)",
+      render: (value: string, item: any) => renderCertificationStatus(value, item.cqi12_expiry),
+      sortable: true,
+    },
+    {
+      key: "cqi12_expiry",
+      title: "CQI-12 有效期",
+      sortable: true,
+    },
+    {
+      key: "rohs_compliance",
+      title: "RoHS 合規",
+      sortable: true,
+    },
+    {
+      key: "reach_compliance",
+      title: "REACH 合規",
+      sortable: true,
+    },
+    {
+      key: "pfas_compliance",
+      title: "PFAS 合規",
+      sortable: true,
+    },
+    {
+      key: "cmrt_provided",
+      title: "CMRT 提供",
+      sortable: true,
+    },
+    {
+      key: "tsca_compliance",
+      title: "TSCA 合規",
+      sortable: true,
+    },
+    {
+      key: "emrt_provided",
+      title: "EMRT 提供",
+      sortable: true,
+    },
+    {
+      key: "cp65_compliance",
+      title: "CP65 合規",
+      sortable: true,
+    },
+    {
+      key: "eu_pop_compliance",
+      title: "EU POP 合規",
+      sortable: true,
+    },
+    {
+      key: "po_reminder_note",
+      title: "採購單備註",
+      sortable: true,
+    },
+    {
+      key: "approval_note",
+      title: "合格供應商備註",
+      sortable: true,
+    },
+    {
+      key: "disabled_reason",
+      title: "停用原因",
+      sortable: true,
+    },
+    {
+      key: "legacy_notes",
+      title: "舊系統備註",
+      sortable: true,
+    },
+    {
+      key: "direct_relation_3yrs",
+      title: "三年內直接/間接往來",
       sortable: true,
     },
   ]
@@ -237,6 +406,7 @@ export function SupplierDataTable() {
       detailTabs={detailTabs}
       filterOptions={filterOptions}
       showAllColumns={true}
+      primaryKey="factory_id" // 設定主鍵
     />
   )
 }
