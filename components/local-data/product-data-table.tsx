@@ -121,6 +121,47 @@ export function ProductDataTable() {
       ),
       sortable: true,
     },
+    {
+      key: "customer_drawing_no",
+      title: "客戶圖號",
+      sortable: true,
+    },
+    {
+      key: "vehicle_drawing_no",
+      title: "車廠圖號",
+      sortable: true,
+    },
+    {
+      key: "description",
+      title: "產品描述",
+      sortable: true,
+    },
+    {
+      key: "moq",
+      title: "最小訂購量",
+      sortable: true,
+    },
+    {
+      key: "lead_time",
+      title: "交貨時間",
+      sortable: true,
+    },
+    {
+      key: "is_assembly",
+      title: "組裝件",
+      render: (value: boolean) => <Badge variant={value ? "default" : "outline"}>{value ? "是" : "否"}</Badge>,
+      sortable: true,
+    },
+    {
+      key: "created_at",
+      title: "建立日期",
+      sortable: true,
+    },
+    {
+      key: "updated_at",
+      title: "更新日期",
+      sortable: true,
+    },
   ]
 
   // 定義產品詳情頁籤
@@ -154,7 +195,7 @@ export function ProductDataTable() {
         { label: "分類碼", key: "classification_code" },
         { label: "車廠圖號", key: "vehicle_drawing_no" },
         { label: "客戶圖號", key: "customer_drawing_no" },
-        { label: "產品期稿", key: "product_period" },
+        { label: "產品別稱", key: "product_period" },
         { label: "產品描述", key: "description" },
         {
           label: "狀態",
@@ -223,7 +264,7 @@ export function ProductDataTable() {
                     <tr className="border-b">
                       <th className="text-left p-2">製程</th>
                       <th className="text-left p-2">供應商</th>
-                      <th className="text-left p-2">產能</th>
+                      <th className="text-left p-2">產能(8H)</th>
                       <th className="text-left p-2">要求</th>
                     </tr>
                   </thead>
@@ -245,10 +286,10 @@ export function ProductDataTable() {
         { label: "訂單要求", key: "order_requirements" },
         { label: "採購要求", key: "purchase_requirements" },
         {
-          label: "特殊要求",
+          label: "特殊要求與測試",
           key: "special_requirements",
           render: (value: any[]) => {
-            if (!value || value.length === 0) return "無特殊要求"
+            if (!value || value.length === 0) return "無特殊要求與測試"
             return (
               <div className="space-y-2">
                 {value.map((req, index) => (
@@ -321,23 +362,28 @@ export function ProductDataTable() {
             if (!value) return "無合規資料"
             return (
               <div className="grid grid-cols-2 gap-2">
-                {Object.entries(value).map(([key, status]: [string, any]) => (
-                  <div key={key} className="border p-2 rounded-md">
-                    <div className="font-medium">{key}</div>
-                    <div className="mt-1">
-                      <Badge
-                        variant="outline"
-                        className={
-                          status.status === "符合"
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : "bg-yellow-50 text-yellow-700 border-yellow-200"
-                        }
-                      >
-                        {status.status}
-                      </Badge>
+                {Object.entries(value).map(([key, status]: [string, any]) => {
+                  // 檢查是否為PFAS, CMRT, EMRT，這些使用含有/不含有
+                  const isContainmentType = ["PFAS", "CMRT", "EMRT"].includes(key)
+
+                  return (
+                    <div key={key} className="border p-2 rounded-md">
+                      <div className="font-medium">{key}</div>
+                      <div className="mt-1">
+                        <Badge
+                          variant="outline"
+                          className={
+                            status.status === "符合" || status.status === "含有"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                          }
+                        >
+                          {status.status}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )
           },
@@ -347,11 +393,20 @@ export function ProductDataTable() {
           key: "part_management",
           render: (value: any) => {
             if (!value) return "無零件管理資料"
+
+            // 將時鐘要求改為熔鑄地要求
+            const displayLabels: Record<string, string> = {
+              clockRequirement: "熔鑄地要求",
+              safetyPart: "安全件",
+              automotivePart: "汽車件",
+              CBAMPart: "CBAM件",
+            }
+
             return (
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(value).map(([key, val]: [string, any]) => (
                   <div key={key} className="border p-2 rounded-md">
-                    <div className="font-medium">{key}</div>
+                    <div className="font-medium">{displayLabels[key] || key}</div>
                     <div className="mt-1">
                       <Badge
                         variant="outline"
@@ -396,6 +451,14 @@ export function ProductDataTable() {
         { value: "discontinued", label: "停產" },
       ],
     },
+    {
+      field: "is_assembly",
+      label: "組裝件",
+      options: [
+        { value: "true", label: "是" },
+        { value: "false", label: "否" },
+      ],
+    },
   ]
 
   if (error) {
@@ -411,6 +474,7 @@ export function ProductDataTable() {
       filterOptions={filterOptions}
       isLoading={loading}
       showAllColumns={true}
+      primaryKey={["part_no", "customer_id"]} // 設定複合主鍵
     />
   )
 }

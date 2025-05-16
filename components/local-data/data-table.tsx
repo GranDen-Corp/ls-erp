@@ -19,6 +19,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase-client"
 import {
@@ -34,6 +35,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import * as XLSX from "xlsx"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // 通用資料類型
 type DataItem = Record<string, any>
@@ -66,6 +68,9 @@ interface DataTableProps {
   }[]
   isLoading?: boolean
   showAllColumns?: boolean
+  primaryKey?: string | string[] // 主鍵欄位，可以是單一欄位或複合鍵
+  customQuery?: string // 自定義SQL查詢
+  onDataFetched?: (data: DataItem[]) => void // 資料獲取後的回調
 }
 
 export function DataTable({
@@ -76,6 +81,9 @@ export function DataTable({
   filterOptions = [],
   isLoading: externalLoading,
   showAllColumns = false,
+  primaryKey,
+  customQuery,
+  onDataFetched,
 }: DataTableProps) {
   const [data, setData] = useState<DataItem[]>([])
   const [allColumns, setAllColumns] = useState<ColumnDef[]>([])
@@ -91,6 +99,8 @@ export function DataTable({
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false)
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(0)
+  const [duplicateKeyWarnings, setDuplicateKeyWarnings] = useState<string[]>([])
+  const [missingKeyWarnings, setMissingKeyWarnings] = useState<string[]>([])
 
   // 匯出相關狀態
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
@@ -110,21 +120,38 @@ export function DataTable({
     } else {
       fetchData()
     }
-  }, [externalLoading])
+  }, [externalLoading, customQuery])
 
   const fetchData = async () => {
     try {
       setIsLoading(true)
       setError(null)
+      setDuplicateKeyWarnings([])
+      setMissingKeyWarnings([])
 
       const supabase = createClient()
-      const { data, error } = await supabase.from(tableName).select("*")
+      const query = supabase.from(tableName).select("*")
 
-      if (error) {
-        throw new Error(`獲取資料時出錯: ${error.message}`)
+      // 如果有自定義查詢，使用自定義查詢
+      if (customQuery) {
+        const { data, error } = await supabase.rpc("execute_sql", { sql_query: customQuery })
+        if (error) {
+          throw new Error(`執行自定義查詢時出錯: ${error.message}`)
+        }
+        setData(data || [])
+      } else {
+        // 使用標準查詢
+        const { data, error } = await query
+        if (error) {
+          throw new Error(`獲取資料時出錯: ${error.message}`)
+        }
+        setData(data || [])
       }
 
-      setData(data || [])
+      // 檢查主鍵完整性
+      if (primaryKey && data && data.length > 0) {
+        checkPrimaryKeyIntegrity(data)
+      }
 
       // 如果沒有提供欄位定義或需要顯示所有欄位，則從資料中提取欄位
       if (columns.length === 0 || showAllColumns) {
@@ -142,12 +169,57 @@ export function DataTable({
         setAllColumns(columns)
         setVisibleColumns(columns.filter((col) => !col.hidden))
       }
+
+      // 如果有回調函數，調用它
+      if (onDataFetched && data) {
+        onDataFetched(data)
+      }
     } catch (err) {
       console.error(`獲取${title}時出錯:`, err)
       setError(err instanceof Error ? err.message : `獲取${title}時出錯`)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // 檢查主鍵完整性
+  const checkPrimaryKeyIntegrity = (data: DataItem[]) => {
+    const duplicateWarnings: string[] = []
+    const missingWarnings: string[] = []
+
+    // 檢查是否有主鍵
+    if (!primaryKey) return
+
+    // 將主鍵轉換為數組
+    const keyFields = Array.isArray(primaryKey) ? primaryKey : [primaryKey]
+
+    // 檢查是否有缺少主鍵的記錄
+    data.forEach((item, index) => {
+      const missingKeys = keyFields.filter((key) => item[key] === undefined || item[key] === null)
+      if (missingKeys.length > 0) {
+        missingWarnings.push(`記錄 #${index + 1} 缺少主鍵欄位: ${missingKeys.join(", ")}`)
+      }
+    })
+
+    // 檢查是否有重複的主鍵
+    const keyMap = new Map<string, number>()
+    data.forEach((item, index) => {
+      // 只檢查有完整主鍵的記錄
+      if (keyFields.every((key) => item[key] !== undefined && item[key] !== null)) {
+        // 創建複合鍵字符串
+        const keyString = keyFields.map((key) => `${key}:${item[key]}`).join("|")
+
+        if (keyMap.has(keyString)) {
+          const prevIndex = keyMap.get(keyString)
+          duplicateWarnings.push(`記錄 #${index + 1} 與記錄 #${prevIndex! + 1} 有相同的主鍵: ${keyString}`)
+        } else {
+          keyMap.set(keyString, index)
+        }
+      }
+    })
+
+    setDuplicateKeyWarnings(duplicateWarnings)
+    setMissingKeyWarnings(missingWarnings)
   }
 
   // 處理排序
@@ -191,7 +263,7 @@ export function DataTable({
 
     // 再檢查是否符合篩選條件
     return Object.entries(activeFilters).every(([field, value]) => {
-      if (!value) return true
+      if (!value || value === "all") return true
       return item[field] === value
     })
   })
@@ -764,6 +836,45 @@ export function DataTable({
     )
   }
 
+  // 渲染主鍵完整性警告
+  const renderKeyIntegrityWarnings = () => {
+    if (duplicateKeyWarnings.length === 0 && missingKeyWarnings.length === 0) {
+      return null
+    }
+
+    return (
+      <div className="space-y-2 mb-4">
+        {duplicateKeyWarnings.length > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="font-medium">發現重複的主鍵:</div>
+              <ul className="list-disc pl-5 mt-1">
+                {duplicateKeyWarnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {missingKeyWarnings.length > 0 && (
+          <Alert variant="warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="font-medium">發現缺少主鍵欄位的記錄:</div>
+              <ul className="list-disc pl-5 mt-1">
+                {missingKeyWarnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -823,7 +934,7 @@ export function DataTable({
                   <div key={filter.field} className="px-2 py-1.5">
                     <div className="text-sm mb-1">{filter.label}</div>
                     <Select
-                      value={activeFilters[filter.field] || ""}
+                      value={activeFilters[filter.field] || "all"}
                       onValueChange={(value) => {
                         setActiveFilters((prev) => ({
                           ...prev,
@@ -873,61 +984,65 @@ export function DataTable({
         </div>
       </CardHeader>
       <CardContent>
+        {renderKeyIntegrityWarnings()}
+
         <div className="rounded-md border overflow-hidden">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  {visibleColumns.map((column) => (
-                    <TableHead
-                      key={column.key}
-                      className={`${column.sortable ? "cursor-pointer select-none" : ""} px-4 py-3 text-left font-medium text-gray-700`}
-                      style={column.width ? { width: column.width, minWidth: column.width } : { minWidth: "150px" }}
-                      onClick={column.sortable ? () => handleSort(column.key) : undefined}
-                    >
-                      <div className="flex items-center">
-                        {column.title}
-                        {column.sortable && <ArrowUpDown className="ml-1 h-4 w-4" />}
-                      </div>
-                    </TableHead>
-                  ))}
-                  <TableHead
-                    className="text-right sticky right-0 bg-gray-50 shadow-sm"
-                    style={{ width: "80px", minWidth: "80px" }}
-                  >
-                    操作
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.length === 0 ? (
+          <ScrollArea className="w-full" style={{ overflow: "auto" }}>
+            <div style={{ minWidth: "100%", width: "max-content" }}>
+              <Table>
+                <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="text-center">
-                      沒有找到符合條件的{title}
-                    </TableCell>
+                    {visibleColumns.map((column) => (
+                      <TableHead
+                        key={column.key}
+                        className={`${column.sortable ? "cursor-pointer select-none" : ""} px-4 py-3 text-left font-medium text-gray-700`}
+                        style={column.width ? { width: column.width, minWidth: column.width } : { minWidth: "150px" }}
+                        onClick={column.sortable ? () => handleSort(column.key) : undefined}
+                      >
+                        <div className="flex items-center">
+                          {column.title}
+                          {column.sortable && <ArrowUpDown className="ml-1 h-4 w-4" />}
+                        </div>
+                      </TableHead>
+                    ))}
+                    <TableHead
+                      className="text-right sticky right-0 bg-gray-50 shadow-sm"
+                      style={{ width: "80px", minWidth: "80px" }}
+                    >
+                      操作
+                    </TableHead>
                   </TableRow>
-                ) : (
-                  paginatedData.map((item, index) => (
-                    <TableRow key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      {visibleColumns.map((column) => (
-                        <TableCell key={column.key} className="px-4 py-2 border-r border-gray-100">
-                          {column.render
-                            ? column.render(item[column.key], item)
-                            : item[column.key] !== undefined && item[column.key] !== null
-                              ? String(item[column.key])
-                              : "-"}
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-right sticky right-0 bg-white shadow-sm">
-                        <Button variant="ghost" size="icon" onClick={() => handleViewDetails(item)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={visibleColumns.length + 1} className="text-center">
+                        沒有找到符合條件的{title}
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    paginatedData.map((item, index) => (
+                      <TableRow key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        {visibleColumns.map((column) => (
+                          <TableCell key={column.key} className="px-4 py-2 border-r border-gray-100">
+                            {column.render
+                              ? column.render(item[column.key], item)
+                              : item[column.key] !== undefined && item[column.key] !== null
+                                ? String(item[column.key])
+                                : "-"}
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-right sticky right-0 bg-white shadow-sm">
+                          <Button variant="ghost" size="icon" onClick={() => handleViewDetails(item)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </div>

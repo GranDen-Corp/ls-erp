@@ -11,7 +11,9 @@ export default function LocalDataPage() {
     <div className="container mx-auto py-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">SBTest資料表</h1>
-        <p className="text-muted-foreground">管理Supabase資料表，包含產品、客戶、供應商和訂單資料</p>
+        <p className="text-muted-foreground">
+          管理Supabase資料表，包含產品、客戶、供應商和訂單資料。表格支援橫向拖拉查看所有欄位。
+        </p>
       </div>
 
       <Tabs defaultValue="products">
