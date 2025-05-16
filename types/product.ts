@@ -127,9 +127,7 @@ export interface Product {
 
   // 圖面資訊
   originalDrawingVersion: string
-  drawingVersion: string
   customerOriginalDrawing: DrawingFile
-  jinzhanDrawing: DrawingFile
   customerDrawing: DrawingFile
   factoryDrawing: DrawingFile
   customerDrawingVersion: string

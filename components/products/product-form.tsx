@@ -321,9 +321,7 @@ export function ProductForm({
     status: "active",
     specifications: [],
     originalDrawingVersion: "",
-    drawingVersion: "",
     customerOriginalDrawing: emptyFileObject,
-    jinzhanDrawing: emptyFileObject,
     customerDrawing: emptyFileObject,
     factoryDrawing: emptyFileObject,
     customerDrawingVersion: "",
@@ -1406,10 +1404,6 @@ export function ProductForm({
         }))
         break
       case "jinzhanDrawing":
-        setProduct((prev) => ({
-          ...prev,
-          jinzhanDrawing: fileData,
-        }))
         break
       case "customerDrawing":
         setProduct((prev) => ({
@@ -1770,9 +1764,7 @@ export function ProductForm({
 
         // 圖面資訊
         original_drawing_version: product.originalDrawingVersion,
-        drawing_version: product.drawingVersion,
         customer_original_drawing: product.customerOriginalDrawing,
-        jinzhan_drawing: product.jinzhanDrawing,
         customer_drawing: product.customerDrawing,
         factory_drawing: product.factoryDrawing,
         customer_drawing_version: product.customerDrawingVersion,
@@ -2228,81 +2220,105 @@ export function ProductForm({
         <TabsContent value="images" className="space-y-4 pt-4">
           <div className="grid grid-cols-1 gap-6">
             {/* 圖面資訊 */}
+
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">圖面資訊</h3>
-                    <div className="w-1/3">
-                      <Label htmlFor="syncedCustomerDrawingNo">客戶圖號</Label>
-                      <Input
-                        id="syncedCustomerDrawingNo"
-                        value={product.customerDrawingNo || ""}
-                        readOnly
-                        className="bg-gray-50"
-                      />
-                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="originalDrawingVersion">原圖版次</Label>
-                      <Input
-                        id="originalDrawingVersion"
-                        value={product.originalDrawingVersion || ""}
-                        onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
-                        placeholder="輸入原圖版次"
-                      />
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* 左側：原圖版次和客戶原圖 */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="originalDrawingVersion">原圖版次</Label>
+                        <Input
+                          id="originalDrawingVersion"
+                          value={product.originalDrawingVersion || ""}
+                          onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
+                          placeholder="輸入原圖版次"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="customerOriginalDrawing">客戶原圖</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            id="customerOriginalDrawing"
+                            onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById("customerOriginalDrawing")?.click()}
+                            className="w-full"
+                          >
+                            選擇圖面連結
+                          </Button>
+                        </div>
+
+                        {product.customerOriginalDrawing?.filename && (
+                          <div className="mt-4 border rounded-md p-4">
+                            <p className="text-center font-medium mb-2">
+                              {product.customerOriginalDrawing.filename.split(".").slice(0, -1).join(".")}
+                            </p>
+                            {product.customerOriginalDrawing.path && (
+                              <div className="flex justify-center mb-2">
+                                <img
+                                  src={product.customerOriginalDrawing.path || "/placeholder.svg"}
+                                  alt="客戶原圖預覽"
+                                  className="max-h-40 object-contain"
+                                  onError={(e) => {
+                                    ;(e.target as HTMLImageElement).style.display = "none"
+                                    ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
+                                  }}
+                                />
+                                <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-500 break-all">{product.customerOriginalDrawing.path}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="customerOriginalDrawing">客戶原圖</Label>
-                      <div className="flex items-center gap-2">
+                    {/* 右側：車廠圖號和客戶圖號（從基本資訊同步） */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="syncedVehicleDrawingNo">車廠圖號</Label>
                         <Input
-                          type="file"
-                          id="customerOriginalDrawing"
-                          onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
-                          className="hidden"
-                        />
-                        <Input
+                          id="syncedVehicleDrawingNo"
+                          value={product.vehicleDrawingNo || ""}
                           readOnly
-                          value={product.customerOriginalDrawing?.filename || "未選擇圖面"}
-                          className="flex-1"
+                          className="bg-gray-50"
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("customerOriginalDrawing")?.click()}
-                        >
-                          選擇圖面連結
-                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="syncedCustomerDrawingNo">客戶圖號</Label>
+                        <Input
+                          id="syncedCustomerDrawingNo"
+                          value={product.customerDrawingNo || ""}
+                          readOnly
+                          className="bg-gray-50"
+                        />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 pt-4">
+                  <div className="grid grid-cols-2 gap-4 pt-4">
                     <div className="space-y-2">
-                      <h4 className="font-medium">發單製作</h4>
+                      <h4 className="font-medium text-center">今湛客圖</h4>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-medium text-center">客戶圖</h4>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-center">工廠圖</h4>
+                      <h4 className="font-medium text-center">今湛工廠圖</h4>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="drawingVersion">繪圖版次</Label>
-                      <Input
-                        id="drawingVersion"
-                        value={product.drawingVersion || ""}
-                        onChange={(e) => handleInputChange("drawingVersion", e.target.value)}
-                        placeholder="輸入繪圖版次"
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="customerDrawingVersion">客戶圖版次</Label>
                       <Input
@@ -2324,29 +2340,9 @@ export function ProductForm({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="jinzhanDrawing">今湛繪圖</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          id="jinzhanDrawing"
-                          onChange={(e) => handleFileUpload(e, "jinzhanDrawing")}
-                          className="hidden"
-                        />
-                        <Input readOnly value={product.jinzhanDrawing?.filename || "未選擇圖面"} className="flex-1" />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("jinzhanDrawing")?.click()}
-                        >
-                          選擇圖面連結
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="customerDrawing">客戶圖</Label>
+                      <Label htmlFor="customerDrawing">今湛客圖</Label>
                       <div className="flex items-center gap-2">
                         <Input
                           type="file"
@@ -2366,7 +2362,7 @@ export function ProductForm({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="factoryDrawing">工廠圖</Label>
+                      <Label htmlFor="factoryDrawing">今湛工廠圖</Label>
                       <div className="flex items-center gap-2">
                         <Input
                           type="file"
@@ -3258,9 +3254,7 @@ export function ProductForm({
 
                 // 圖面資訊
                 original_drawing_version: product.originalDrawingVersion,
-                drawing_version: product.drawingVersion,
                 customer_original_drawing: product.customerOriginalDrawing,
-                jinzhan_drawing: product.jinzhanDrawing,
                 customer_drawing: product.customerDrawing,
                 factory_drawing: product.factoryDrawing,
                 customer_drawing_version: product.customerDrawingVersion,
