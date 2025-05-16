@@ -8,16 +8,18 @@ import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, FileText } from "lucide-react"
+import { AlertCircle, CheckCircle2, FileText, ShoppingCart } from "lucide-react"
 import { generateOrderNumber } from "@/lib/order-utils"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export default function NewOrderTestPage() {
+export default function NewOrderPage() {
   const router = useRouter()
   const [formattedDate, setFormattedDate] = useState<string>(
     format(new Date(), "yyyy/MM/dd HH:mm:ss", { locale: zhTW }),
   )
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState<boolean>(false)
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const formRef = useRef<any>(null)
@@ -25,6 +27,7 @@ export default function NewOrderTestPage() {
   const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState<boolean>(true)
   const [testData, setTestData] = useState<string>("")
   const [isTestingSubmit, setIsTestingSubmit] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<string>("form")
 
   // 更新時間和訂單編號
   useEffect(() => {
@@ -54,15 +57,16 @@ export default function NewOrderTestPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (createPurchaseOrder = false) => {
     if (!formRef.current) return
 
     setIsSubmitting(true)
+    setIsCreatingPurchaseOrder(createPurchaseOrder)
     setSubmitError(null)
     setSubmitSuccess(false)
 
     try {
-      const result = await formRef.current.submitOrder()
+      const result = await formRef.current.submitOrder(createPurchaseOrder)
       console.log("訂單提交成功:", result)
       setSubmitSuccess(true)
 
@@ -75,6 +79,7 @@ export default function NewOrderTestPage() {
       setSubmitError(err.message || "提交訂單時發生錯誤")
     } finally {
       setIsSubmitting(false)
+      setIsCreatingPurchaseOrder(false)
     }
   }
 
@@ -156,11 +161,49 @@ export default function NewOrderTestPage() {
         explanation += "尚未添加產品\n"
       }
 
+      // 添加採購資料
+      explanation += "\n### 採購資料\n"
+      if (orderData.procurement_items && orderData.procurement_items.length > 0) {
+        explanation += `共 ${orderData.procurement_items.length} 項採購資料，其中 ${
+          orderData.procurement_items.filter((item: any) => item.isSelected).length
+        } 項已選擇\n\n`
+
+        // 按工廠分組
+        const itemsByFactory: Record<string, any[]> = {}
+        orderData.procurement_items
+          .filter((item: any) => item.isSelected)
+          .forEach((item: any) => {
+            if (!item.factoryId) return
+            if (!itemsByFactory[item.factoryId]) {
+              itemsByFactory[item.factoryId] = []
+            }
+            itemsByFactory[item.factoryId].push(item)
+          })
+
+        // 顯示每個工廠的採購項目
+        Object.entries(itemsByFactory).forEach(([factoryId, items]) => {
+          const factoryName = items[0].factoryName
+          explanation += `#### 工廠: ${factoryName} (${factoryId})\n`
+          items.forEach((item, index) => {
+            explanation += `- 產品 ${index + 1}: ${item.productPartNo} - ${item.productName}\n`
+            explanation += `  - 數量: ${item.quantity}\n`
+            explanation += `  - 採購單價: ${item.purchasePrice}\n`
+            explanation += `  - 交期: ${item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : "未設定"}\n`
+          })
+          explanation += `- 總採購金額: ${items
+            .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
+            .toFixed(2)} USD\n\n`
+        })
+      } else {
+        explanation += "尚未設定採購資料\n"
+      }
+
       explanation += "\n\n## 完整JSON資料\n\n```json\n"
       explanation += JSON.stringify(orderData, null, 2)
       explanation += "\n```"
 
       setTestData(explanation)
+      setActiveTab("test")
     } catch (err: any) {
       console.error("測試提交失敗:", err)
       setTestData(`測試提交失敗: ${err.message || "未知錯誤"}`)
@@ -191,12 +234,26 @@ export default function NewOrderTestPage() {
             ) : (
               <>
                 <FileText className="h-4 w-4 mr-2" />
-                儲存Test
+                測試資料
               </>
             )}
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "處理中..." : "儲存訂單"}
+          <Button onClick={() => handleSubmit(false)} disabled={isSubmitting || isCreatingPurchaseOrder}>
+            {isSubmitting && !isCreatingPurchaseOrder ? "處理中..." : "儲存訂單"}
+          </Button>
+          <Button
+            onClick={() => handleSubmit(true)}
+            disabled={isSubmitting || isCreatingPurchaseOrder}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isCreatingPurchaseOrder ? (
+              "處理中..."
+            ) : (
+              <>
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                儲存訂單並建立採購單
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -205,7 +262,9 @@ export default function NewOrderTestPage() {
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle>訂單建立成功</AlertTitle>
-          <AlertDescription>訂單已成功建立，即將跳轉到訂單列表...</AlertDescription>
+          <AlertDescription>
+            {isCreatingPurchaseOrder ? "訂單和採購單已成功建立" : "訂單已成功建立"}，即將跳轉到訂單列表...
+          </AlertDescription>
         </Alert>
       )}
 
@@ -217,32 +276,45 @@ export default function NewOrderTestPage() {
         </Alert>
       )}
 
-      {testData && (
-        <Card>
-          <CardHeader>
-            <CardTitle>測試資料</CardTitle>
-            <CardDescription>以下是將要儲存到資料庫的資料及其對應關係</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea value={testData} readOnly className="font-mono text-sm h-96 overflow-auto whitespace-pre-wrap" />
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>訂單資訊</CardTitle>
-          <CardDescription>填寫訂單詳細資訊，包括客戶、產品和交付條件等。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <NewOrderForm
-            ref={formRef}
-            orderNumber={orderNumber}
-            isLoadingOrderNumber={isLoadingOrderNumber}
-            onSubmit={handleSubmit}
-          />
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="form">訂單表單</TabsTrigger>
+          <TabsTrigger value="test" disabled={!testData}>
+            測試資料
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="form">
+          <Card>
+            <CardHeader>
+              <CardTitle>訂單資訊</CardTitle>
+              <CardDescription>填寫訂單詳細資訊，包括客戶、產品和交付條件等。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <NewOrderForm
+                ref={formRef}
+                orderNumber={orderNumber}
+                isLoadingOrderNumber={isLoadingOrderNumber}
+                onSubmit={handleSubmit}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="test">
+          <Card>
+            <CardHeader>
+              <CardTitle>測試資料</CardTitle>
+              <CardDescription>以下是將要儲存到資料庫的資料及其對應關係</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={testData}
+                readOnly
+                className="font-mono text-sm h-96 overflow-auto whitespace-pre-wrap"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -67,15 +67,7 @@ export function CustomerCombobox({
   // 獲取當前選中的選項
   const selectedOption = options.find((option) => option.value === value)
 
-  // 調試信息
-  React.useEffect(() => {
-    console.log("CustomerCombobox 選項數量:", options.length)
-    console.log("CustomerCombobox 選項範例:", options.slice(0, 3))
-    console.log("CustomerCombobox 當前值:", value)
-    console.log("CustomerCombobox 選中選項:", selectedOption)
-    console.log("CustomerCombobox 下拉選單狀態:", open ? "開啟" : "關閉")
-  }, [options, value, selectedOption, open])
-
+  // 修改按鈕點擊事件，只在打開/關閉時輸出日誌
   return (
     <div className="relative w-full">
       {/* 自定義按鈕 */}
@@ -88,7 +80,12 @@ export function CustomerCombobox({
         disabled={disabled}
         type="button"
         onClick={() => {
-          console.log("CustomerCombobox 按鈕被點擊")
+          if (!open) {
+            console.log("CustomerCombobox 打開下拉選單")
+            console.log("CustomerCombobox 選項數量:", options.length)
+            console.log("CustomerCombobox 當前值:", value)
+            console.log("CustomerCombobox 選中選項:", selectedOption)
+          }
           setOpen(!open)
         }}
       >
@@ -154,15 +151,6 @@ export function CustomerCombobox({
               ))
             )}
           </div>
-        </div>
-      )}
-
-      {/* 調試信息 */}
-      {process.env.NODE_ENV !== "production" && (
-        <div className="mt-2 text-xs text-gray-500">
-          <div>選項數量: {options.length}</div>
-          <div>當前選中: {selectedOption ? selectedOption.label : "無"}</div>
-          <div>下拉狀態: {open ? "開啟" : "關閉"}</div>
         </div>
       )}
     </div>

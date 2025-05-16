@@ -14,6 +14,7 @@ export interface ProductOption {
   description?: string
   isAssembly?: boolean
   price?: number
+  priceLabel?: string
   data?: any
 }
 
@@ -103,7 +104,9 @@ export function ProductCombobox({
                     </div>
                     <span className="text-sm text-muted-foreground truncate">{option.label}</span>
                     {option.price !== undefined && (
-                      <span className="text-xs text-muted-foreground">單價: {option.price} USD</span>
+                      <span className="text-xs text-muted-foreground">
+                        前次單價: {option.priceLabel || `${option.price} USD`}
+                      </span>
                     )}
                   </div>
                 </CommandItem>

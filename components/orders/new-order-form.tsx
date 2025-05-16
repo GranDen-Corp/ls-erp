@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import type React from "react"
+
+import { useState, useEffect, forwardRef, useImperativeHandle, useRef, useLayoutEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,6 +25,11 @@ import {
   Info,
   Calendar,
   DollarSign,
+  ShoppingCart,
+  ArrowRight,
+  ArrowLeft,
+  SplitSquareVertical,
+  Minimize2,
 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
@@ -46,6 +53,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { CustomerCombobox } from "@/components/ui/customer-combobox"
 import { ProductCombobox } from "@/components/ui/product-combobox"
 import { CustomerDataDebug } from "@/components/debug/customer-data-debug"
+import { ProcurementDataEditor, type ProcurementItem } from "@/components/orders/procurement-data-editor"
 
 interface Customer {
   id: string
@@ -67,7 +75,18 @@ interface Product {
   is_assembly?: boolean
   customer_id?: string
   unit_price?: number
+  last_price?: number
   sub_part_no?: any
+  factory_id?: string
+  currency?: string
+  customs_code?: string
+  order_requirements?: string
+  customer_drawing?: {
+    filename?: string
+    path?: string
+  }
+  customer_drawing_version?: string
+  specification?: string
   [key: string]: any
 }
 
@@ -103,6 +122,7 @@ interface OrderItem {
   currency?: string // 貨幣
   discount?: number // 折扣
   taxRate?: number // 稅率
+  product?: Product // 產品完整資料
 }
 
 interface NewOrderFormProps {
@@ -137,6 +157,12 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]) // 使用 part_no 作為標識
     const [loadingSelectedProducts, setLoadingSelectedProducts] = useState<boolean>(false)
     const [customerDebugInfo, setCustomerDebugInfo] = useState<string>("")
+    const [activeTab, setActiveTab] = useState<string>("products")
+    const [procurementItems, setProcurementItems] = useState<ProcurementItem[]>([])
+    const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState<boolean>(false)
+    const [isProductsReady, setIsProductsReady] = useState<boolean>(false)
+    const [isSplitView, setIsSplitView] = useState<boolean>(false)
+    const [orderInfo, setOrderInfo] = useState<string>("")
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -152,8 +178,9 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     // 暴露submitOrder方法給父組件
     useImperativeHandle(ref, () => ({
-      submitOrder: async () => {
-        return await handleSubmitOrder()
+      submitOrder: async (createPurchaseOrder = false) => {
+        setIsCreatingPurchaseOrder(createPurchaseOrder)
+        return await handleSubmitOrder(createPurchaseOrder)
       },
       getOrderData: async (skipValidation = false) => {
         // 檢查表單資料但不提交
@@ -211,6 +238,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           delivery_terms: deliveryTerms,
           status: 0, // 初始狀態為待確認
           remarks: remarks,
+          order_info: orderInfo, // 添加訂單資訊
           created_at: new Date().toISOString(), // 添加創建時間
         }
 
@@ -267,6 +295,9 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         // 為了測試目的，添加原始訂單項目數據
         orderData.order_items = orderItems
+
+        // 添加採購資料
+        orderData.procurement_items = procurementItems
 
         return orderData
       },
@@ -556,14 +587,16 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         productName: getProductName(product),
         productPartNo: getProductPartNo(product),
         quantity: defaultQuantity,
-        unitPrice: product.unit_price || 0,
+        unitPrice: product.last_price || product.unit_price || 0,
         isAssembly: true,
         shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
         currency: "USD", // 默認貨幣
+        product: product, // 保存完整產品資料
       }
 
       setOrderItems([...nonAssemblyItems, newItem])
       setSelectedProductPartNo("")
+      setIsProductsReady(false) // 重置產品準備狀態
     }
 
     // 處理添加選中的產品
@@ -608,11 +641,12 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               productName: getProductName(product),
               productPartNo: getProductPartNo(product),
               quantity: defaultQuantity,
-              unitPrice: product.unit_price || 0,
+              unitPrice: product.last_price || product.unit_price || 0,
               isAssembly: isProductAssembly(product),
               shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
               currency: "USD", // 默認貨幣
               specifications: product.specifications || "",
+              product: product, // 保存完整產品資料
             }
           })
 
@@ -626,11 +660,13 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         alert(`添加產品失敗: ${err.message}`)
       } finally {
         setLoadingSelectedProducts(false)
+        setIsProductsReady(false) // 重置產品準備狀態
       }
     }
 
     const handleRemoveProduct = (itemId: string) => {
       setOrderItems(orderItems.filter((item) => item.id !== itemId))
+      setIsProductsReady(false) // 重置產品準備狀態
     }
 
     const handleItemChange = (itemId: string, field: keyof OrderItem, value: any) => {
@@ -684,6 +720,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           return item
         }),
       )
+      setIsProductsReady(false) // 重置產品準備狀態
     }
 
     // 計算單個產品項目的總價
@@ -752,6 +789,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           return orderItem
         }),
       )
+      setIsProductsReady(false) // 重置產品準備狀態
     }
 
     // 移除批次
@@ -786,6 +824,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           return orderItem
         }),
       )
+      setIsProductsReady(false) // 重置產品準備狀態
     }
 
     // 更新批次
@@ -820,6 +859,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           return orderItem
         }),
       )
+      setIsProductsReady(false) // 重置產品準備狀態
     }
 
     // 計算已分配的數量
@@ -914,7 +954,89 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       }
     }
 
-    const handleSubmitOrder = async () => {
+    // 處理採購資料變更
+    const handleProcurementDataChange = (items: ProcurementItem[]) => {
+      setProcurementItems(items)
+    }
+
+    // 移除或註釋掉這段自動切換到採購資料標籤的代碼
+    /*
+    // 自動切換到採購資料標籤
+    useEffect(() => {
+      if (orderItems.length > 0 && activeTab === "products") {
+        // 延遲切換，讓用戶有時間看到產品已添加
+        const timer = setTimeout(() => {
+          setActiveTab("procurement")
+        }, 500)
+        return () => clearTimeout(timer)
+      }
+    }, [orderItems.length, activeTab])
+    */
+
+    // 檢查產品是否已準備好
+    const checkProductsReady = () => {
+      // 檢查是否有產品
+      if (orderItems.length === 0) {
+        return false
+      }
+
+      // 檢查每個產品是否都有批次設置
+      const itemsWithoutBatches = orderItems.filter((item) => item.shipmentBatches.length === 0)
+      if (itemsWithoutBatches.length > 0) {
+        return false
+      }
+
+      // 檢查批次數量是否等於產品數量
+      for (const item of orderItems) {
+        const totalBatchQuantity = item.shipmentBatches.reduce((sum, batch) => sum + batch.quantity, 0)
+        if (totalBatchQuantity !== item.quantity) {
+          return false
+        }
+      }
+
+      return true
+    }
+
+    // 確認產品設置完成
+    const confirmProductsReady = () => {
+      if (!checkProductsReady()) {
+        alert("請確保所有產品都已設置批次，且批次數量等於產品數量")
+        return
+      }
+
+      // 生成訂單資訊
+      const generatedOrderInfo = generateOrderInfo(orderItems)
+      setOrderInfo(generatedOrderInfo)
+
+      setIsProductsReady(true)
+    }
+
+    // 生成訂單資訊
+    const generateOrderInfo = (items: OrderItem[]) => {
+      if (!items || items.length === 0) return ""
+
+      return items
+        .map((item, index) => {
+          const product = item.product || {}
+          const customerDrawing = product.customer_drawing || {}
+          const filename = customerDrawing.filename || ""
+          const drawingVersion = product.customer_drawing_version || ""
+          const drawingInfo =
+            filename || drawingVersion ? `As per point ${filename}${drawingVersion ? `, ${drawingVersion}` : ""}` : ""
+
+          return `PART# ${product.part_no || item.productPartNo || ""}
+LOT NO. 訂單 ${useCustomOrderNumber ? customOrderNumber : orderNumber}
+${product.component_name || item.productName || ""}
+HS Code: ${product.customs_code || ""}
+${product.order_requirements || ""}
+${drawingInfo}
+${product.specification || ""}
+${item.quantity} PCS / CTN`
+        })
+        .join("\n\n")
+    }
+
+    const handleSubmitOrder = async (createPurchaseOrder = false) => {
       if (!selectedCustomerId) {
         throw new Error("請選擇客戶")
       }
@@ -991,6 +1113,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           delivery_terms: deliveryTerms,
           status: 0, // 初始狀態為待確認
           remarks: remarks,
+          order_info: orderInfo, // 添加訂單資訊
           created_at: new Date().toISOString(), // 添加創建時間
         }
 
@@ -1049,6 +1172,74 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         if (error) throw new Error(`提交訂單失敗: ${error.message}`)
 
+        // 如果需要創建採購單
+        if (createPurchaseOrder) {
+          // 獲取選中的採購項目
+          const selectedProcurementItems = procurementItems.filter((item) => item.isSelected)
+
+          if (selectedProcurementItems.length === 0) {
+            throw new Error("沒有選擇任何採購項目")
+          }
+
+          // 按工廠分組採購項目
+          const itemsByFactory: Record<string, ProcurementItem[]> = {}
+          selectedProcurementItems.forEach((item) => {
+            if (!item.factoryId) return // 跳過沒有工廠的項目
+
+            if (!itemsByFactory[item.factoryId]) {
+              itemsByFactory[item.factoryId] = []
+            }
+            itemsByFactory[item.factoryId].push(item)
+          })
+
+          // 為每個工廠創建採購單
+          for (const factoryId in itemsByFactory) {
+            const factoryItems = itemsByFactory[factoryId]
+            const factoryName = factoryItems[0].factoryName
+
+            // 使用採購項目中的付款條件和交貨條件，如果沒有則使用訂單的
+            const poPaymentTerm = factoryItems[0].paymentTerm || paymentTerm
+            const poDeliveryTerm = factoryItems[0].deliveryTerm || deliveryTerms
+
+            // 生成採購單編號
+            const poNumber = `PO-${useCustomOrderNumber ? customOrderNumber : orderNumber}-${factoryId.substring(0, 4)}`
+
+            // 準備採購單資料
+            const purchaseOrderData = {
+              po_number: poNumber,
+              order_id: useCustomOrderNumber ? customOrderNumber : orderNumber,
+              factory_id: factoryId,
+              factory_name: factoryName,
+              status: "pending",
+              created_at: new Date().toISOString(),
+              items: factoryItems.map((item) => ({
+                part_no: item.productPartNo,
+                description: item.productName,
+                quantity: item.quantity,
+                unit_price: item.purchasePrice,
+                total_price: item.quantity * item.purchasePrice,
+                delivery_date: item.deliveryDate ? item.deliveryDate.toISOString() : null,
+                notes: item.notes || "",
+                currency: "USD",
+                payment_term: item.paymentTerm || poPaymentTerm,
+                delivery_term: item.deliveryTerm || poDeliveryTerm,
+              })),
+              total_amount: factoryItems.reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0),
+              payment_term: poPaymentTerm,
+              delivery_terms: poDeliveryTerm,
+              remarks: `訂單 ${useCustomOrderNumber ? customOrderNumber : orderNumber} 的採購單`,
+            }
+
+            // 提交採購單
+            const { data: poData, error: poError } = await supabase.from("purchase_orders").insert(purchaseOrderData)
+
+            if (poError) {
+              console.error(`提交供應商 ${factoryName} 的採購單失敗:`, poError)
+              throw new Error(`提交供應商 ${factoryName} 的採購單失敗: ${poError.message}`)
+            }
+          }
+        }
+
         return data
       } catch (err: any) {
         console.error("提交訂單失敗:", err)
@@ -1075,8 +1266,158 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       )
     }
 
+    if (isSplitView) {
+      return (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">訂單與採購資料對比</h3>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setIsSplitView(false)}>
+                <Minimize2 className="h-4 w-4 mr-2" />
+                退出分割視圖
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* 左側：產品資料 */}
+            <div className="border rounded-md p-4 bg-white">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-medium">訂單產品資料</h4>
+                <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                  {orderItems.length} 項產品
+                </Badge>
+              </div>
+
+              <div className="overflow-auto max-h-[70vh]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>產品編號</TableHead>
+                      <TableHead>產品名稱</TableHead>
+                      <TableHead className="text-right">數量</TableHead>
+                      <TableHead className="text-right">單價 (USD)</TableHead>
+                      <TableHead className="text-right">金額 (USD)</TableHead>
+                      <TableHead className="text-right">批次</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orderItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          {item.productPartNo}
+                          {item.isAssembly && (
+                            <Badge className="ml-2 bg-purple-500 text-white">
+                              <Layers className="h-3 w-3 mr-1" />
+                              組件
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{item.productName}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{calculateItemTotal(item).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{item.shipmentBatches.length} 批次</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <div className="w-48 space-y-1">
+                  <div className="flex justify-between font-bold">
+                    <span>總計:</span>
+                    <span>{calculateTotal().toFixed(2)} USD</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 右側：採購資料 */}
+            <div className="border rounded-md p-4 bg-white">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-medium">採購資料</h4>
+                <Badge variant="outline" className="bg-green-50 text-green-700">
+                  {procurementItems.filter((item) => item.isSelected).length} 項已選擇
+                </Badge>
+              </div>
+
+              <div className="overflow-auto max-h-[70vh]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>產品編號</TableHead>
+                      <TableHead>產品名稱</TableHead>
+                      <TableHead>供應商</TableHead>
+                      <TableHead className="text-right">數量</TableHead>
+                      <TableHead className="text-right">採購單價</TableHead>
+                      <TableHead className="text-right">採購總價</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {procurementItems
+                      .filter((item) => item.isSelected)
+                      .map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.productPartNo}</TableCell>
+                          <TableCell>{item.productName}</TableCell>
+                          <TableCell>{item.factoryName || "未指定"}</TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right">{item.purchasePrice.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            {(item.quantity * item.purchasePrice).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <div className="w-48 space-y-1">
+                  <div className="flex justify-between font-bold">
+                    <span>採購總計:</span>
+                    <span>
+                      {procurementItems
+                        .filter((item) => item.isSelected)
+                        .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
+                        .toFixed(2)}{" "}
+                      USD
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setActiveTab("products")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              返回產品設定
+            </Button>
+            <Button variant="outline" onClick={() => setActiveTab("procurement")}>
+              <ArrowRight className="h-4 w-4 mr-2" />
+              返回採購設定
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="space-y-6">
+        {/* 工作流程控制按鈕 */}
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">{activeTab === "products" ? "產品選擇與設定" : "採購資料設定"}</h3>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsSplitView(true)} className="flex items-center">
+              <SplitSquareVertical className="h-4 w-4 mr-2" />
+              同時查看訂單與採購資料
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="orderId">訂單編號</Label>
@@ -1266,262 +1607,323 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         <Separator />
 
-        <div className="space-y-4">
-          <Tabs value={productSelectionTab} onValueChange={setProductSelectionTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="regular" className="flex items-center">
-                <Package className="mr-2 h-4 w-4" />
-                普通產品 ({regularProducts.length})
-              </TabsTrigger>
-              <TabsTrigger value="assembly" className="flex items-center">
-                <Settings className="mr-2 h-4 w-4" />
-                組件產品 ({assemblyProducts.length})
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="products" className="flex items-center">
+              <Package className="mr-2 h-4 w-4" />
+              產品選擇 {orderItems.length > 0 && `(${orderItems.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="procurement" className="flex items-center">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              採購資料{" "}
+              {procurementItems.filter((item) => item.isSelected).length > 0 &&
+                `(${procurementItems.filter((item) => item.isSelected).length})`}
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="regular" className="space-y-4 pt-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="搜尋產品編號或名稱..."
-                    value={productSearchTerm}
-                    onChange={(e) => setProductSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearAllSelections}
-                    disabled={selectedProducts.length === 0}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    清除選擇
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleAddSelectedProducts}
-                    disabled={selectedProducts.length === 0 || loadingSelectedProducts}
-                  >
-                    {loadingSelectedProducts ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        處理中...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-1" />
-                        添加選中產品 ({selectedProducts.length})
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+          <TabsContent value="products" className="space-y-4 pt-4">
+            <Tabs value={productSelectionTab} onValueChange={setProductSelectionTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="regular" className="flex items-center">
+                  <Package className="mr-2 h-4 w-4" />
+                  普通產品 ({regularProducts.length})
+                </TabsTrigger>
+                <TabsTrigger value="assembly" className="flex items-center">
+                  <Settings className="mr-2 h-4 w-4" />
+                  組件產品 ({assemblyProducts.length})
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="border rounded-md p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {filteredRegularProducts.length > 0 ? (
-                    filteredRegularProducts.map((product) => {
-                      const partNo = getProductPartNo(product)
-                      const isAdded = isProductAdded(partNo)
-                      const isSelected = isProductSelected(partNo)
-                      return (
-                        <div
-                          key={partNo}
-                          className={`flex items-start space-x-2 p-2 border rounded-md ${
-                            isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
-                          }`}
-                          onClick={() => !isAdded && toggleProductSelection(partNo)}
-                          style={{ cursor: isAdded ? "default" : "pointer" }}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleProductSelection(partNo)}
-                            disabled={isAdded}
-                            className="mt-1 mr-2"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-sm">{partNo}</div>
-                            <div className="text-sm">{getProductName(product)}</div>
-                            {parseSubPartNo(product)}
-                            <div className="text-xs text-muted-foreground">單價: {product.unit_price || 0} USD</div>
-                          </div>
-                          {isAdded && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              已添加
-                            </Badge>
-                          )}
-                          {isProductAssembly(product) && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                                    <Layers className="h-3 w-3 mr-1" />
-                                    組件
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>此產品是組合產品，包含多個部件</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <div className="col-span-full text-center text-gray-500 py-4">
-                      {productSearchTerm
-                        ? "沒有符合搜尋條件的產品"
-                        : selectedCustomerId
-                          ? "此客戶沒有普通產品"
-                          : "請先選擇客戶"}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="assembly" className="space-y-4 pt-4">
-              <div className="flex items-end gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="assemblyProduct">選擇組件產品</Label>
-                  <ProductCombobox
-                    options={assemblyProducts
-                      .filter((product) => !isProductAdded(product.part_no))
-                      .map((product) => ({
-                        value: getProductPartNo(product),
-                        label: getProductName(product),
-                        description: product.description,
-                        isAssembly: true,
-                        price: product.unit_price,
-                        data: product,
-                      }))}
-                    value={selectedProductPartNo}
-                    onValueChange={(value, data) => {
-                      setSelectedProductPartNo(value)
-                    }}
-                    placeholder={selectedCustomerId ? "搜尋或選擇組件產品" : "請先選擇客戶"}
-                    emptyMessage={assemblyProducts.length > 0 ? "找不到符合的組件產品" : "此客戶沒有組件產品"}
-                    disabled={!selectedCustomerId || assemblyProducts.length === 0}
-                  />
-                </div>
-                <Button onClick={handleAddAssemblyProduct} disabled={!selectedProductPartNo} className="w-32">
-                  <Plus className="mr-2 h-4 w-4" />
-                  新增組件
-                </Button>
-              </div>
-              {assemblyProducts.length === 0 && (
-                <div className="text-center text-gray-500 py-4">
-                  {selectedCustomerId ? "此客戶沒有組件產品" : "請先選擇客戶"}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>產品編號</TableHead>
-                  <TableHead>產品名稱</TableHead>
-                  <TableHead className="text-right">數量</TableHead>
-                  <TableHead className="text-right">單價 (USD)</TableHead>
-                  <TableHead className="text-right">金額 (USD)</TableHead>
-                  <TableHead className="text-right">批次</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orderItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      {item.productPartNo}
-                      {item.isAssembly && (
-                        <Badge className="ml-2 bg-purple-500 text-white">
-                          <Layers className="h-3 w-3 mr-1" />
-                          組件
-                        </Badge>
+              <TabsContent value="regular" className="space-y-4 pt-4">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="搜尋產品編號或名稱..."
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearAllSelections}
+                      disabled={selectedProducts.length === 0}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      清除選擇
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleAddSelectedProducts}
+                      disabled={selectedProducts.length === 0 || loadingSelectedProducts}
+                    >
+                      {loadingSelectedProducts ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          處理中...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" />
+                          添加選中產品 ({selectedProducts.length})
+                        </>
                       )}
-                    </TableCell>
-                    <TableCell>{item.productName}</TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(item.id, "quantity", Number.parseInt(e.target.value) || 1)}
-                        className="w-20 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={item.unitPrice}
-                        onChange={(e) => handleItemChange(item.id, "unitPrice", Number.parseFloat(e.target.value) || 0)}
-                        className="w-24 text-right"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{calculateItemTotal(item).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openBatchManagement(item.productPartNo)}
-                        className="h-8 px-2"
-                      >
-                        <Clock className="h-3.5 w-3.5 mr-1" />
-                        批次 ({item.shipmentBatches.length})
-                      </Button>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(item.id)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {orderItems.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      尚未新增產品
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                    </Button>
+                  </div>
+                </div>
 
-          <div className="flex justify-end items-center">
-            <div className="w-72 space-y-1">
-              <div className="flex justify-between">
-                <span>小計:</span>
-                <span>{calculateTotal().toFixed(2)} USD</span>
+                <div className="border rounded-md p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {filteredRegularProducts.length > 0 ? (
+                      filteredRegularProducts.map((product) => {
+                        const partNo = getProductPartNo(product)
+                        const isAdded = isProductAdded(partNo)
+                        const isSelected = isProductSelected(partNo)
+                        return (
+                          <div
+                            key={partNo}
+                            className={`flex items-start space-x-2 p-2 border rounded-md ${
+                              isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
+                            }`}
+                            onClick={() => !isAdded && toggleProductSelection(partNo)}
+                            style={{ cursor: isAdded ? "default" : "pointer" }}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleProductSelection(partNo)}
+                              disabled={isAdded}
+                              className="mt-1 mr-2"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{partNo}</div>
+                              <div className="text-sm">{getProductName(product)}</div>
+                              {parseSubPartNo(product)}
+                              <div className="text-xs text-muted-foreground">
+                                前次單價: {product.last_price || product.unit_price || 0} {product.currency || "USD"}
+                              </div>
+                            </div>
+                            {isAdded && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                已添加
+                              </Badge>
+                            )}
+                            {isProductAssembly(product) && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                      <Layers className="h-3 w-3 mr-1" />
+                                      組件
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>此產品是組合產品，包含多個部件</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="col-span-full text-center text-gray-500 py-4">
+                        {productSearchTerm
+                          ? "沒有符合搜尋條件的產品"
+                          : selectedCustomerId
+                            ? "此客戶沒有普通產品"
+                            : "請先選擇客戶"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="assembly" className="space-y-4 pt-4">
+                <div className="flex items-end gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="assemblyProduct">選擇組件產品</Label>
+                    <ProductCombobox
+                      options={assemblyProducts
+                        .filter((product) => !isProductAdded(product.part_no))
+                        .map((product) => ({
+                          value: getProductPartNo(product),
+                          label: getProductName(product),
+                          description: product.description,
+                          isAssembly: true,
+                          price: product.last_price || product.unit_price,
+                          priceLabel: `${product.last_price || product.unit_price || 0} ${product.currency || "USD"}`,
+                          data: product,
+                        }))}
+                      value={selectedProductPartNo}
+                      onValueChange={(value, data) => {
+                        setSelectedProductPartNo(value)
+                      }}
+                      placeholder={selectedCustomerId ? "搜尋或選擇組件產品" : "請先選擇客戶"}
+                      emptyMessage={assemblyProducts.length > 0 ? "找不到符合的組件產品" : "此客戶沒有組件產品"}
+                      disabled={!selectedCustomerId || assemblyProducts.length === 0}
+                    />
+                  </div>
+                  <Button onClick={handleAddAssemblyProduct} disabled={!selectedProductPartNo} className="w-32">
+                    <Plus className="mr-2 h-4 w-4" />
+                    新增組件
+                  </Button>
+                </div>
+                {assemblyProducts.length === 0 && (
+                  <div className="text-center text-gray-500 py-4">
+                    {selectedCustomerId ? "此客戶沒有組件產品" : "請先選擇客戶"}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>產品編號</TableHead>
+                    <TableHead>產品名稱</TableHead>
+                    <TableHead className="text-right">數量</TableHead>
+                    <TableHead className="text-right">單價 (USD)</TableHead>
+                    <TableHead className="text-right">金額 (USD)</TableHead>
+                    <TableHead className="text-right">批次</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orderItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        {item.productPartNo}
+                        {item.isAssembly && (
+                          <Badge className="ml-2 bg-purple-500 text-white">
+                            <Layers className="h-3 w-3 mr-1" />
+                            組件
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{item.productName}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, "quantity", Number.parseInt(e.target.value) || 1)}
+                          className="w-20 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) =>
+                            handleItemChange(item.id, "unitPrice", Number.parseFloat(e.target.value) || 0)
+                          }
+                          className="w-24 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">{calculateItemTotal(item).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openBatchManagement(item.productPartNo)}
+                          className="h-8 px-2"
+                        >
+                          <Clock className="h-3.5 w-3.5 mr-1" />
+                          批次 ({item.shipmentBatches.length})
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(item.id)}>
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {orderItems.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center">
+                        尚未新增產品
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <div className="w-72 space-y-1">
+                <div className="flex justify-between">
+                  <span>小計:</span>
+                  <span>{calculateTotal().toFixed(2)} USD</span>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <span>總計:</span>
+                  <span>{calculateTotal().toFixed(2)} USD</span>
+                </div>
               </div>
-              <div className="flex justify-between font-bold">
-                <span>總計:</span>
-                <span>{calculateTotal().toFixed(2)} USD</span>
+
+              <div className="flex gap-2">
+                {orderItems.length > 0 && !isProductsReady && (
+                  <Button onClick={confirmProductsReady} variant="outline">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    確認產品設定完成
+                  </Button>
+                )}
+                {orderItems.length > 0 && (
+                  <Button onClick={() => setActiveTab("procurement")} disabled={!isProductsReady} className="gap-2">
+                    <ArrowRight className="h-4 w-4" />
+                    前往設定採購資料
+                  </Button>
+                )}
               </div>
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="procurement" className="space-y-4 pt-4">
+            <ProcurementDataEditor
+              orderItems={orderItems}
+              onProcurementDataChange={handleProcurementDataChange}
+              isCreatingPurchaseOrder={isCreatingPurchaseOrder}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setActiveTab("products")} variant="outline" className="gap-2">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                返回產品設定
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <Separator />
 
+        <div className="space-y-2 mt-6">
+          <Label htmlFor="orderInfo">訂單資訊</Label>
+          <AutoResizeTextarea
+            id="orderInfo"
+            value={orderInfo}
+            onChange={(e) => setOrderInfo(e.target.value)}
+            placeholder="請輸入訂單相關資訊"
+            minRows={4}
+          />
+        </div>
+
         <div className="space-y-2">
-          <Label htmlFor="remarks">備註</Label>
-          <Textarea
+          <Label htmlFor="remarks">訂單備註</Label>
+          <AutoResizeTextarea
             id="remarks"
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            rows={4}
-            placeholder="訂單備註"
+            placeholder="請輸入訂單備註"
+            minRows={4}
           />
         </div>
 
@@ -1791,5 +2193,50 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     )
   },
 )
+
+interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  minRows?: number
+}
+
+const AutoResizeTextarea = ({ minRows = 3, value, onChange, ...props }: AutoResizeTextareaProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    // 重置高度以獲取正確的 scrollHeight
+    textarea.style.height = "auto"
+
+    // 計算新高度 (最小高度為 minRows 的高度)
+    const lineHeight = Number.parseInt(getComputedStyle(textarea).lineHeight) || 20
+    const minHeight = minRows * lineHeight
+    const scrollHeight = textarea.scrollHeight
+
+    // 設置新高度
+    textarea.style.height = `${Math.max(minHeight, scrollHeight)}px`
+  }
+
+  // 初始化和更新時調整高度
+  useLayoutEffect(() => {
+    adjustHeight()
+  }, [value])
+
+  return (
+    <Textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        if (onChange) {
+          onChange(e)
+        }
+        // 在下一個渲染週期調整高度
+        setTimeout(adjustHeight, 0)
+      }}
+      className="resize-none overflow-hidden"
+      {...props}
+    />
+  )
+}
 
 NewOrderForm.displayName = "NewOrderForm"

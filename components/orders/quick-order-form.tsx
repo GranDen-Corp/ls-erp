@@ -14,32 +14,23 @@ import { ProductImagePreview } from "@/components/products/product-image-preview
 import { formatCurrency } from "@/lib/utils"
 import { Check, X } from "lucide-react"
 
-// 模擬客戶數據
-const customers = [
-  { id: "1", name: "台灣電子", code: "TE" },
-  { id: "2", name: "新竹科技", code: "HT" },
-  { id: "3", name: "台北工業", code: "TI" },
-  { id: "4", name: "高雄製造", code: "KM" },
-  { id: "5", name: "台中電子", code: "TC" },
-]
-
-// 模擬工廠數據
+// 修改模擬工廠數據，確保使用factory_id作為主鍵
 const factories = [
-  { id: "1", name: "深圳電子廠", code: "SZE" },
-  { id: "2", name: "上海科技廠", code: "SHT" },
-  { id: "3", name: "東莞工業廠", code: "DGI" },
-  { id: "4", name: "廣州製造廠", code: "GZM" },
-  { id: "5", name: "蘇州電子廠", code: "SZE" },
+  { factory_id: "1", factory_name: "深圳電子廠", code: "SZE" },
+  { factory_id: "2", factory_name: "上海科技廠", code: "SHT" },
+  { factory_id: "3", factory_name: "東莞工業廠", code: "DGI" },
+  { factory_id: "4", factory_name: "廣州製造廠", code: "GZM" },
+  { factory_id: "5", factory_name: "蘇州電子廠", code: "SZE" },
 ]
 
-// 模擬產品數據
+// 修改模擬產品數據，確保使用factory_id作為工廠ID
 const products = [
   {
     id: "1",
     pn: "LCD-15-HD",
     name: "15吋 HD LCD面板",
     customer: "1",
-    factory: { id: "1", name: "深圳電子廠", code: "SZE" },
+    factory: { factory_id: "1", factory_name: "深圳電子廠", code: "SZE" },
     lastPrice: 45.0,
     lastPurchasePrice: 38.5,
     currency: "USD",
@@ -57,7 +48,7 @@ const products = [
     pn: "LCD-17-FHD",
     name: "17吋 FHD LCD面板",
     customer: "1",
-    factory: { id: "1", name: "深圳電子廠", code: "SZE" },
+    factory: { factory_id: "1", factory_name: "深圳電子廠", code: "SZE" },
     lastPrice: 58.5,
     lastPurchasePrice: 49.75,
     currency: "USD",
@@ -75,7 +66,7 @@ const products = [
     pn: "CAP-104-SMD",
     name: "104 SMD電容",
     customer: "2",
-    factory: { id: "2", name: "上海科技廠", code: "SHT" },
+    factory: { factory_id: "2", factory_name: "上海科技廠", code: "SHT" },
     lastPrice: 0.05,
     lastPurchasePrice: 0.038,
     currency: "USD",
@@ -96,6 +87,12 @@ const exchangeRates = {
   CNY: 4.35, // 1 CNY = 4.35 TWD
   EUR: 34.2, // 1 EUR = 34.2 TWD
 }
+
+// 模擬客戶數據
+const customers = [
+  { id: "1", name: "客戶A", code: "CA" },
+  { id: "2", name: "客戶B", code: "CB" },
+]
 
 interface QuickOrderFormProps {
   onValidationChange: (isValid: boolean, message: string | null, data: any | null) => void
@@ -155,7 +152,7 @@ export function QuickOrderForm({ onValidationChange }: QuickOrderFormProps) {
       if (product) {
         setOrderPrice(product.lastPrice)
         setPurchasePrice(product.lastPurchasePrice)
-        setFactoryId(product.factory.id)
+        setFactoryId(product.factory.factory_id)
         setPoCurrency(product.currency)
         setOrderCurrency(product.currency)
       }
@@ -236,6 +233,7 @@ export function QuickOrderForm({ onValidationChange }: QuickOrderFormProps) {
           purchase: {
             poNumber,
             factoryId,
+            factoryName: factories.find((f) => f.factory_id === factoryId)?.factory_name || "",
             currency: poCurrency,
             deliveryTerms: poDeliveryTerms,
             paymentTerms: poPaymentTerms,
@@ -348,7 +346,7 @@ export function QuickOrderForm({ onValidationChange }: QuickOrderFormProps) {
                     {products.find((p) => p.id === selectedProductId)?.name}
                   </h4>
                   <p className="text-sm text-gray-500">
-                    工廠: {products.find((p) => p.id === selectedProductId)?.factory.name}
+                    工廠: {products.find((p) => p.id === selectedProductId)?.factory.factory_name}
                   </p>
                 </div>
               </div>
@@ -550,8 +548,8 @@ export function QuickOrderForm({ onValidationChange }: QuickOrderFormProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {factories.map((factory) => (
-                    <SelectItem key={factory.id} value={factory.id}>
-                      {factory.name} ({factory.code})
+                    <SelectItem key={factory.factory_id} value={factory.factory_id}>
+                      {factory.factory_name} ({factory.code})
                     </SelectItem>
                   ))}
                 </SelectContent>
