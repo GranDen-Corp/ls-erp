@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase-client"
 
 /**
- * 生成訂單編號：L-YYYYMMDD-XXXXX
+ * 生成訂單編號：L-YYMMDD-XXXXX
  * 每年1月1日重置編號
  */
 export async function generateOrderNumber(): Promise<string> {
@@ -11,9 +11,10 @@ export async function generateOrderNumber(): Promise<string> {
   // 獲取台北時間 (UTC+8)
   const taipeiTime = new Date(now.getTime() + 8 * 60 * 60 * 1000)
   const year = taipeiTime.getUTCFullYear()
+  const shortYear = year.toString().slice(-2) // 取年份的最後兩位數字
   const month = String(taipeiTime.getUTCMonth() + 1).padStart(2, "0")
   const day = String(taipeiTime.getUTCDate()).padStart(2, "0")
-  const dateString = `${year}${month}${day}`
+  const dateString = `${shortYear}${month}${day}` // 改為 YYMMDD 格式
 
   // 計算當年的1月1日 (台北時間)
   const startOfYear = new Date(Date.UTC(year, 0, 1, -8, 0, 0, 0)) // UTC-8 = 台北時間的1月1日00:00
@@ -66,9 +67,11 @@ export async function generateOrderNumber(): Promise<string> {
  * 從訂單編號解析出年份
  */
 export function getYearFromOrderNumber(orderNumber: string): number | null {
-  const match = orderNumber.match(/L-(\d{4})(\d{2})(\d{2})-\d+/)
+  const match = orderNumber.match(/L-(\d{2})(\d{2})(\d{2})-\d+/)
   if (match) {
-    return Number.parseInt(match[1], 10)
+    const shortYear = Number.parseInt(match[1], 10)
+    // 將兩位數年份轉換為四位數年份 (假設 00-99 對應 2000-2099)
+    return 2000 + shortYear
   }
   return null
 }
@@ -77,7 +80,7 @@ export function getYearFromOrderNumber(orderNumber: string): number | null {
  * 從訂單編號解析出序號
  */
 export function getSequenceFromOrderNumber(orderNumber: string): number | null {
-  const match = orderNumber.match(/L-\d{8}-(\d+)/)
+  const match = orderNumber.match(/L-\d{6}-(\d+)/)
   if (match) {
     return Number.parseInt(match[1], 10)
   }

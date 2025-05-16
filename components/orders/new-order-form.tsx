@@ -130,6 +130,102 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       submitOrder: async () => {
         return await handleSubmitOrder()
       },
+      getOrderData: async (skipValidation = false) => {
+        // 檢查表單資料但不提交
+        if (!skipValidation) {
+          if (!selectedCustomerId) {
+            throw new Error("請選擇客戶")
+          }
+
+          if (orderItems.length === 0) {
+            throw new Error("請至少添加一個產品")
+          }
+
+          if (!poNumber) {
+            throw new Error("請輸入客戶PO編號")
+          }
+
+          // 檢查每個產品是否都有批次設置
+          const itemsWithoutBatches = orderItems.filter((item) => item.shipmentBatches.length === 0)
+          if (itemsWithoutBatches.length > 0) {
+            throw new Error(
+              `以下產品沒有設置批次出貨: ${itemsWithoutBatches.map((item) => item.productPartNo).join(", ")}`,
+            )
+          }
+
+          // 檢查批次數量是否等於產品數量
+          for (const item of orderItems) {
+            const totalBatchQuantity = item.shipmentBatches.reduce((sum, batch) => sum + batch.quantity, 0)
+            if (totalBatchQuantity !== item.quantity) {
+              throw new Error(
+                `產品 ${item.productPartNo} 的批次總數量 (${totalBatchQuantity}) 不等於產品數量 (${item.quantity})`,
+              )
+            }
+          }
+
+          // 檢查訂單編號
+          if (useCustomOrderNumber) {
+            if (!customOrderNumber) {
+              throw new Error("請輸入自定義訂單編號")
+            }
+
+            if (orderNumberStatus === "invalid") {
+              throw new Error(`訂單編號無效: ${orderNumberMessage}`)
+            }
+          } else if (isLoadingOrderNumber || !orderNumber || orderNumber.includes("生成失敗")) {
+            throw new Error("訂單編號生成失敗，請重新整理頁面")
+          }
+        }
+
+        // 準備訂單資料
+        const orderData: any = {
+          order_id: useCustomOrderNumber ? customOrderNumber : orderNumber, // 使用自定義或生成的訂單編號
+          customer_id: selectedCustomerId,
+          po_id: poNumber,
+          payment_term: paymentTerm,
+          delivery_terms: deliveryTerms,
+          status: 0, // 初始狀態為待確認
+          remarks: remarks,
+          created_at: new Date().toISOString(), // 添加創建時間
+        }
+
+        // 處理產品資料
+        if (orderItems.some((item) => item.isAssembly)) {
+          // 如果有組件產品，使用part_no_assembly
+          const assemblyItem = orderItems.find((item) => item.isAssembly)
+          if (assemblyItem) {
+            orderData.part_no_assembly = assemblyItem.productPartNo
+          }
+        }
+
+        // 處理產品和批次資料
+        const partsList = orderItems.map((item) => {
+          // 處理批次資料
+          const batchesList = item.shipmentBatches.map((batch) => ({
+            batch_number: batch.batchNumber,
+            planned_ship_date: batch.plannedShipDate ? batch.plannedShipDate.toISOString() : null,
+            quantity: batch.quantity,
+            notes: batch.notes,
+          }))
+
+          return {
+            part_no: item.productPartNo,
+            description: item.productName,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            is_assembly: item.isAssembly,
+            shipment_batches: batchesList,
+          }
+        })
+
+        // 為了測試目的，即使沒有產品也返回一個空數組
+        orderData.part_no_list = JSON.stringify(partsList)
+
+        // 為了測試目的，添加原始訂單項目數據
+        orderData.order_items = orderItems
+
+        return orderData
+      },
     }))
 
     // 獲取客戶和產品資料
@@ -885,7 +981,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </Button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">格式: L-YYYYMMDD-XXXXX</p>
+            <p className="text-xs text-muted-foreground">格式: L-YYMMDD-XXXXX</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="poNumber">客戶PO編號</Label>
