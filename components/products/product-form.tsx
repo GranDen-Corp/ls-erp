@@ -2771,11 +2771,11 @@ export function ProductForm({
                           id="clockRequirement"
                           checked={product.partManagement?.clockRequirement || false}
                           onCheckedChange={(checked) =>
-                            handlePartManagementChange("clockRequirement", checked === true)\
-                          }\
+                            handlePartManagementChange("clockRequirement", checked === true)
+                          }
                         />
-                      </div>\
-                    </div>\
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -2784,8 +2784,8 @@ export function ProductForm({
             {/* 符合性要求 */}
             <Card>
               <CardContent className="p-6">
-                <div className="space-y-4">\
-                  <div className="flex justify-between items-center\">\
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center\">
                     <h3 className=\"text-lg font-medium\">符合性要求</h3>
                     <Button type="button" size="sm" variant="outline" onClick={() => setIsComplianceDialogOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
