@@ -156,8 +156,6 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [isProductSettingsConfirmed, setIsProductSettingsConfirmed] = useState<boolean>(false)
     const [isProcurementSettingsConfirmed, setIsProcurementSettingsConfirmed] = useState<boolean>(false)
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
-    const [hasAddedProducts, setHasAddedProducts] = useState<boolean>(false)
-    const [isEditingProducts, setIsEditingProducts] = useState<boolean>(false)
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -445,25 +443,19 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         console.log(`客戶 ${selectedCustomerId} 的產品:`, filteredProducts.length, "筆")
         console.log("普通產品:", regular.length, "筆")
         console.log("組件產品:", assembly.length, "筆")
-
-        // 如果尚未添加產品，自動進入編輯模式
-        if (!hasAddedProducts) {
-          setIsEditingProducts(true)
-        }
       } else {
         setCustomerProducts([])
         setRegularProducts([])
         setAssemblyProducts([])
         setPaymentTerm("")
         setDeliveryTerms("")
-        setIsEditingProducts(false) // 清除客戶選擇時，退出編輯模式
       }
 
       // 重置產品選擇
       setSelectedProductPartNo("")
       setProductSearchTerm("")
       setSelectedProducts([]) // 清空已選產品
-    }, [selectedCustomerId, products, customers, hasAddedProducts])
+    }, [selectedCustomerId, products, customers])
 
     // 檢查訂單編號是否重複
     const checkOrderNumberDuplicate = async () => {
@@ -626,7 +618,6 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       setOrderItems([...nonAssemblyItems, newItem])
       setSelectedProductPartNo("")
       setIsProductsReady(false) // 重置產品準備狀態
-      setHasAddedProducts(true) // 設置已添加產品標記
     }
 
     // 處理添加選中的產品
@@ -684,8 +675,6 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setOrderItems([...orderItems, ...newItems])
           // 清空選擇
           setSelectedProducts([])
-          // 設置已添加產品標記
-          setHasAddedProducts(true)
         }
       } catch (err: any) {
         console.error("添加產品失敗:", err)
@@ -693,25 +682,6 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       } finally {
         setLoadingSelectedProducts(false)
         setIsProductsReady(false) // 重置產品準備狀態
-      }
-      setIsEditingProducts(false) // 添加完成後退出編輯模式
-    }
-
-    // 處理修改添加的產品
-    const handleModifyProducts = () => {
-      if (isEditingProducts) {
-        // 當前正在編輯，點擊後應添加選中的產品
-        if (selectedProducts.length > 0) {
-          handleAddSelectedProducts()
-        }
-        // 切換為非編輯模式
-        setIsEditingProducts(false)
-      } else {
-        // 當前不在編輯，點擊後應進入編輯模式
-        // 清除已選產品
-        setSelectedProducts([])
-        // 切換為編輯模式
-        setIsEditingProducts(true)
       }
     }
 
@@ -1571,51 +1541,28 @@ ${item.quantity} PCS / CTN`
                       variant="outline"
                       size="sm"
                       onClick={clearAllSelections}
-                      disabled={selectedProducts.length === 0 || isProductSettingsConfirmed || !isEditingProducts}
+                      disabled={selectedProducts.length === 0 || isProductSettingsConfirmed}
                     >
                       <X className="h-4 w-4 mr-1" />
                       清除選擇
                     </Button>
-                    {hasAddedProducts ? (
-                      <Button
-                        size="sm"
-                        onClick={handleModifyProducts}
-                        disabled={isProductSettingsConfirmed}
-                        variant={isEditingProducts ? "default" : "secondary"}
-                      >
-                        {isEditingProducts ? (
-                          <>
-                            <Plus className="h-4 w-4 mr-1" />
-                            添加選中產品 ({selectedProducts.length})
-                          </>
-                        ) : (
-                          <>
-                            <Settings className="h-4 w-4 mr-1" />
-                            修改添加產品
-                          </>
-                        )}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={handleAddSelectedProducts}
-                        disabled={
-                          selectedProducts.length === 0 || loadingSelectedProducts || isProductSettingsConfirmed
-                        }
-                      >
-                        {loadingSelectedProducts ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            處理中...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-4 w-4 mr-1" />
-                            添加選中產品 ({selectedProducts.length})
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      onClick={handleAddSelectedProducts}
+                      disabled={selectedProducts.length === 0 || loadingSelectedProducts || isProductSettingsConfirmed}
+                    >
+                      {loadingSelectedProducts ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          處理中...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" />
+                          添加選中產品 ({selectedProducts.length})
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
 
@@ -1630,31 +1577,15 @@ ${item.quantity} PCS / CTN`
                           <div
                             key={partNo}
                             className={`flex items-start space-x-2 p-2 border rounded-md ${
-                              isAdded && !isEditingProducts
-                                ? "bg-gray-100 border-gray-300"
-                                : isSelected
-                                  ? "bg-blue-50 border-blue-300"
-                                  : ""
+                              isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
                             }`}
-                            onClick={() =>
-                              (!isAdded || isEditingProducts) &&
-                              !isProductSettingsConfirmed &&
-                              isEditingProducts &&
-                              toggleProductSelection(partNo)
-                            }
-                            style={{
-                              cursor:
-                                (isAdded && !isEditingProducts) || isProductSettingsConfirmed || !isEditingProducts
-                                  ? "default"
-                                  : "pointer",
-                            }}
+                            onClick={() => !isAdded && !isProductSettingsConfirmed && toggleProductSelection(partNo)}
+                            style={{ cursor: isAdded || isProductSettingsConfirmed ? "default" : "pointer" }}
                           >
                             <Checkbox
                               checked={isSelected}
-                              onCheckedChange={() => isEditingProducts && toggleProductSelection(partNo)}
-                              disabled={
-                                (!isEditingProducts && isAdded) || isProductSettingsConfirmed || !isEditingProducts
-                              }
+                              onCheckedChange={() => toggleProductSelection(partNo)}
+                              disabled={isAdded || isProductSettingsConfirmed}
                               className="mt-1 mr-2"
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -1871,11 +1802,6 @@ ${item.quantity} PCS / CTN`
                     onClick={() => {
                       setActiveTab("procurement")
                       setIsSplitView(true) // 自動啟用分割視圖
-                      // 如果是從修改產品後過來，確保採購清單被重新初始化
-                      if (procurementItems.length === 0) {
-                        // 採購清單會在 useEffect 中根據 orderItems 自動初始化
-                        console.log("採購清單將被重新初始化")
-                      }
                     }}
                     disabled={!isProductSettingsConfirmed}
                     className="gap-2"
