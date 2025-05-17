@@ -2785,8 +2785,8 @@ export function ProductForm({
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center\">
-                    <h3 className=\"text-lg font-medium\">符合性要求</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">符合性要求</h3>
                     <Button type="button" size="sm" variant="outline" onClick={() => setIsComplianceDialogOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       新增法規
@@ -2919,17 +2919,17 @@ export function ProductForm({
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    {product.editNotes &&\
-                      product.editNotes.map((note, index) => (\
+                    {product.editNotes &&
+                      product.editNotes.map((note, index) => (
                         <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
                           <div>{note.content}</div>
                           <div>{note.user}</div>
                           <div>{note.date}</div>
                         </div>
-                      ))}\
+                      ))}
                   </div>
                 </div>
-              </CardContent>\
+              </CardContent>
             </Card>
           </div>
         </TabsContent>
@@ -2947,9 +2947,9 @@ export function ProductForm({
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">\
+                <div className="grid grid-cols-1 gap-4">
                   <div className="grid grid-cols-6 gap-4">
-                    <div>\
+                    <div>
                       <Label>製程</Label>
                     </div>
                     <div>
@@ -2958,10 +2958,10 @@ export function ProductForm({
                     <div>
                       <Label>產能(SH)</Label>
                     </div>
-                    <div>\
+                    <div>
                       <Label>要求</Label>
                     </div>
-                    <div>\
+                    <div>
                       <Label>報告</Label>
                     </div>
                     <div>
@@ -2987,16 +2987,16 @@ export function ProductForm({
                           />
                         </div>
                         <div>
-                          <Input\
-                            value={process.capacity}\
-                            onChange={(e) => handleProcessFieldChange(process.id, \"capacity\", e.target.value)}
+                          <Input
+                            value={process.capacity}
+                            onChange={(e) => handleProcessFieldChange(process.id, "capacity", e.target.value)}
                             placeholder="產能數值"
                           />
                         </div>
                         <div>
                           <Input
                             value={process.requirements}
-                            onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}\
+                            onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}
                             placeholder="製程要求"
                           />
                         </div>
@@ -3386,5 +3386,5 @@ export function ProductForm({
     </form>
   )
 }
-// Add a default export that points to the same component\
+// Add a default export that points to the same component
 //export default ProductForm;
