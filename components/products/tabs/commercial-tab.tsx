@@ -2,6 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 interface CommercialTabProps {
   product: any
@@ -37,11 +38,13 @@ export function CommercialTab({ product, handleInputChange }: CommercialTabProps
 
             <div className="space-y-2">
               <Label htmlFor="packagingRequirements">包裝要求</Label>
-              <Input
+              <Textarea
                 id="packagingRequirements"
                 value={product.packagingRequirements || ""}
                 onChange={(e) => handleInputChange("packagingRequirements", e.target.value)}
+                rows={4}
                 placeholder="輸入包裝要求"
+                className="w-full min-h-[100px]"
               />
             </div>
           </div>

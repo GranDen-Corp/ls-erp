@@ -1,51 +1,21 @@
 "use client"
 
-import type React from "react"
-
-import { useRef, useLayoutEffect } from "react"
+import React from "react"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 
 interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   minRows?: number
+  maxRows?: number
 }
 
-export const AutoResizeTextarea = ({ minRows = 3, value, onChange, ...props }: AutoResizeTextareaProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+export const AutoResizeTextarea = React.forwardRef<HTMLTextAreaElement, AutoResizeTextareaProps>(
+  ({ className, minRows = 3, maxRows = 10, rows, ...props }, ref) => {
+    // 使用固定行數，不再嘗試自動調整高度
+    const actualRows = rows || minRows
 
-  const adjustHeight = () => {
-    const textarea = textareaRef.current
-    if (!textarea) return
+    return <Textarea ref={ref} className={cn("min-h-[80px]", className)} rows={actualRows} {...props} />
+  },
+)
 
-    // 重置高度以獲取正確的 scrollHeight
-    textarea.style.height = "auto"
-
-    // 計算新高度 (最小高度為 minRows 的高度)
-    const lineHeight = Number.parseInt(getComputedStyle(textarea).lineHeight) || 20
-    const minHeight = minRows * lineHeight
-    const scrollHeight = textarea.scrollHeight
-
-    // 設置新高度
-    textarea.style.height = `${Math.max(minHeight, scrollHeight)}px`
-  }
-
-  // 初始化和更新時調整高度
-  useLayoutEffect(() => {
-    adjustHeight()
-  }, [value])
-
-  return (
-    <Textarea
-      ref={textareaRef}
-      value={value}
-      onChange={(e) => {
-        if (onChange) {
-          onChange(e)
-        }
-        // 在下一個渲染週期調整高度
-        setTimeout(adjustHeight, 0)
-      }}
-      className="resize-none overflow-hidden"
-      {...props}
-    />
-  )
-}
+AutoResizeTextarea.displayName = "AutoResizeTextarea"

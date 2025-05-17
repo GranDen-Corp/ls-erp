@@ -243,6 +243,7 @@ export function BasicInfoTab({
           onChange={(e) => handleInputChange("description", e.target.value)}
           rows={3}
           placeholder="輸入產品詳細描述"
+          className="w-full min-h-[80px]"
         />
       </div>
     </div>

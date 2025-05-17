@@ -109,6 +109,21 @@ export function ProductViewForm({
     )
   }
 
+  // 渲染多行文本字段
+  const renderMultilineField = (label: string, value: any, className = "") => {
+    // 處理換行符號
+    const formattedValue = value ? value.replace(/\\n/g, "\n") : ""
+
+    return (
+      <div className={className}>
+        <Label className="text-sm font-medium text-gray-500">{label}</Label>
+        <div className="mt-1 text-sm text-gray-900 p-2 bg-gray-50 rounded-md min-h-[38px] whitespace-pre-wrap">
+          {formattedValue || "-"}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
       <TabsList className="grid w-full grid-cols-5">
@@ -219,6 +234,8 @@ export function ProductViewForm({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-4">
+                {renderMultilineField("訂單零件要求", initialValues.orderRequirements)}
+                {renderMultilineField("採購單零件要求", initialValues.purchaseRequirements)}
                 {renderField("工藝要求", initialValues.processData?.join(", ") || "-")}
                 {renderField("工藝備註", initialValues.processNotes?.join(", ") || "-")}
                 {renderField("特殊要求", initialValues.specialRequirements?.join(", ") || "-")}

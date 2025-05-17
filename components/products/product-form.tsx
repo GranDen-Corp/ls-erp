@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
@@ -41,7 +41,7 @@ import { CompositeProductTab } from "./tabs/composite-product-tab"
 // Import other tab components
 import { ImagesTab } from "./tabs/images-tab"
 import { DocumentsTab } from "./tabs/documents-tab"
-import { ProcessTab } from "./tabs/process-tab"
+import { ProcessTab, defaultProcesses } from "./tabs/process-tab"
 import { ResumeTab } from "./tabs/resume-tab"
 import { CommercialTab } from "./tabs/commercial-tab"
 
@@ -59,6 +59,16 @@ export function ProductForm({
 
   // If there are initial values, use them, otherwise use default values
   const initialProduct = initialValues || (productId ? { ...defaultProduct, id: productId } : defaultProduct)
+
+  // 在初始化時處理製程資料
+  const processDataInitialized = useMemo(() => {
+    // 如果初始產品已有製程資料，則使用它
+    if (initialProduct.processData && initialProduct.processData.length > 0) {
+      return initialProduct.processData
+    }
+    // 否則使用默認製程資料
+    return defaultProcesses
+  }, [initialProduct.processData])
 
   // Ensure all necessary objects exist
   const safeInitialProduct = {
@@ -80,7 +90,8 @@ export function ProductForm({
       ...defaultProduct.partManagement,
       ...(initialProduct.partManagement || {}),
     },
-    processData: initialProduct.processData || defaultProduct.processData,
+    // 使用已初始化的製程資料
+    processData: processDataInitialized,
   }
 
   const [product, setProduct] = useState(safeInitialProduct)
@@ -143,6 +154,10 @@ export function ProductForm({
   // When initialValues changes, update product
   useEffect(() => {
     if (initialValues) {
+      // 處理製程資料
+      const processData =
+        initialValues.processData && initialValues.processData.length > 0 ? initialValues.processData : defaultProcesses
+
       const updatedProduct = {
         ...defaultProduct,
         ...initialValues,
@@ -162,7 +177,7 @@ export function ProductForm({
           ...defaultProduct.partManagement,
           ...(initialValues.partManagement || {}),
         },
-        processData: initialValues.processData || defaultProduct.processData,
+        processData: processData,
       }
       setProduct(updatedProduct)
       setIsCompositeProduct(initialValues.is_assembly || false)
@@ -450,10 +465,36 @@ export function ProductForm({
     setSelectedComponents((prev) => prev.filter((comp) => comp.part_no !== partNo))
   }
 
-  // Handle input change
-  const handleInputChange = (field: string, value: any) => {
-    setProduct((prev) => ({ ...prev, [field]: value }))
-  }
+  // Handle input change with deep equality check
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setProduct((prev) => {
+      // 如果字段不存在於先前的狀態中，直接更新
+      if (!(field in prev)) {
+        return { ...prev, [field]: value }
+      }
+
+      // 對於字符串、數字和布爾值，直接比較
+      if (typeof prev[field] === "string" || typeof prev[field] === "number" || typeof prev[field] === "boolean") {
+        if (prev[field] === value) {
+          return prev // 值沒有變化，不更新
+        }
+        return { ...prev, [field]: value }
+      }
+
+      // 對於對象和數組，使用 JSON.stringify 進行深度比較
+      try {
+        if (JSON.stringify(prev[field]) === JSON.stringify(value)) {
+          return prev // 值沒有變化，不更新
+        }
+      } catch (e) {
+        // 如果 JSON.stringify 失敗（例如循環引用），則假設值已更改
+        console.warn(`JSON.stringify failed for field ${field}:`, e)
+      }
+
+      // 返回更新後的對象
+      return { ...prev, [field]: value }
+    })
+  }, [])
 
   // Handle add edit note
   const handleAddEditNote = () => {
@@ -619,6 +660,60 @@ export function ProductForm({
       setIsComplianceDialogOpen(false)
     }
   }
+
+  // 使用 useMemo 來記憶化處理製程字段的函數，避免不必要的重新創建
+  const processFieldHandlers = useMemo(() => {
+    return {
+      handleProcessFieldChange: (id: string, field: string, value: string) => {
+        setProduct((prev) => {
+          const updatedProcessData = (prev.processData || []).map((proc) => {
+            if (proc.id === id) {
+              return { ...proc, [field]: value }
+            }
+            return proc
+          })
+          return {
+            ...prev,
+            processData: updatedProcessData,
+          }
+        })
+      },
+      handleRemoveProcess: (id: string) => {
+        setProduct((prev) => ({
+          ...prev,
+          processData: (prev.processData || []).filter((proc) => proc.id !== id),
+        }))
+      },
+      handleMoveProcess: (id: string, direction: "up" | "down") => {
+        setProduct((prev) => {
+          const processData = [...(prev.processData || [])]
+          const index = processData.findIndex((proc) => proc.id === id)
+
+          if (index === -1) return prev
+
+          if (direction === "up" && index > 0) {
+            // Move up
+            const temp = processData[index]
+            processData[index] = processData[index - 1]
+            processData[index - 1] = temp
+          } else if (direction === "down" && index < processData.length - 1) {
+            // Move down
+            const temp = processData[index]
+            processData[index] = processData[index + 1]
+            processData[index + 1] = temp
+          } else {
+            // Cannot move
+            return prev
+          }
+
+          return {
+            ...prev,
+            processData,
+          }
+        })
+      },
+    }
+  }, [])
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -892,54 +987,9 @@ export function ProductForm({
             setIsSpecialReqDialogOpen={setIsSpecialReqDialogOpen}
             setIsProcessNoteDialogOpen={setIsProcessNoteDialogOpen}
             handleInputChange={handleInputChange}
-            handleProcessFieldChange={(id, field, value) => {
-              setProduct((prev) => {
-                const updatedProcessData = (prev.processData || []).map((proc) => {
-                  if (proc.id === id) {
-                    return { ...proc, [field]: value }
-                  }
-                  return proc
-                })
-                return {
-                  ...prev,
-                  processData: updatedProcessData,
-                }
-              })
-            }}
-            handleRemoveProcess={(id) => {
-              setProduct((prev) => ({
-                ...prev,
-                processData: (prev.processData || []).filter((proc) => proc.id !== id),
-              }))
-            }}
-            handleMoveProcess={(id, direction) => {
-              setProduct((prev) => {
-                const processData = [...(prev.processData || [])]
-                const index = processData.findIndex((proc) => proc.id === id)
-
-                if (index === -1) return prev
-
-                if (direction === "up" && index > 0) {
-                  // Move up
-                  const temp = processData[index]
-                  processData[index] = processData[index - 1]
-                  processData[index - 1] = temp
-                } else if (direction === "down" && index < processData.length - 1) {
-                  // Move down
-                  const temp = processData[index]
-                  processData[index] = processData[index + 1]
-                  processData[index + 1] = temp
-                } else {
-                  // Cannot move
-                  return prev
-                }
-
-                return {
-                  ...prev,
-                  processData,
-                }
-              })
-            }}
+            handleProcessFieldChange={processFieldHandlers.handleProcessFieldChange}
+            handleRemoveProcess={processFieldHandlers.handleRemoveProcess}
+            handleMoveProcess={processFieldHandlers.handleMoveProcess}
           />
         </TabsContent>
 

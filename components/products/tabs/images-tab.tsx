@@ -12,6 +12,35 @@ interface ImagesTabProps {
   setProduct: React.Dispatch<React.SetStateAction<any>>
 }
 
+// 顯示圖面預覽的組件
+const DrawingPreview = ({ drawing, label }: { drawing: any; label: string }) => {
+  if (!drawing || !drawing.filename) return null
+
+  // 獲取文件名（不含副檔名）
+  const fileName = drawing.filename.split(".").slice(0, -1).join(".")
+
+  return (
+    <div className="mt-4 border rounded-md p-4">
+      <p className="text-center font-medium mb-2">{fileName}</p>
+      {drawing.path && (
+        <div className="flex justify-center mb-2">
+          <img
+            src={drawing.path || "/placeholder.svg"}
+            alt={`${label}預覽`}
+            className="max-h-40 object-contain"
+            onError={(e) => {
+              ;(e.target as HTMLImageElement).style.display = "none"
+              ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
+            }}
+          />
+          <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
+        </div>
+      )}
+      <p className="text-xs text-gray-500 break-all">{drawing.path}</p>
+    </div>
+  )
+}
+
 export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabProps) {
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldType: string) => {
@@ -96,28 +125,7 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       </Button>
                     </div>
 
-                    {product.customerOriginalDrawing?.filename && (
-                      <div className="mt-4 border rounded-md p-4">
-                        <p className="text-center font-medium mb-2">
-                          {product.customerOriginalDrawing.filename.split(".").slice(0, -1).join(".")}
-                        </p>
-                        {product.customerOriginalDrawing.path && (
-                          <div className="flex justify-center mb-2">
-                            <img
-                              src={product.customerOriginalDrawing.path || "/placeholder.svg"}
-                              alt="客戶原圖預覽"
-                              className="max-h-40 object-contain"
-                              onError={(e) => {
-                                ;(e.target as HTMLImageElement).style.display = "none"
-                                ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
-                              }}
-                            />
-                            <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
-                          </div>
-                        )}
-                        <p className="text-xs text-gray-500 break-all">{product.customerOriginalDrawing.path}</p>
-                      </div>
-                    )}
+                    <DrawingPreview drawing={product.customerOriginalDrawing} label="客戶原圖" />
                   </div>
                 </div>
 
@@ -195,6 +203,7 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       選擇圖面連結
                     </Button>
                   </div>
+                  <DrawingPreview drawing={product.customerDrawing} label="今湛客圖" />
                 </div>
 
                 <div className="space-y-2">
@@ -215,6 +224,7 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       選擇圖面連結
                     </Button>
                   </div>
+                  <DrawingPreview drawing={product.factoryDrawing} label="今湛工廠圖" />
                 </div>
               </div>
             </div>

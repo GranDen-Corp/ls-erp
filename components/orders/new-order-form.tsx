@@ -58,6 +58,12 @@ interface Customer {
   customer_short_name?: string
   payment_term?: string
   delivery_terms?: string
+  packing_condition?: string
+  qty_allowance_percent?: string
+  forwarder_agent?: string
+  shipping_agent?: string
+  sales_representative?: string
+  sales_email?: string
   [key: string]: any
 }
 
@@ -701,6 +707,16 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             // 默認數量
             const defaultQuantity = 1
 
+            // 在添加產品到訂單項目時，處理 orderRequirements 中的換行符號
+            if (product.order_requirements && typeof product.order_requirements === "string") {
+              // 將 \n 換行符號替換為實際換行
+              const formattedRequirements = product.order_requirements.replace(/\\n/g, "\n")
+
+              // 更新訂單資訊
+              const newOrderInfo = orderInfo ? orderInfo + "\n\n" + formattedRequirements : formattedRequirements
+              setOrderInfo(newOrderInfo)
+            }
+
             return {
               id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${product.part_no}`,
               productKey: getProductKey(product),
@@ -1064,14 +1080,18 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           return
         }
 
-        // 生成訂單資訊
+        // Generate order info
         const generatedOrderInfo = generateOrderInfo(orderItems)
         setOrderInfo(generatedOrderInfo)
+
+        // Generate formatted remarks
+        const formattedRemarks = generateFormattedRemarks()
+        setRemarks(formattedRemarks)
 
         setIsProductsReady(true)
         setIsProductSettingsConfirmed(true)
       } else {
-        // 取消確認，允許再次編輯
+        // Cancel confirmation, allow editing again
         setIsProductSettingsConfirmed(false)
       }
     }
@@ -1094,16 +1114,82 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           const drawingInfo =
             filename || drawingVersion ? `As per point ${filename}${drawingVersion ? `, ${drawingVersion}` : ""}` : ""
 
+          // 處理 order_requirements 中的換行符號 - 只在顯示時處理，不修改原始數據
+          let orderRequirements = ""
+          if (product.order_requirements) {
+            // 檢查是否已經包含實際換行符，如果是，則直接使用
+            if (product.order_requirements.includes("\n")) {
+              orderRequirements = product.order_requirements
+            } else {
+              // 否則，替換 \n 為實際換行
+              orderRequirements = product.order_requirements.replace(/\\n/g, "\n")
+            }
+          }
+
           return `PART# ${product.part_no || item.productPartNo || ""}
 LOT NO. 訂單 ${useCustomOrderNumber ? customOrderNumber : orderNumber}
 ${product.component_name || item.productName || ""}
 HS Code: ${product.customs_code || ""}
-${product.order_requirements || ""}
+${orderRequirements}
 ${drawingInfo}
 ${product.specification || ""}
 ${item.quantity} PCS / CTN`
         })
         .join("\n\n")
+    }
+
+    // Generate formatted remarks according to the specified format
+    const generateFormattedRemarks = () => {
+      if (!selectedCustomerId || orderItems.length === 0) return ""
+
+      // Find the selected customer
+      const customer = customers.find((c) => c.customer_id === selectedCustomerId)
+      if (!customer) return ""
+
+      // Get the first batch delivery date from the first product
+      let firstBatchDate = ""
+      if (orderItems.length > 0 && orderItems[0].shipmentBatches.length > 0) {
+        const firstBatch = orderItems[0].shipmentBatches[0]
+        if (firstBatch.plannedShipDate) {
+          const date = new Date(firstBatch.plannedShipDate)
+          // Format as MM/DD/YYYY (using English month abbreviation)
+          const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+          firstBatchDate = `${monthNames[date.getMonth()]}/${date.getDate()}/${date.getFullYear()}`
+        }
+      }
+
+      // Build the delivery section with product details
+      let deliverySection = "1. DELIVERY:\n"
+      orderItems.forEach((item) => {
+        item.shipmentBatches.forEach((batch) => {
+          if (batch.plannedShipDate) {
+            const date = new Date(batch.plannedShipDate)
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+            const etdDate = `${monthNames[date.getMonth()]}/${date.getDate()}/${date.getFullYear()}`
+            deliverySection += `${item.productPartNo} : ${batch.quantity} PCS ETD ${etdDate}    ${item.productName}\n`
+          }
+        })
+      })
+
+      // Format the complete remarks
+      const formattedRemarks = `${deliverySection}
+2. PAYMENT : ${customer.payment_term || "BY T/T AFTER RECEIVED COPY OF B/L BY FAX"}
+
+3. PACKING : ${customer.packing_condition || "BY EXPORT CARTON THEN PALLETIZED - 18KG/CTN MAX"}
+
+4. QUANTITY ALLOWANCE PLUS ${customer.qty_allowance_percent || "10"}% / MINUS ${customer.qty_allowance_percent || "10"}%
+
+5. FORWARDER AGENT: ${customer.forwarder_agent || ""}
+
+6. MATERIAL CERTS, INSPECTED REPORT REQUIRED
+
+7. TOOLING CHARGE REFUNDABLE AFTER 
+
+8. SHIPPING AGENT: ${customer.shipping_agent || ""}
+
+9. ORDER BY - ${customer.sales_representative || ""} ${customer.sales_email ? `<${customer.sales_email}>` : ""}`
+
+      return formattedRemarks
     }
 
     // 創建採購單
@@ -1343,7 +1429,7 @@ ${item.quantity} PCS / CTN`
               // 不中斷流程，僅記錄錯誤
             }
           } catch (batchError: any) {
-            console.error("處理訂���批次項目時出錯:", batchError)
+            console.error("處理訂批次項目時出錯:", batchError)
             // 不中斷流程，僅記錄錯誤
           }
 
@@ -1461,8 +1547,8 @@ ${item.quantity} PCS / CTN`
                 status: batch.status || "pending",
                 tracking_number: batch.trackingNumber,
                 actual_ship_date: batch.actualShipDate ? new Date(batch.actualShipDate).toISOString() : null,
-                estimated_arrival_date: batch.estimatedArrivalDate
-                  ? new Date(batch.estimatedArrivalDate).toISOString()
+                estimated_arrival_date: batch.estimated_arrival_date
+                  ? new Date(batch.estimated_arrival_date).toISOString()
                   : null,
                 customs_info: batch.customsInfo,
                 created_at: new Date().toISOString(),

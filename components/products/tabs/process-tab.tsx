@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, X } from "lucide-react"
+import { Plus, X, FileText, ShoppingCart, Loader2, Copy } from "lucide-react"
+import { batchTranslate } from "@/lib/translation-service"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useState, memo } from "react"
 
 interface ProcessTabProps {
   product: any
@@ -20,7 +24,11 @@ interface ProcessTabProps {
   handleMoveProcess: (id: string, direction: "up" | "down") => void
 }
 
-export function ProcessTab({
+// 定義生成備註的類型
+type RemarksType = "order" | "purchase"
+
+// 使用 memo 包裝組件以避免不必要的重新渲染
+const ProcessTab = memo(function ProcessTab({
   product,
   setProduct,
   setIsProcessDialogOpen,
@@ -31,36 +39,146 @@ export function ProcessTab({
   handleRemoveProcess,
   handleMoveProcess,
 }: ProcessTabProps) {
-  // Regenerate requirements
-  const regenerateRequirements = () => {
-    // Generate requirements based on process data
-    const generateRequirements = (processData: any[]) => {
-      // Order part requirements - all process requirements
-      const orderReqs = processData
-        .filter((proc) => proc.requirements)
-        .map((proc) => `${proc.process}：${proc.requirements}`)
-        .join("\n")
+  const [isGenerateRemarksDialogOpen, setIsGenerateRemarksDialogOpen] = useState(false)
+  const [useTranslation, setUseTranslation] = useState(false)
+  const [generatedRemarks, setGeneratedRemarks] = useState("")
+  const [currentRemarksType, setCurrentRemarksType] = useState<RemarksType>("order")
+  const [isTranslating, setIsTranslating] = useState(false)
 
-      // Purchase order part requirements - also includes all process requirements
-      const purchaseReqs = processData
-        .filter((proc) => proc.requirements)
-        .map((proc) => `${proc.process}：${proc.requirements}`)
-        .join("\n")
+  // 生成製程要求
+  const generateRequirements = () => {
+    if (!product || !product.processData) return []
 
-      return {
-        orderReqs,
-        purchaseReqs,
-      }
-    }
+    // 獲取所有製程要求
+    return product.processData
+      .filter((proc: any) => proc.requirements)
+      .map((proc: any) => `${proc.process}：${proc.requirements}`)
+  }
 
-    setProduct((prev: any) => {
-      const { orderReqs, purchaseReqs } = generateRequirements(prev.processData || [])
-      return {
-        ...prev,
-        orderRequirements: orderReqs,
-        purchaseRequirements: purchaseReqs,
+  // 生成所有製程（包括沒有要求的）
+  const generateAllProcesses = () => {
+    if (!product || !product.processData) return []
+
+    // 獲取所有製程，無論是否有要求
+    return product.processData.map((proc: any) => {
+      if (proc.requirements) {
+        return `${proc.process}：${proc.requirements}`
+      } else {
+        return `${proc.process}：`
       }
     })
+  }
+
+  // 複製所有製程到訂單零件要求
+  const copyAllProcessesToOrderRequirements = () => {
+    const allProcesses = generateAllProcesses()
+    if (allProcesses.length === 0) {
+      alert("沒有可用的製程資料")
+      return
+    }
+
+    const formattedText = allProcesses.join("\n")
+    handleInputChange("orderRequirements", formattedText)
+  }
+
+  // 複製所有製程到採購單零件要求
+  const copyAllProcessesToPurchaseRequirements = () => {
+    const allProcesses = generateAllProcesses()
+    if (allProcesses.length === 0) {
+      alert("沒有可用的製程資料")
+      return
+    }
+
+    const formattedText = allProcesses.join("\n")
+    handleInputChange("purchaseRequirements", formattedText)
+  }
+
+  // 打開生成備註對話框
+  const openGenerateRemarksDialog = async (type: RemarksType) => {
+    const processRequirements = generateRequirements()
+    if (processRequirements.length === 0) {
+      alert("沒有可用的製程要求")
+      return
+    }
+
+    // 設置當前備註類型
+    setCurrentRemarksType(type)
+
+    // 默認不翻譯
+    setGeneratedRemarks("製程要求:\n" + processRequirements.map((req) => `${req}`).join("\n"))
+    setUseTranslation(false)
+    setIsGenerateRemarksDialogOpen(true)
+  }
+
+  // 切換翻譯選項
+  const handleToggleTranslation = async (checked: boolean) => {
+    setUseTranslation(checked)
+
+    if (checked) {
+      setIsTranslating(true)
+      try {
+        // 獲取所有製程名稱和要求
+        const processTerms = product.processData
+          .filter((proc: any) => proc.requirements)
+          .map((proc: any) => proc.process)
+
+        const requirementTerms = product.processData
+          .filter((proc: any) => proc.requirements)
+          .map((proc: any) => proc.requirements)
+
+        // 翻譯製程名稱
+        const translatedProcesses = await batchTranslate(processTerms, "process")
+
+        // 翻譯要求
+        const translatedRequirements = await Promise.all(
+          requirementTerms.map(async (req: string) => {
+            // 將要求拆分為詞組進行翻譯
+            const terms = req.split(/[，,、：:；;]/).filter(Boolean)
+            const translatedTerms = await batchTranslate(terms, "requirement")
+
+            // 嘗試保留原始的分隔符
+            let result = req
+            for (let i = 0; i < terms.length; i++) {
+              result = result.replace(terms[i], translatedTerms[i])
+            }
+            return result
+          }),
+        )
+
+        // 組合翻譯後的製程要求
+        const translatedRemarks = translatedProcesses.map((proc, index) => `${proc}: ${translatedRequirements[index]}`)
+
+        // 格式化為英文訂單備註格式
+        setGeneratedRemarks("MANUFACTURING PROCESS:\n" + translatedRemarks.map((req) => `${req}`).join("\n"))
+      } catch (error) {
+        console.error("翻譯失敗:", error)
+        // 如果翻譯失敗，回退到中文
+        const processRequirements = generateRequirements()
+        setGeneratedRemarks("製程要求:\n" + processRequirements.map((req) => `${req}`).join("\n"))
+      } finally {
+        setIsTranslating(false)
+      }
+    } else {
+      // 不翻譯，使用原中文
+      const processRequirements = generateRequirements()
+      setGeneratedRemarks("製程要求:\n" + processRequirements.map((req) => `${req}`).join("\n"))
+    }
+  }
+
+  // 應用生成的備註
+  const applyGeneratedRemarks = () => {
+    // 根據當前備註類型更新相應的字段
+    if (currentRemarksType === "order") {
+      handleInputChange("orderRequirements", generatedRemarks)
+    } else {
+      handleInputChange("purchaseRequirements", generatedRemarks)
+    }
+    setIsGenerateRemarksDialogOpen(false)
+  }
+
+  // 如果產品數據尚未加載，顯示加載狀態
+  if (!product) {
+    return <div>加載中...</div>
   }
 
   return (
@@ -182,30 +300,78 @@ export function ProcessTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="orderRequirements">訂單零件要求</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="orderRequirements">訂單零件要求</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={copyAllProcessesToOrderRequirements}
+                  className="ml-2"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  複製所有製程
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openGenerateRemarksDialog("order")}
+                  className="ml-2"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  生成訂單要求
+                </Button>
+              </div>
+            </div>
+            {/* 使用標準 Textarea 替代 AutoResizeTextarea */}
             <Textarea
               id="orderRequirements"
               value={product.orderRequirements || ""}
               onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
-              rows={3}
+              rows={5}
               placeholder="輸入訂單零件要求"
+              className="w-full min-h-[120px]"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="purchaseRequirements">採購單零件要求</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="purchaseRequirements">採購單零件要求</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={copyAllProcessesToPurchaseRequirements}
+                  className="ml-2"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  複製所有製程
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openGenerateRemarksDialog("purchase")}
+                  className="ml-2"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  生成採購單要求
+                </Button>
+              </div>
+            </div>
+            {/* 使用標準 Textarea 替代 AutoResizeTextarea */}
             <Textarea
               id="purchaseRequirements"
               value={product.purchaseRequirements || ""}
               onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
-              rows={3}
+              rows={5}
               placeholder="輸入採購單零件要求"
+              className="w-full min-h-[120px]"
             />
           </div>
-
-          <Button type="button" variant="secondary" onClick={regenerateRequirements}>
-            重新生成要求
-          </Button>
 
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium">特殊要求</h3>
@@ -270,6 +436,92 @@ export function ProcessTab({
           </div>
         </div>
       </CardContent>
+
+      {/* 生成備註對話框 */}
+      <Dialog open={isGenerateRemarksDialogOpen} onOpenChange={setIsGenerateRemarksDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{currentRemarksType === "order" ? "生成訂單零件要求" : "生成採購單零件要求"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="useTranslation"
+                checked={useTranslation}
+                onCheckedChange={(checked) => handleToggleTranslation(checked === true)}
+                disabled={isTranslating}
+              />
+              <Label htmlFor="useTranslation" className="flex items-center">
+                使用英文翻譯
+                {isTranslating && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              </Label>
+            </div>
+            <Textarea value={generatedRemarks} onChange={(e) => setGeneratedRemarks(e.target.value)} rows={10} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGenerateRemarksDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={applyGeneratedRemarks} disabled={isTranslating}>
+              {currentRemarksType === "order" ? "應用到訂單要求" : "應用到採購單要求"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
-}
+})
+
+// 預設製程資料
+export const defaultProcesses = [
+  {
+    id: "proc_1",
+    process: "材料",
+    vendor: "中鋼",
+    capacity: "",
+    requirements: "SAE 10B21",
+    report: "材證",
+  },
+  {
+    id: "proc_2",
+    process: "成型",
+    vendor: "岡岩",
+    capacity: "",
+    requirements: "",
+    report: "",
+  },
+  {
+    id: "proc_3",
+    process: "搓牙",
+    vendor: "岡岩",
+    capacity: "",
+    requirements: "",
+    report: "",
+  },
+  {
+    id: "proc_4",
+    process: "熱處理",
+    vendor: "力大",
+    capacity: "",
+    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640",
+    report: "硬度，拉力",
+  },
+  {
+    id: "proc_5",
+    process: "電鍍",
+    vendor: "頂上興",
+    capacity: "",
+    requirements: "三價鉻鋅SUM MIN，鹽測12/48",
+    report: "膜厚，鹽測，除氫",
+  },
+  {
+    id: "proc_6",
+    process: "篩選",
+    vendor: "聖鼎",
+    capacity: "",
+    requirements: "50 PPM：混料、總長",
+    report: "篩選報告",
+  },
+]
+
+export { ProcessTab }

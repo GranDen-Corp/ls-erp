@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { ProductImagePreview } from "@/components/products/product-image-preview"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { formatProcessesForOrderRemarks } from "@/lib/translation-service"
 
 // 模擬客戶數據
 const customers = [
@@ -183,7 +184,7 @@ interface OrderItem {
   }
 }
 
-export function OrderForm() {
+export function OrderForm({ productData }) {
   const [orderNumber, setOrderNumber] = useState("")
   const [customerId, setCustomerId] = useState("")
   const [customerPO, setCustomerPO] = useState("")
@@ -218,6 +219,49 @@ export function OrderForm() {
 
     setOrderNumber(`ORD-${year}${month}${day}-${randomNum}`)
   }, [])
+
+  // 當產品數據變更時，更新備註
+  useEffect(() => {
+    let isMounted = true
+    let isProcessing = false
+
+    async function updateRemarks() {
+      // 避免重複處理
+      if (isProcessing) return
+      isProcessing = true
+
+      if (productData?.processes?.length > 0) {
+        try {
+          // 獲取翻譯後的製程描述
+          const processRemarks = await formatProcessesForOrderRemarks(productData.processes)
+
+          // 確保組件仍然掛載
+          if (isMounted) {
+            // 檢查備註是否已包含製程描述，避免重複添加
+            if (!remarks.includes("MANUFACTURING PROCESS:")) {
+              setRemarks((prevRemarks) => {
+                // 如果已有備註，則添加到末尾
+                if (prevRemarks) {
+                  return `${prevRemarks}\n\n${processRemarks}`
+                }
+                return processRemarks
+              })
+            }
+          }
+        } catch (error) {
+          console.error("更新製程備註失敗:", error)
+        }
+      }
+
+      isProcessing = false
+    }
+
+    updateRemarks()
+
+    return () => {
+      isMounted = false
+    }
+  }, [productData]) // 只依賴 productData，不依賴 remarks
 
   const handleAddProduct = () => {
     if (!selectedProductId) return

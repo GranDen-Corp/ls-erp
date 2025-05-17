@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
@@ -365,18 +364,17 @@ export function ProductReadOnlyForm({
   )
 
   // 創建唯讀版本的文本區域
-  const ReadOnlyTextarea = ({ label, value }: { label: string; value: string | undefined | null }) => (
-    <div className="space-y-2">
-      <Label htmlFor={`readonly-${label}`}>{label}</Label>
-      <Textarea
-        id={`readonly-${label}`}
-        value={value || ""}
-        readOnly
-        className="bg-gray-50 cursor-not-allowed"
-        rows={3}
-      />
-    </div>
-  )
+  const ReadOnlyTextarea = ({ label, value }: { label: string; value: string | undefined | null }) => {
+    // 處理換行符號
+    const formattedValue = value ? value.replace(/\\n/g, "\n") : ""
+
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={`readonly-${label}`}>{label}</Label>
+        <div className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">{formattedValue}</div>
+      </div>
+    )
+  }
 
   // 創建唯讀版本的選擇器
   const ReadOnlySelect = ({ label, value }: { label: string; value: string | undefined | null }) => (
@@ -403,6 +401,35 @@ export function ProductReadOnlyForm({
       <div className="p-2 border rounded-md bg-gray-50">{value || "-"}</div>
     </div>
   )
+
+  // 創建圖面預覽組件
+  const DrawingPreview = ({ drawing, label }: { drawing: any; label: string }) => {
+    if (!drawing || !drawing.filename) return <div className="p-2 border rounded-md bg-gray-50">未上傳圖面</div>
+
+    // 獲取文件名（不含副檔名）
+    const fileName = drawing.filename.split(".").slice(0, -1).join(".")
+
+    return (
+      <div className="mt-4 border rounded-md p-4">
+        <p className="text-center font-medium mb-2">{fileName}</p>
+        {drawing.path && (
+          <div className="flex justify-center mb-2">
+            <img
+              src={drawing.path || "/placeholder.svg"}
+              alt={`${label}預覽`}
+              className="max-h-40 object-contain"
+              onError={(e) => {
+                ;(e.target as HTMLImageElement).style.display = "none"
+                ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
+              }}
+            />
+            <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
+          </div>
+        )}
+        <p className="text-xs text-gray-500 break-all">{drawing.path}</p>
+      </div>
+    )
+  }
 
   return (
     <form className="space-y-6">
@@ -535,30 +562,7 @@ export function ProductReadOnlyForm({
 
                       <div className="space-y-2">
                         <Label>客戶原圖</Label>
-                        {product.customerOriginalDrawing?.filename ? (
-                          <div className="mt-4 border rounded-md p-4">
-                            <p className="text-center font-medium mb-2">
-                              {product.customerOriginalDrawing.filename.split(".").slice(0, -1).join(".")}
-                            </p>
-                            {product.customerOriginalDrawing.path && (
-                              <div className="flex justify-center mb-2">
-                                <img
-                                  src={product.customerOriginalDrawing.path || "/placeholder.svg"}
-                                  alt="客戶原圖預覽"
-                                  className="max-h-40 object-contain"
-                                  onError={(e) => {
-                                    ;(e.target as HTMLImageElement).style.display = "none"
-                                    ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
-                                  }}
-                                />
-                                <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-500 break-all">{product.customerOriginalDrawing.path}</p>
-                          </div>
-                        ) : (
-                          <div className="p-2 border rounded-md bg-gray-50">未上傳圖面</div>
-                        )}
+                        <DrawingPreview drawing={product.customerOriginalDrawing} label="客戶原圖" />
                       </div>
                     </div>
 
@@ -586,20 +590,12 @@ export function ProductReadOnlyForm({
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>今湛客圖</Label>
-                      <Input
-                        value={product.customerDrawing?.filename || "未選擇圖面"}
-                        readOnly
-                        className="bg-gray-50 cursor-not-allowed"
-                      />
+                      <DrawingPreview drawing={product.customerDrawing} label="今湛客圖" />
                     </div>
 
                     <div className="space-y-2">
                       <Label>今湛工廠圖</Label>
-                      <Input
-                        value={product.factoryDrawing?.filename || "未選擇圖面"}
-                        readOnly
-                        className="bg-gray-50 cursor-not-allowed"
-                      />
+                      <DrawingPreview drawing={product.factoryDrawing} label="今湛工廠圖" />
                     </div>
                   </div>
                 </div>

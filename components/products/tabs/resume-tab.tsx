@@ -78,8 +78,9 @@ export function ResumeTab({
               id="accountingNote"
               value={product.accountingNote || ""}
               onChange={(e) => handleInputChange("accountingNote", e.target.value)}
-              rows={3}
+              rows={4}
               placeholder="輸入會計備註"
+              className="w-full min-h-[100px]"
             />
           </div>
 
