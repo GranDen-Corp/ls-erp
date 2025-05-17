@@ -16,6 +16,7 @@ import {
   Info,
   CheckCircle,
   Settings,
+  Layers,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase-client"
@@ -24,6 +25,7 @@ import { CustomDatePicker } from "@/components/ui/custom-date-picker"
 import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-service"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export interface ProcurementItem {
   id: string
@@ -46,7 +48,10 @@ export interface ProcurementItem {
   isSelected: boolean
   paymentTerm?: string
   deliveryTerm?: string
-  currency: string // 添加貨幣字段
+  currency: string
+  isComponentPart?: boolean
+  parentAssemblyId?: string
+  parentAssemblyName?: string
 }
 
 interface ProcurementDataEditorProps {
@@ -153,23 +158,54 @@ export function ProcurementDataEditor({
     if (orderItems.length === 0) return
     if (factories.length === 0 && !loading) {
       // 如果沒有供應商資料，創建空的採購項目
-      const newProcurementItems = orderItems.map((item) => {
-        return {
-          id: `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          productPartNo: item.productPartNo,
-          productName: item.productName,
-          quantity: item.quantity,
-          factoryId: "",
-          factoryName: "",
-          factoryOptions: [],
-          purchasePrice: item.unitPrice * 0.8, // 預設採購價為銷售價的80%
-          deliveryDate: new Date(), // 預設為今天
-          notes: "",
-          status: "pending",
-          isSelected: true,
-          paymentTerm: "",
-          deliveryTerm: "",
-          currency: item.currency || "USD", // 使用產品貨幣或默認USD
+      const newProcurementItems: ProcurementItem[] = []
+
+      // 處理所有訂單項目
+      orderItems.forEach((item) => {
+        // 檢查是否為組件產品
+        if (item.isAssembly && item.product && item.product.components && Array.isArray(item.product.components)) {
+          // 處理組件產品的部件
+          item.product.components.forEach((component: any) => {
+            newProcurementItems.push({
+              id: `proc-comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              productPartNo: component.productPN || component.part_no || "",
+              productName: component.productName || component.component_name || "",
+              quantity: (component.quantity || 1) * item.quantity, // 部件數量 × 組件訂購數量
+              factoryId: component.factoryId || "",
+              factoryName: component.factoryName || "",
+              factoryOptions: [],
+              purchasePrice: component.unitPrice || 0,
+              deliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 預設為兩週後
+              notes: `組件 ${item.productPartNo} 的部件`,
+              status: "pending",
+              isSelected: true,
+              paymentTerm: "",
+              deliveryTerm: "",
+              currency: component.currency || item.currency || "USD",
+              isComponentPart: true,
+              parentAssemblyId: item.productPartNo,
+              parentAssemblyName: item.productName,
+            })
+          })
+        } else {
+          // 處理普通產品
+          newProcurementItems.push({
+            id: `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            productPartNo: item.productPartNo,
+            productName: item.productName,
+            quantity: item.quantity,
+            factoryId: "",
+            factoryName: "",
+            factoryOptions: [],
+            purchasePrice: item.unitPrice * 0.8, // 預設採購價為銷售價的80%
+            deliveryDate: new Date(), // 預設為今天
+            notes: "",
+            status: "pending",
+            isSelected: true,
+            paymentTerm: "",
+            deliveryTerm: "",
+            currency: item.currency || "USD", // 使用產品貨幣或默認USD
+          })
         }
       })
 
@@ -179,62 +215,126 @@ export function ProcurementDataEditor({
     }
 
     // 將訂單項目轉換為採購項目
-    const newProcurementItems = orderItems.map((item) => {
-      // 查找現有的採購項目
-      const existingItem = procurementItems.find((p) => p.productPartNo === item.productPartNo)
+    const newProcurementItems: ProcurementItem[] = []
 
-      // 從產品資料中獲取工廠信息
-      let factoryId = ""
-      let factoryName = ""
+    // 處理所有訂單項目
+    orderItems.forEach((item) => {
+      // 檢查是否為組件產品
+      if (item.isAssembly && item.product && item.product.components && Array.isArray(item.product.components)) {
+        // 處理組件產品的部件
+        item.product.components.forEach((component: any) => {
+          // 查找現有的採購項目
+          const existingItem = procurementItems.find(
+            (p) =>
+              p.isComponentPart &&
+              p.productPartNo === (component.productPN || component.part_no) &&
+              p.parentAssemblyId === item.productPartNo,
+          )
 
-      // 優先從產品資料中獲取工廠信息
-      try {
-        if (item.product && item.product.factory_id) {
-          factoryId = item.product.factory_id
-          const factory = factories.find((f) => f.factory_id === factoryId)
-          factoryName = factory ? factory.factory_name || factory.factory_full_name : "未知供應商"
+          // 從產品資料中獲取工廠信息
+          let factoryId = component.factoryId || ""
+          let factoryName = component.factoryName || ""
+
+          // 如果部件有指定工廠，則使用該工廠
+          if (factoryId) {
+            const factory = factories.find((f) => f.factory_id === factoryId)
+            factoryName = factory ? factory.factory_name || factory.factory_full_name : "未知供應商"
+          }
+
+          // 如果有現有項目且部件沒有工廠ID，則使用現有項目的工廠信息
+          if (!factoryId && existingItem) {
+            factoryId = existingItem.factoryId
+            factoryName = existingItem.factoryName
+          }
+
+          // 為部件準備工廠選項
+          const factoryOptions = factories.map((factory) => ({
+            id: factory.factory_id,
+            name: factory.factory_name || factory.factory_full_name || `工廠 ${factory.factory_id}`,
+            factoryId: factory.factory_id,
+            paymentTerm: factory.payment_term,
+            deliveryTerm: factory.delivery_term,
+          }))
+
+          newProcurementItems.push({
+            id: existingItem?.id || `proc-comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            productPartNo: component.productPN || component.part_no || "",
+            productName: component.productName || component.component_name || "",
+            quantity: existingItem?.quantity || (component.quantity || 1) * item.quantity, // 部件數量 × 組件訂購數量
+            factoryId: factoryId,
+            factoryName: factoryName,
+            factoryOptions: factoryOptions,
+            purchasePrice: existingItem?.purchasePrice || component.unitPrice || 0,
+            deliveryDate: existingItem?.deliveryDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 預設為兩週後
+            notes: existingItem?.notes || `組件 ${item.productPartNo} 的部件`,
+            status: existingItem?.status || "pending",
+            isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
+            paymentTerm: existingItem?.paymentTerm || "",
+            deliveryTerm: existingItem?.deliveryTerm || "",
+            currency: existingItem?.currency || component.currency || item.currency || "USD",
+            isComponentPart: true,
+            parentAssemblyId: item.productPartNo,
+            parentAssemblyName: item.productName,
+          })
+        })
+      } else {
+        // 處理普通產品
+        // 查找現有的採購項目
+        const existingItem = procurementItems.find((p) => !p.isComponentPart && p.productPartNo === item.productPartNo)
+
+        // 從產品資料中獲取工廠信息
+        let factoryId = ""
+        let factoryName = ""
+
+        // 優先從產品資料中獲取工廠信息
+        try {
+          if (item.product && item.product.factory_id) {
+            factoryId = item.product.factory_id
+            const factory = factories.find((f) => f.factory_id === factoryId)
+            factoryName = factory ? factory.factory_name || factory.factory_full_name : "未知供應商"
+          }
+        } catch (err) {
+          console.warn("無法從產品資料獲取工廠信息:", err)
         }
-      } catch (err) {
-        console.warn("無法從產品資料獲取工廠信息:", err)
-      }
 
-      // 如果有現有項目且產品沒有工廠ID，則使用現有項目的工廠信息
-      if (!factoryId && existingItem) {
-        factoryId = existingItem.factoryId
-        factoryName = existingItem.factoryName
-      }
+        // 如果有現有項目且產品沒有工廠ID，則使用現有項目的工廠信息
+        if (!factoryId && existingItem) {
+          factoryId = existingItem.factoryId
+          factoryName = existingItem.factoryName
+        }
 
-      // 為產品準備工廠選項
-      const factoryOptions = factories.map((factory) => ({
-        id: factory.factory_id,
-        name: factory.factory_name || factory.factory_full_name || `工廠 ${factory.factory_id}`,
-        factoryId: factory.factory_id,
-        paymentTerm: factory.payment_term,
-        deliveryTerm: factory.delivery_term,
-      }))
+        // 為產品準備工廠選項
+        const factoryOptions = factories.map((factory) => ({
+          id: factory.factory_id,
+          name: factory.factory_name || factory.factory_full_name || `工廠 ${factory.factory_id}`,
+          factoryId: factory.factory_id,
+          paymentTerm: factory.payment_term,
+          deliveryTerm: factory.delivery_term,
+        }))
 
-      return {
-        id: existingItem?.id || `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        productPartNo: item.productPartNo,
-        productName: item.productName,
-        quantity: existingItem?.quantity || item.quantity,
-        factoryId: factoryId,
-        factoryName: factoryName,
-        factoryOptions: factoryOptions,
-        purchasePrice: existingItem?.purchasePrice || item.unitPrice * 0.8, // 預設採購價為銷售價的80%
-        deliveryDate: existingItem?.deliveryDate || new Date(), // 預設為今天
-        notes: existingItem?.notes || "",
-        status: existingItem?.status || "pending",
-        isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
-        paymentTerm: existingItem?.paymentTerm || "",
-        deliveryTerm: existingItem?.deliveryTerm || "",
-        currency: existingItem?.currency || item.currency || "USD", // 使用現有貨幣或產品貨幣或默認USD
+        newProcurementItems.push({
+          id: existingItem?.id || `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          productPartNo: item.productPartNo,
+          productName: item.productName,
+          quantity: existingItem?.quantity || item.quantity,
+          factoryId: factoryId,
+          factoryName: factoryName,
+          factoryOptions: factoryOptions,
+          purchasePrice: existingItem?.purchasePrice || item.unitPrice * 0.8, // 預設採購價為銷售價的80%
+          deliveryDate: existingItem?.deliveryDate || new Date(), // 預設為今天
+          notes: existingItem?.notes || "",
+          status: existingItem?.status || "pending",
+          isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
+          paymentTerm: existingItem?.paymentTerm || "",
+          deliveryTerm: existingItem?.deliveryTerm || "",
+          currency: existingItem?.currency || item.currency || "USD", // 使用現有貨幣或產品貨幣或默認USD
+        })
       }
     })
 
     setProcurementItems(newProcurementItems)
     onProcurementDataChange(newProcurementItems)
-  }, [orderItems, factories, loading])
+  }, [orderItems, factories, loading, procurementItems])
 
   // 當採購項目變更時，通知父組件
   useEffect(() => {
@@ -430,7 +530,7 @@ export function ProcurementDataEditor({
               {procurementItems.map((item) => (
                 <TableRow
                   key={item.id}
-                  className={`${isCreatingPurchaseOrder && !item.isSelected ? "opacity-50" : ""} ${!item.factoryId ? "bg-amber-50" : ""}`}
+                  className={`${isCreatingPurchaseOrder && !item.isSelected ? "opacity-50" : ""} ${!item.factoryId ? "bg-amber-50" : ""} ${item.isComponentPart ? "bg-blue-50" : ""}`}
                 >
                   {!readOnly && (
                     <TableCell className="sticky left-0 bg-inherit">
@@ -441,9 +541,31 @@ export function ProcurementDataEditor({
                       />
                     </TableCell>
                   )}
-                  <TableCell className="sticky left-0 bg-inherit font-medium">{item.productPartNo}</TableCell>
+                  <TableCell className="sticky left-0 bg-inherit font-medium">
+                    {item.productPartNo}
+                    {item.isComponentPart && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700 border-blue-200">
+                              <Layers className="h-3 w-3 mr-1" />
+                              部件
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>此項目是組件 {item.parentAssemblyName} 的部件</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </TableCell>
                   <TableCell className="max-w-[300px] truncate" title={item.productName}>
                     {item.productName}
+                    {item.isComponentPart && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        組件: {item.parentAssemblyName} ({item.parentAssemblyId})
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     {readOnly ? (
@@ -460,16 +582,28 @@ export function ProcurementDataEditor({
                     )}
                   </TableCell>
                   <TableCell>
-                    {item.factoryName ? (
+                    {readOnly ? (
                       <div className="flex items-center">
                         <Factory className="h-4 w-4 mr-2 text-gray-500" />
-                        <span>{item.factoryName}</span>
+                        <span>{item.factoryName || "未指定供應商"}</span>
                       </div>
                     ) : (
-                      <span className="text-amber-600 font-medium flex items-center">
-                        <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                        未指定供應商
-                      </span>
+                      <Select
+                        value={item.factoryId}
+                        onValueChange={(value) => updateProcurementItem(item.id, "factoryId", value)}
+                        disabled={isCreatingPurchaseOrder}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="選擇供應商" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {item.factoryOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </TableCell>
                   <TableCell className="text-center">
