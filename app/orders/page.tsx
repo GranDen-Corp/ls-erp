@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrdersTable } from "@/components/orders/orders-table"
 import Link from "next/link"
@@ -29,54 +28,19 @@ export default function OrdersPage() {
           <TabsTrigger value="shipped">已出貨/結案</TabsTrigger>
         </TabsList>
         <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>所有訂單</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrdersTable />
-            </CardContent>
-          </Card>
+          <OrdersTable />
         </TabsContent>
         <TabsContent value="pending">
-          <Card>
-            <CardHeader>
-              <CardTitle>待確認訂單</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrdersTable status="待確認" />
-            </CardContent>
-          </Card>
+          <OrdersTable status="待確認" />
         </TabsContent>
         <TabsContent value="inProgress">
-          <Card>
-            <CardHeader>
-              <CardTitle>進行中訂單</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrdersTable status="進行中" />
-            </CardContent>
-          </Card>
+          <OrdersTable status="進行中" />
         </TabsContent>
         <TabsContent value="inspected">
-          <Card>
-            <CardHeader>
-              <CardTitle>驗貨完成訂單</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrdersTable status="驗貨完成" />
-            </CardContent>
-          </Card>
+          <OrdersTable status="驗貨完成" />
         </TabsContent>
         <TabsContent value="shipped">
-          <Card>
-            <CardHeader>
-              <CardTitle>已出貨/結案訂單</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrdersTable status="已出貨" />
-            </CardContent>
-          </Card>
+          <OrdersTable status="已出貨" />
         </TabsContent>
       </Tabs>
     </div>

@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Search, FileDown, Eye, Layers } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabaseClient } from "@/lib/supabase-client"
@@ -355,83 +354,79 @@ export function OrdersTable() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>訂單管理</CardTitle>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="search"
-              placeholder="搜尋訂單..."
-              className="pl-8 w-64"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Button variant="outline" onClick={exportOrders}>
-            <FileDown className="mr-2 h-4 w-4" />
-            導出
-          </Button>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            type="search"
+            placeholder="搜尋訂單..."
+            className="pl-8 w-64"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        {error ? (
-          <div className="text-center text-red-500 py-4">{error}</div>
-        ) : isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">沒有找到訂單資料</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>流水號</TableHead>
-                  <TableHead>訂單編號</TableHead>
-                  <TableHead>客戶</TableHead>
-                  <TableHead>客戶PO編號</TableHead>
-                  <TableHead>產品</TableHead>
-                  <TableHead>訂單日期</TableHead>
-                  <TableHead>狀態</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.map((order) => {
-                  const status = getOrderStatus(order)
-                  const isAssembly = hasAssemblyProduct(order)
-                  return (
-                    <TableRow key={order.order_sid}>
-                      <TableCell>{order.order_sid}</TableCell>
-                      <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
-                      <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
-                      <TableCell>{order.po_id || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          {getProductName(order)}
-                          {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getOrderDate(order)}</TableCell>
-                      <TableCell>
-                        <Badge className={`${status.color} text-white`}>{status.text}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => viewOrderDetails(order.order_id)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <Button variant="outline" onClick={exportOrders}>
+          <FileDown className="mr-2 h-4 w-4" />
+          導出
+        </Button>
+      </div>
+
+      {error ? (
+        <div className="text-center text-red-500 py-4">{error}</div>
+      ) : isLoading ? (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="text-center text-gray-500 py-4">沒有找到訂單資料</div>
+      ) : (
+        <div className="overflow-x-auto border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>流水號</TableHead>
+                <TableHead>訂單編號</TableHead>
+                <TableHead>客戶</TableHead>
+                <TableHead>客戶PO編號</TableHead>
+                <TableHead>產品</TableHead>
+                <TableHead>訂單日期</TableHead>
+                <TableHead>狀態</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.map((order) => {
+                const status = getOrderStatus(order)
+                const isAssembly = hasAssemblyProduct(order)
+                return (
+                  <TableRow key={order.order_sid}>
+                    <TableCell>{order.order_sid}</TableCell>
+                    <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
+                    <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
+                    <TableCell>{order.po_id || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        {getProductName(order)}
+                        {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getOrderDate(order)}</TableCell>
+                    <TableCell>
+                      <Badge className={`${status.color} text-white`}>{status.text}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => viewOrderDetails(order.order_id)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   )
 }

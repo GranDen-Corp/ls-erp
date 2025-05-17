@@ -6,7 +6,7 @@ import { Plus } from "lucide-react"
 import Link from "next/link"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { ProductsTable } from "@/components/products/products-table"
-import { AdvancedFilter, type FilterOption } from "@/components/ui/advanced-filter"
+import type { FilterOption } from "@/components/ui/advanced-filter"
 import { useSearchParams } from "next/navigation"
 import type { Product } from "@/types/product"
 
@@ -182,17 +182,6 @@ export default function ProductsPage() {
               {addButtonText}
             </Button>
           </Link>
-        </div>
-      </div>
-
-      <div className="rounded-md border">
-        <div className="p-4">
-          <h2 className="text-lg font-medium mb-2">搜尋與篩選</h2>
-          <AdvancedFilter
-            options={filterOptions}
-            onFilterChange={handleFilterChange}
-            placeholder="搜尋產品編號、名稱、客戶或工廠..."
-          />
         </div>
       </div>
 
