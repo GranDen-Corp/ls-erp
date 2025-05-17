@@ -56,7 +56,7 @@ export default function Sidebar({ className }: SidebarProps = {}) {
         },
         {
           label: "新增訂單",
-          href: "/orders/new-test",
+          href: "/orders/new",
           active: pathname === "/orders/new-test",
           icon: Plus,
         },
