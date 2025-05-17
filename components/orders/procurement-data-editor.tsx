@@ -8,7 +8,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, AlertCircle, Factory, DollarSign, Calendar, TruckIcon, Info, Search } from "lucide-react"
+import {
+  Loader2,
+  AlertCircle,
+  Factory,
+  DollarSign,
+  Calendar,
+  TruckIcon,
+  Info,
+  Search,
+  CheckCircle,
+  Settings,
+} from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
@@ -36,15 +47,18 @@ export interface ProcurementItem {
   notes: string
   status: string
   isSelected: boolean
-  paymentTerm?: string // 保留欄位但不在 UI 中顯示
-  deliveryTerm?: string // 保留欄位但不在 UI 中顯示
+  paymentTerm?: string
+  deliveryTerm?: string
 }
 
 interface ProcurementDataEditorProps {
   orderItems: any[]
   onProcurementDataChange: (procurementItems: ProcurementItem[]) => void
   isCreatingPurchaseOrder: boolean
-  orderId?: string // 添加訂單ID參數
+  orderId?: string
+  readOnly?: boolean
+  onConfirmSettings?: () => void
+  isSettingsConfirmed?: boolean
 }
 
 export function ProcurementDataEditor({
@@ -52,6 +66,9 @@ export function ProcurementDataEditor({
   onProcurementDataChange,
   isCreatingPurchaseOrder,
   orderId,
+  readOnly = false,
+  onConfirmSettings,
+  isSettingsConfirmed = false,
 }: ProcurementDataEditorProps) {
   const [procurementItems, setProcurementItems] = useState<ProcurementItem[]>([])
   const [factories, setFactories] = useState<any[]>([])
@@ -405,12 +422,14 @@ export function ProcurementDataEditor({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>採購資料設定</span>
-          <div className="flex items-center space-x-2">
-            <Checkbox id="selectAll" checked={selectAll} onCheckedChange={toggleSelectAll} />
-            <Label htmlFor="selectAll" className="text-sm font-normal">
-              全選
-            </Label>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center space-x-2">
+              <Checkbox id="selectAll" checked={selectAll} onCheckedChange={toggleSelectAll} />
+              <Label htmlFor="selectAll" className="text-sm font-normal">
+                全選
+              </Label>
+            </div>
+          )}
         </CardTitle>
         <CardDescription>
           為訂單中的產品設定採購資料，包括供應商、採購價格、交期等。勾選的項目將生成採購單。
@@ -421,187 +440,244 @@ export function ProcurementDataEditor({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">選擇</TableHead>
-                <TableHead>產品編號</TableHead>
-                <TableHead>產品名稱</TableHead>
-                <TableHead>數量</TableHead>
-                <TableHead>供應商</TableHead>
-                <TableHead>採購單價</TableHead>
-                <TableHead>採購總價</TableHead>
-                <TableHead>交期</TableHead>
-                <TableHead>備註</TableHead>
+                {!readOnly && <TableHead className="w-12 sticky left-0 bg-white z-10">選擇</TableHead>}
+                <TableHead className="sticky left-0 bg-white z-10">產品編號</TableHead>
+                <TableHead className="min-w-[180px]">產品名稱</TableHead>
+                <TableHead className="w-[100px] text-center">數量</TableHead>
+                <TableHead className="min-w-[220px]">供應商</TableHead>
+                <TableHead className="w-[120px] text-right">採購單價</TableHead>
+                <TableHead className="w-[120px] text-right">採購總價</TableHead>
+                <TableHead className="w-[150px]">交期</TableHead>
+                <TableHead className="min-w-[150px]">備註</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {procurementItems.map((item) => (
-                <TableRow key={item.id} className={isCreatingPurchaseOrder && !item.isSelected ? "opacity-50" : ""}>
-                  <TableCell>
-                    <Checkbox
-                      checked={item.isSelected}
-                      onCheckedChange={() => toggleItemSelection(item.id)}
-                      disabled={isCreatingPurchaseOrder}
-                    />
-                  </TableCell>
-                  <TableCell>{item.productPartNo}</TableCell>
-                  <TableCell>{item.productName}</TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateProcurementItem(item.id, "quantity", Number(e.target.value) || 1)}
-                      className="w-20"
-                      disabled={isCreatingPurchaseOrder}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={item.factoryId}
-                        onValueChange={(value) => updateProcurementItem(item.id, "factoryId", value)}
+                <TableRow
+                  key={item.id}
+                  className={`${isCreatingPurchaseOrder && !item.isSelected ? "opacity-50" : ""} ${!item.factoryId ? "bg-amber-50" : ""}`}
+                >
+                  {!readOnly && (
+                    <TableCell className="sticky left-0 bg-inherit">
+                      <Checkbox
+                        checked={item.isSelected}
+                        onCheckedChange={() => toggleItemSelection(item.id)}
                         disabled={isCreatingPurchaseOrder}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="選擇供應商" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {item.factoryOptions.map((factory) => (
-                            <SelectItem key={factory.id} value={factory.id}>
-                              {factory.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => openSupplierSelector(item.id)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="sticky left-0 bg-inherit font-medium">{item.productPartNo}</TableCell>
+                  <TableCell className="max-w-[300px] truncate" title={item.productName}>
+                    {item.productName}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {readOnly ? (
+                      item.quantity
+                    ) : (
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateProcurementItem(item.id, "quantity", Number(e.target.value) || 1)}
+                        className="w-20 text-center"
                         disabled={isCreatingPurchaseOrder}
-                        className="h-10 w-10"
-                      >
-                        <Search className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={item.purchasePrice}
-                      onChange={(e) => updateProcurementItem(item.id, "purchasePrice", Number(e.target.value) || 0)}
-                      className="w-24"
-                      disabled={isCreatingPurchaseOrder}
-                    />
+                    {readOnly ? (
+                      item.factoryName || (
+                        <span className="text-amber-600 font-medium flex items-center">
+                          <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                          未指定
+                        </span>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={item.factoryId}
+                          onValueChange={(value) => updateProcurementItem(item.id, "factoryId", value)}
+                          disabled={isCreatingPurchaseOrder}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="選擇供應商" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {item.factoryOptions.map((factory) => (
+                              <SelectItem key={factory.id} value={factory.id}>
+                                {factory.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openSupplierSelector(item.id)}
+                          disabled={isCreatingPurchaseOrder}
+                          className="h-10 w-10"
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {readOnly ? (
+                      item.purchasePrice.toFixed(2)
+                    ) : (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.purchasePrice}
+                        onChange={(e) => updateProcurementItem(item.id, "purchasePrice", Number(e.target.value) || 0)}
+                        className="w-24 text-right"
+                        disabled={isCreatingPurchaseOrder}
+                      />
+                    )}
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {(item.quantity * item.purchasePrice).toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    <CustomDatePicker
-                      date={item.deliveryDate}
-                      setDate={(date) => {
-                        console.log("設置交期:", date)
-                        updateProcurementItem(item.id, "deliveryDate", date)
-                      }}
-                      disabled={isCreatingPurchaseOrder}
-                    />
+                    {readOnly ? (
+                      item.deliveryDate ? (
+                        item.deliveryDate.toLocaleDateString()
+                      ) : (
+                        <span className="text-amber-600">未設定</span>
+                      )
+                    ) : (
+                      <CustomDatePicker
+                        date={item.deliveryDate}
+                        setDate={(date) => {
+                          updateProcurementItem(item.id, "deliveryDate", date)
+                        }}
+                        disabled={isCreatingPurchaseOrder}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Input
-                      value={item.notes}
-                      onChange={(e) => updateProcurementItem(item.id, "notes", e.target.value)}
-                      placeholder="備註"
-                      disabled={isCreatingPurchaseOrder}
-                    />
+                    {readOnly ? (
+                      item.notes || <span className="text-muted-foreground italic">無</span>
+                    ) : (
+                      <Input
+                        value={item.notes}
+                        onChange={(e) => updateProcurementItem(item.id, "notes", e.target.value)}
+                        placeholder="備註"
+                        disabled={isCreatingPurchaseOrder}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
+              {procurementItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={readOnly ? 8 : 9} className="h-24 text-center text-muted-foreground">
+                    尚未添加採購項目
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between bg-muted/20 p-4">
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            <Factory className="h-3 w-3 mr-1" />
-            供應商: {procurementItems.filter((item) => item.isSelected && item.factoryId).length}/
-            {procurementItems.length}
+      <CardFooter className="flex flex-col sm:flex-row justify-between bg-muted/20 p-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:items-center gap-2">
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1.5">
+            <Factory className="h-4 w-4 mr-2" />
+            <div>
+              <span className="font-semibold">供應商:</span>{" "}
+              <span className="font-bold">
+                {procurementItems.filter((item) => item.isSelected && item.factoryId).length}
+              </span>
+              /{procurementItems.length}
+            </div>
           </Badge>
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            <DollarSign className="h-3 w-3 mr-1" />
-            總採購金額:{" "}
-            {procurementItems
-              .filter((item) => item.isSelected)
-              .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
-              .toFixed(2)}{" "}
-            USD
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-3 py-1.5">
+            <DollarSign className="h-4 w-4 mr-2" />
+            <div>
+              <span className="font-semibold">總採購金額:</span>{" "}
+              <span className="font-bold">
+                {procurementItems
+                  .filter((item) => item.isSelected)
+                  .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
+                  .toFixed(2)}{" "}
+                USD
+              </span>
+            </div>
           </Badge>
-          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-            <Calendar className="h-3 w-3 mr-1" />
-            最遠交期:{" "}
-            {procurementItems
-              .filter((item) => item.isSelected && item.deliveryDate)
-              .sort((a, b) => {
-                if (!a.deliveryDate) return 1
-                if (!b.deliveryDate) return -1
-                return b.deliveryDate.getTime() - a.deliveryDate.getTime()
-              })[0]
-              ?.deliveryDate?.toLocaleDateString() || "無"}
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 px-3 py-1.5">
+            <Calendar className="h-4 w-4 mr-2" />
+            <div>
+              <span className="font-semibold">最遠交期:</span>{" "}
+              <span className="font-bold">
+                {procurementItems
+                  .filter((item) => item.isSelected && item.deliveryDate)
+                  .sort((a, b) => {
+                    if (!a.deliveryDate) return 1
+                    if (!b.deliveryDate) return -1
+                    return b.deliveryDate.getTime() - a.deliveryDate.getTime()
+                  })[0]
+                  ?.deliveryDate?.toLocaleDateString() || "無"}
+              </span>
+            </div>
+          </Badge>
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 px-3 py-1.5">
+            <TruckIcon className="h-4 w-4 mr-2" />
+            <div>
+              <span className="font-semibold">已選擇:</span>{" "}
+              <span className="font-bold">{procurementItems.filter((item) => item.isSelected).length}</span>/
+              {procurementItems.length}
+            </div>
           </Badge>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-            <TruckIcon className="h-3 w-3 mr-1" />
-            已選擇: {procurementItems.filter((item) => item.isSelected).length}/{procurementItems.length}
-          </Badge>
 
-          {/* 添加保存採購單按鈕 */}
+        {/* 確認採購設定按鈕 */}
+        {onConfirmSettings && (
           <Button
-            onClick={savePurchaseOrders}
-            disabled={
-              isSaving ||
-              procurementItems.filter((item) => item.isSelected).length === 0 ||
-              !orderId ||
-              isCreatingPurchaseOrder
-            }
+            onClick={onConfirmSettings}
+            variant={isSettingsConfirmed ? "outline" : "default"}
             size="sm"
+            className="w-full sm:w-auto"
           >
-            {isSaving ? (
+            {isSettingsConfirmed ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                保存中...
+                <Settings className="mr-2 h-4 w-4" />
+                修改採購設定
               </>
             ) : (
               <>
-                <Factory className="mr-2 h-4 w-4" />
-                生成採購單
+                <CheckCircle className="mr-2 h-4 w-4" />
+                確認採購設定完成
               </>
             )}
           </Button>
-        </div>
+        )}
       </CardFooter>
       {/* 供應商選擇對話框 */}
-      <SupplierSelectorDialog
-        open={supplierDialogOpen}
-        onOpenChange={setSupplierDialogOpen}
-        onSelect={handleSelectSupplier}
-        productPartNo={
-          currentEditingItemId
-            ? procurementItems.find((item) => item.id === currentEditingItemId)?.productPartNo
-            : undefined
-        }
-        productName={
-          currentEditingItemId
-            ? procurementItems.find((item) => item.id === currentEditingItemId)?.productName
-            : undefined
-        }
-        currentSupplierId={
-          currentEditingItemId
-            ? procurementItems.find((item) => item.id === currentEditingItemId)?.factoryId
-            : undefined
-        }
-      />
+      {!readOnly && (
+        <SupplierSelectorDialog
+          open={supplierDialogOpen}
+          onOpenChange={setSupplierDialogOpen}
+          onSelect={handleSelectSupplier}
+          productPartNo={
+            currentEditingItemId
+              ? procurementItems.find((item) => item.id === currentEditingItemId)?.productPartNo
+              : undefined
+          }
+          productName={
+            currentEditingItemId
+              ? procurementItems.find((item) => item.id === currentEditingItemId)?.productName
+              : undefined
+          }
+          currentSupplierId={
+            currentEditingItemId
+              ? procurementItems.find((item) => item.id === currentEditingItemId)?.factoryId
+              : undefined
+          }
+        />
+      )}
     </Card>
   )
 }

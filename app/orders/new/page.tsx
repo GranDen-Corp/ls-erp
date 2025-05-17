@@ -8,10 +8,11 @@ import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, FileText, ShoppingCart } from "lucide-react"
+import { AlertCircle, CheckCircle2, FileText } from "lucide-react"
 import { generateOrderNumber } from "@/lib/order-utils"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Stepper, Step } from "@/components/ui/stepper"
 
 export default function NewOrderPage() {
   const router = useRouter()
@@ -29,6 +30,9 @@ export default function NewOrderPage() {
   const [isTestingSubmit, setIsTestingSubmit] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<string>("form")
   const [createdOrderId, setCreatedOrderId] = useState<string>("")
+  const [currentStep, setCurrentStep] = useState<number>(0)
+  const [orderData, setOrderData] = useState<any>(null)
+  const [canCreatePurchase, setCanCreatePurchase] = useState<boolean>(false)
 
   // 更新時間和訂單編號
   useEffect(() => {
@@ -74,6 +78,8 @@ export default function NewOrderPage() {
       // 保存創建的訂單ID，以便後續使用
       if (result && result.data && result.data[0]) {
         setCreatedOrderId(result.data[0].order_id)
+        setOrderData(result.data[0])
+        setCanCreatePurchase(true)
       }
 
       // 3秒後跳轉到訂單列表
@@ -85,6 +91,29 @@ export default function NewOrderPage() {
       setSubmitError(err.message || "提交訂單時發生錯誤")
     } finally {
       setIsSubmitting(false)
+      setIsCreatingPurchaseOrder(false)
+    }
+  }
+
+  const handleCreatePurchaseOrder = async () => {
+    if (!formRef.current || !createdOrderId) return
+
+    setIsCreatingPurchaseOrder(true)
+    setSubmitError(null)
+
+    try {
+      // 使用已保存的訂單ID創建採購單
+      const result = await formRef.current.createPurchaseOrdersOnly(createdOrderId)
+      console.log("採購單創建成功:", result)
+
+      // 3秒後跳轉到訂單列表
+      setTimeout(() => {
+        router.push("/orders")
+      }, 3000)
+    } catch (err: any) {
+      console.error("採購單創建失敗:", err)
+      setSubmitError(err.message || "創建採購單時發生錯誤")
+    } finally {
       setIsCreatingPurchaseOrder(false)
     }
   }
@@ -244,32 +273,21 @@ export default function NewOrderPage() {
               </>
             )}
           </Button>
-          <Button onClick={() => handleSubmit(false)} disabled={isSubmitting || isCreatingPurchaseOrder}>
-            {isSubmitting && !isCreatingPurchaseOrder ? "處理中..." : "儲存訂單"}
-          </Button>
-          <Button
-            onClick={() => handleSubmit(true)}
-            disabled={isSubmitting || isCreatingPurchaseOrder}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {isCreatingPurchaseOrder ? (
-              "處理中..."
-            ) : (
-              <>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                儲存訂單並建立採購單
-              </>
-            )}
-          </Button>
         </div>
       </div>
+
+      <Stepper currentStep={currentStep} className="mb-8">
+        <Step title="填寫訂單資料" description="輸入訂單基本資訊和產品明細" />
+        <Step title="確認採購資料" description="檢查並設定採購單資訊" />
+        <Step title="完成" description="訂單和採購單創建完成" />
+      </Stepper>
 
       {submitSuccess && (
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle>訂單建立成功</AlertTitle>
           <AlertDescription>
-            {isCreatingPurchaseOrder ? "訂單和採購單已成功建立" : "訂單已成功建立"}，即將跳轉到訂單列表...
+            {currentStep === 1 ? "訂單已成功建立，請確認採購資料後創建採購單" : "訂單已成功建立，即將跳轉到訂單列表..."}
           </AlertDescription>
         </Alert>
       )}
@@ -277,7 +295,7 @@ export default function NewOrderPage() {
       {submitError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>訂單建立失敗</AlertTitle>
+          <AlertTitle>{currentStep === 1 ? "採購單創建失敗" : "訂單建立失敗"}</AlertTitle>
           <AlertDescription>{submitError}</AlertDescription>
         </Alert>
       )}
@@ -301,7 +319,9 @@ export default function NewOrderPage() {
                 orderNumber={orderNumber}
                 isLoadingOrderNumber={isLoadingOrderNumber}
                 onSubmit={handleSubmit}
-                createdOrderId={createdOrderId} // 傳遞創建的訂單ID
+                createdOrderId={createdOrderId}
+                currentStep={currentStep}
+                orderData={orderData}
               />
             </CardContent>
           </Card>
