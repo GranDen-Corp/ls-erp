@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -24,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { CustomDatePicker } from "@/components/ui/custom-date-picker"
 import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-service"
 import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export interface ProcurementItem {
   id: string
@@ -46,6 +46,7 @@ export interface ProcurementItem {
   isSelected: boolean
   paymentTerm?: string
   deliveryTerm?: string
+  currency: string // 添加貨幣字段
 }
 
 interface ProcurementDataEditorProps {
@@ -168,6 +169,7 @@ export function ProcurementDataEditor({
           isSelected: true,
           paymentTerm: "",
           deliveryTerm: "",
+          currency: item.currency || "USD", // 使用產品貨幣或默認USD
         }
       })
 
@@ -226,6 +228,7 @@ export function ProcurementDataEditor({
         isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
         paymentTerm: existingItem?.paymentTerm || "",
         deliveryTerm: existingItem?.deliveryTerm || "",
+        currency: existingItem?.currency || item.currency || "USD", // 使用現有貨幣或產品貨幣或默認USD
       }
     })
 
@@ -388,24 +391,25 @@ export function ProcurementDataEditor({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>採購資料設定</span>
-          {!readOnly && (
-            <div className="flex items-center space-x-2">
-              <Checkbox id="selectAll" checked={selectAll} onCheckedChange={toggleSelectAll} />
-              <Label htmlFor="selectAll" className="text-sm font-normal">
-                全選
-              </Label>
-            </div>
-          )}
-        </CardTitle>
-        <CardDescription>
-          為訂單中的產品設定採購資料，包括供應商、採購價格、交期等。勾選的項目將生成採購單。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-medium">採購資料設定</h3>
+          <p className="text-sm text-muted-foreground">
+            為訂單中的產品設定採購資料，包括供應商、採購價格、交期等。勾選的項目將生成採購單。
+          </p>
+        </div>
+        {!readOnly && (
+          <div className="flex items-center space-x-2">
+            <Checkbox id="selectAll" checked={selectAll} onCheckedChange={toggleSelectAll} />
+            <Label htmlFor="selectAll" className="text-sm font-normal">
+              全選
+            </Label>
+          </div>
+        )}
+      </div>
+
+      <div className="border rounded-md">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -415,6 +419,7 @@ export function ProcurementDataEditor({
                 <TableHead>產品名稱</TableHead>
                 <TableHead className="text-center w-[80px]">數量</TableHead>
                 <TableHead className="w-[180px]">供應商</TableHead>
+                <TableHead className="text-center w-[80px]">貨幣</TableHead>
                 <TableHead className="text-right w-[100px]">採購單價</TableHead>
                 <TableHead className="text-right w-[100px]">採購總價</TableHead>
                 <TableHead className="w-[120px]">交期</TableHead>
@@ -467,6 +472,28 @@ export function ProcurementDataEditor({
                       </span>
                     )}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {readOnly ? (
+                      item.currency
+                    ) : (
+                      <Select
+                        value={item.currency}
+                        onValueChange={(value) => updateProcurementItem(item.id, "currency", value)}
+                        disabled={isCreatingPurchaseOrder}
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue placeholder="貨幣" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="TWD">TWD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="JPY">JPY</SelectItem>
+                          <SelectItem value="CNY">CNY</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     {readOnly ? (
                       item.purchasePrice.toFixed(2)
@@ -483,7 +510,7 @@ export function ProcurementDataEditor({
                     )}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {(item.quantity * item.purchasePrice).toFixed(2)}
+                    {(item.quantity * item.purchasePrice).toFixed(2)} {item.currency}
                   </TableCell>
                   <TableCell>
                     {readOnly ? (
@@ -541,8 +568,9 @@ export function ProcurementDataEditor({
             </TableBody>
           </Table>
         </div>
-      </CardContent>
-      <CardFooter className="flex flex-col sm:flex-row justify-between bg-muted/20 p-4 gap-4">
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between bg-muted/10 p-4 gap-4 border rounded-md mt-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:items-center gap-2">
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1.5">
             <Factory className="h-4 w-4 mr-2" />
@@ -614,7 +642,7 @@ export function ProcurementDataEditor({
             )}
           </Button>
         )}
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   )
 }

@@ -39,6 +39,8 @@ import { ProductCombobox } from "@/components/ui/product-combobox"
 import { ProcurementDataEditor, type ProcurementItem } from "@/components/orders/procurement-data-editor"
 import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-service"
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea"
+import { convertCurrency, formatCurrencyAmount } from "@/lib/currency-utils"
+import { OrderValidation } from "@/components/orders/order-validation"
 
 interface Customer {
   id: string
@@ -104,7 +106,7 @@ interface OrderItem {
   shipmentBatches: ShipmentBatch[] // 每個產品的批次列表
   specifications?: string // 產品規格
   remarks?: string // 產品備註
-  currency?: string // 貨幣
+  currency: string // 貨幣
   discount?: number // 折扣
   taxRate?: number // 稅率
   product?: Product // 產品完整資料
@@ -156,6 +158,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [isProductSettingsConfirmed, setIsProductSettingsConfirmed] = useState<boolean>(false)
     const [isProcurementSettingsConfirmed, setIsProcurementSettingsConfirmed] = useState<boolean>(false)
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+    const [customerCurrency, setCustomerCurrency] = useState<string>("USD")
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -422,6 +425,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           console.log("已選擇客戶:", selectedCustomer)
           setPaymentTerm(selectedCustomer.payment_term || "")
           setDeliveryTerms(selectedCustomer.delivery_terms || "")
+          setCustomerCurrency(selectedCustomer.currency || "USD") // 設置客戶貨幣
         } else {
           console.warn("找不到選擇的客戶:", selectedCustomerId)
         }
@@ -449,6 +453,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         setAssemblyProducts([])
         setPaymentTerm("")
         setDeliveryTerms("")
+        setCustomerCurrency("USD")
       }
 
       // 重置產品選擇
@@ -611,7 +616,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         unitPrice: product.last_price || product.unit_price || 0,
         isAssembly: true,
         shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
-        currency: "USD", // 默認貨幣
+        currency: product.currency || customerCurrency, // 使用產品貨幣或客戶貨幣
         product: product, // 保存完整產品資料
       }
 
@@ -665,7 +670,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               unitPrice: product.last_price || product.unit_price || 0,
               isAssembly: isProductAssembly(product),
               shipmentBatches: [createDefaultBatch(product.part_no, defaultQuantity)],
-              currency: "USD", // 默認貨幣
+              currency: product.currency || customerCurrency, // 使用產品貨幣或客戶貨幣
               specifications: product.specifications || "",
               product: product, // 保存完整產品資料
             }
@@ -746,11 +751,19 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     // 計算單個產品項目的總價
     const calculateItemTotal = (item: OrderItem) => {
+      // 先計算原始貨幣的總價
       const basePrice = item.quantity * item.unitPrice
       const discountAmount = item.discount ? basePrice * (item.discount / 100) : 0
       const priceAfterDiscount = basePrice - discountAmount
       const taxAmount = item.taxRate ? priceAfterDiscount * (item.taxRate / 100) : 0
-      return priceAfterDiscount + taxAmount
+      const totalInOriginalCurrency = priceAfterDiscount + taxAmount
+
+      // 如果貨幣與客戶貨幣不同，進行轉換
+      if (item.currency !== customerCurrency) {
+        return convertCurrency(totalInOriginalCurrency, item.currency, customerCurrency)
+      }
+
+      return totalInOriginalCurrency
     }
 
     // 計算訂單總價
@@ -1683,8 +1696,9 @@ ${item.quantity} PCS / CTN`
                     <TableHead>產品編號</TableHead>
                     <TableHead>產品名稱</TableHead>
                     <TableHead className="text-right">數量</TableHead>
-                    <TableHead className="text-right">單價 (USD)</TableHead>
-                    <TableHead className="text-right">金額 (USD)</TableHead>
+                    <TableHead className="text-center">貨幣</TableHead>
+                    <TableHead className="text-right">單價</TableHead>
+                    <TableHead className="text-right">金額 ({customerCurrency})</TableHead>
                     <TableHead className="text-right">批次</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
@@ -1717,9 +1731,30 @@ ${item.quantity} PCS / CTN`
                           />
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        {isProductSettingsConfirmed ? (
+                          item.currency
+                        ) : (
+                          <Select
+                            value={item.currency}
+                            onValueChange={(value) => handleItemChange(item.id, "currency", value)}
+                          >
+                            <SelectTrigger className="w-20">
+                              <SelectValue placeholder="貨幣" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="USD">USD</SelectItem>
+                              <SelectItem value="TWD">TWD</SelectItem>
+                              <SelectItem value="EUR">EUR</SelectItem>
+                              <SelectItem value="JPY">JPY</SelectItem>
+                              <SelectItem value="CNY">CNY</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         {isProductSettingsConfirmed ? (
-                          item.unitPrice.toFixed(2)
+                          `${item.unitPrice.toFixed(2)} ${item.currency}`
                         ) : (
                           <Input
                             type="number"
@@ -1733,7 +1768,9 @@ ${item.quantity} PCS / CTN`
                           />
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{calculateItemTotal(item).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrencyAmount(calculateItemTotal(item), customerCurrency)}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
@@ -1773,11 +1810,11 @@ ${item.quantity} PCS / CTN`
               <div className="w-72 space-y-1">
                 <div className="flex justify-between">
                   <span>小計:</span>
-                  <span>{calculateTotal().toFixed(2)} USD</span>
+                  <span>{formatCurrencyAmount(calculateTotal(), customerCurrency)}</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>總計:</span>
-                  <span>{calculateTotal().toFixed(2)} USD</span>
+                  <span>{formatCurrencyAmount(calculateTotal(), customerCurrency)}</span>
                 </div>
               </div>
 
@@ -1830,7 +1867,7 @@ ${item.quantity} PCS / CTN`
                     {orderItems.length} 項產品
                   </Badge>
                   <Badge variant="outline" className="bg-green-50 text-green-700">
-                    總金額: {calculateTotal().toFixed(2)} USD
+                    總金額: {formatCurrencyAmount(calculateTotal(), customerCurrency)}
                   </Badge>
                 </div>
               </div>
@@ -1862,8 +1899,12 @@ ${item.quantity} PCS / CTN`
                         </TableCell>
                         <TableCell>{item.productName}</TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-medium">{calculateItemTotal(item).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          {item.unitPrice.toFixed(2)} {item.currency}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrencyAmount(calculateItemTotal(item), customerCurrency)}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline">{item.shipmentBatches.length}</Badge>
                         </TableCell>
@@ -1873,7 +1914,9 @@ ${item.quantity} PCS / CTN`
                       <TableCell colSpan={4} className="text-right font-bold">
                         訂單總金額:
                       </TableCell>
-                      <TableCell className="text-right font-bold">{calculateTotal().toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatCurrencyAmount(calculateTotal(), customerCurrency)}
+                      </TableCell>
                       <TableCell></TableCell>
                     </TableRow>
                   </TableBody>
@@ -1882,24 +1925,22 @@ ${item.quantity} PCS / CTN`
             </div>
 
             {/* 採購資料設定 */}
-            <div className="bg-white border rounded-md p-4">
-              <div className="mb-4">
-                <h4 className="font-medium text-lg">採購資料設定</h4>
-                <p className="text-muted-foreground text-sm">
-                  為訂單中的產品設定採購資料，包括供應商、採購價格、交期等
-                </p>
-              </div>
-
-              <ProcurementDataEditor
+            <ProcurementDataEditor
+              orderItems={orderItems}
+              onProcurementDataChange={handleProcurementDataChange}
+              isCreatingPurchaseOrder={isCreatingPurchaseOrder}
+              orderId={createdOrderId}
+              readOnly={isProcurementSettingsConfirmed}
+              onConfirmSettings={confirmProcurementSettings}
+              isSettingsConfirmed={isProcurementSettingsConfirmed}
+            />
+            {activeTab === "procurement" && isProcurementSettingsConfirmed && (
+              <OrderValidation
                 orderItems={orderItems}
-                onProcurementDataChange={handleProcurementDataChange}
-                isCreatingPurchaseOrder={isCreatingPurchaseOrder}
-                orderId={createdOrderId}
-                readOnly={isProcurementSettingsConfirmed}
-                onConfirmSettings={confirmProcurementSettings}
-                isSettingsConfirmed={isProcurementSettingsConfirmed}
+                procurementItems={procurementItems}
+                customerCurrency={customerCurrency}
               />
-            </div>
+            )}
           </div>
         )}
 
