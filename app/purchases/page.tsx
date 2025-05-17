@@ -41,7 +41,7 @@ export default function PurchasesPage() {
               <CardTitle>待確認採購單</CardTitle>
             </CardHeader>
             <CardContent>
-              <PurchasesTable status="待確認" />
+              <PurchasesTable status="pending" />
             </CardContent>
           </Card>
         </TabsContent>
@@ -51,7 +51,7 @@ export default function PurchasesPage() {
               <CardTitle>進行中採購單</CardTitle>
             </CardHeader>
             <CardContent>
-              <PurchasesTable status="進行中" />
+              <PurchasesTable status="processing" />
             </CardContent>
           </Card>
         </TabsContent>
@@ -61,7 +61,7 @@ export default function PurchasesPage() {
               <CardTitle>已完成採購單</CardTitle>
             </CardHeader>
             <CardContent>
-              <PurchasesTable status="已完成" />
+              <PurchasesTable status="completed" />
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
-import { PurchaseOrder } from "@/components/purchases/purchase-order"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PurchaseEditForm } from "@/components/purchases/purchase-edit-form"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase-client"
@@ -27,33 +28,16 @@ async function getPurchaseWithItems(id: string) {
     console.error("獲取採購單明細時出錯:", itemsError)
   }
 
-  // 格式化數據以適應 PurchaseOrder 組件
-  const formattedItems = (items || []).map((item) => ({
-    id: item.item_sid.toString(),
-    name: item.product_name,
-    pn: item.product_part_no,
-    quantity: item.quantity,
-    unitPrice: item.unit_price,
-    totalPrice: item.total_price,
-  }))
-
   return {
-    poNumber: purchase.purchase_id,
-    factoryId: purchase.supplier_id,
-    factoryName: purchase.supplier_name,
-    currency: purchase.currency,
-    deliveryTerms: purchase.delivery_term || "",
-    paymentTerms: purchase.payment_term || "",
-    deliveryDate: purchase.expected_delivery_date ? new Date(purchase.expected_delivery_date) : undefined,
-    remarks: purchase.notes || "",
-    products: formattedItems,
+    ...purchase,
+    items: items || [],
   }
 }
 
-export default async function PurchaseDocumentPage({ params }: { params: { id: string } }) {
-  const purchaseData = await getPurchaseWithItems(params.id)
+export default async function PurchaseEditPage({ params }: { params: { id: string } }) {
+  const purchase = await getPurchaseWithItems(params.id)
 
-  if (!purchaseData) {
+  if (!purchase) {
     notFound()
   }
 
@@ -65,12 +49,17 @@ export default async function PurchaseDocumentPage({ params }: { params: { id: s
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">採購單文件: {params.id}</h1>
+        <h1 className="text-2xl font-bold">編輯採購單: {params.id}</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg">
-        <PurchaseOrder purchaseData={purchaseData} />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>採購單資訊</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PurchaseEditForm purchase={purchase} />
+        </CardContent>
+      </Card>
     </div>
   )
 }
