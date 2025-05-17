@@ -163,6 +163,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [isProductsReady, setIsProductsReady] = useState<boolean>(false)
     const [isSplitView, setIsSplitView] = useState<boolean>(false)
     const [orderInfo, setOrderInfo] = useState<string>("")
+    const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -1172,6 +1173,9 @@ ${item.quantity} PCS / CTN`
 
         if (error) throw new Error(`提交訂單失敗: ${error.message}`)
 
+        // 儲存訂單ID
+        setCreatedOrderId(data[0].id)
+
         // 如果需要創建採購單
         if (createPurchaseOrder) {
           // 獲取選中的採購項目
@@ -1892,6 +1896,7 @@ ${item.quantity} PCS / CTN`
               orderItems={orderItems}
               onProcurementDataChange={handleProcurementDataChange}
               isCreatingPurchaseOrder={isCreatingPurchaseOrder}
+              orderId={createdOrderId || orderNumber} // 添加這一行
             />
 
             <div className="flex justify-end gap-2">

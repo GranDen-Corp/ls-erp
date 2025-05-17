@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DatePicker } from "@/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,9 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, AlertCircle, Factory, DollarSign, Calendar, TruckIcon, Info, Search } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase-client"
-import { addDays } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { SupplierSelectorDialog } from "./supplier-selector-dialog"
+import { CustomDatePicker } from "@/components/ui/custom-date-picker"
+import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-service"
+import { useToast } from "@/hooks/use-toast"
 
 export interface ProcurementItem {
   id: string
@@ -35,26 +36,30 @@ export interface ProcurementItem {
   notes: string
   status: string
   isSelected: boolean
-  paymentTerm?: string
-  deliveryTerm?: string
+  paymentTerm?: string // 保留欄位但不在 UI 中顯示
+  deliveryTerm?: string // 保留欄位但不在 UI 中顯示
 }
 
 interface ProcurementDataEditorProps {
   orderItems: any[]
   onProcurementDataChange: (procurementItems: ProcurementItem[]) => void
   isCreatingPurchaseOrder: boolean
+  orderId?: string // 添加訂單ID參數
 }
 
 export function ProcurementDataEditor({
   orderItems,
   onProcurementDataChange,
   isCreatingPurchaseOrder,
+  orderId,
 }: ProcurementDataEditorProps) {
   const [procurementItems, setProcurementItems] = useState<ProcurementItem[]>([])
   const [factories, setFactories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectAll, setSelectAll] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const { toast } = useToast()
 
   // 供應商選擇對話框狀態
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false)
@@ -147,7 +152,7 @@ export function ProcurementDataEditor({
           factoryName: "",
           factoryOptions: [],
           purchasePrice: item.unitPrice * 0.8, // 預設採購價為銷售價的80%
-          deliveryDate: addDays(new Date(), 30), // 預設30天後交期
+          deliveryDate: new Date(), // 預設為今天
           notes: "",
           status: "pending",
           isSelected: true,
@@ -205,7 +210,7 @@ export function ProcurementDataEditor({
         factoryName: factoryName,
         factoryOptions: factoryOptions,
         purchasePrice: existingItem?.purchasePrice || item.unitPrice * 0.8, // 預設採購價為銷售價的80%
-        deliveryDate: existingItem?.deliveryDate || addDays(new Date(), 30), // 預設30天後交期
+        deliveryDate: existingItem?.deliveryDate || new Date(), // 預設為今天
         notes: existingItem?.notes || "",
         status: existingItem?.status || "pending",
         isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
@@ -248,6 +253,7 @@ export function ProcurementDataEditor({
 
   // 更新採購項目
   const updateProcurementItem = (id: string, field: keyof ProcurementItem, value: any) => {
+    console.log(`更新採購項目 ${id}, 欄位: ${field}`, value)
     setProcurementItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -300,6 +306,69 @@ export function ProcurementDataEditor({
 
       return newItems
     })
+  }
+
+  // 保存採購單
+  const savePurchaseOrders = async () => {
+    // 檢查是否有選中的項目
+    const selectedItems = procurementItems.filter((item) => item.isSelected)
+    if (selectedItems.length === 0) {
+      toast({
+        title: "警告",
+        description: "請至少選擇一個採購項目",
+        variant: "warning",
+      })
+      return
+    }
+
+    // 檢查是否所有選中的項目都有供應商
+    const itemsWithoutSupplier = selectedItems.filter((item) => !item.factoryId)
+    if (itemsWithoutSupplier.length > 0) {
+      toast({
+        title: "警告",
+        description: `有 ${itemsWithoutSupplier.length} 個項目未選擇供應商`,
+        variant: "warning",
+      })
+      return
+    }
+
+    // 檢查是否有訂單ID
+    if (!orderId) {
+      toast({
+        title: "警告",
+        description: "請先保存訂單，然後再創建採購單",
+        variant: "warning",
+      })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      console.log("正在創建採購單，使用訂單ID:", orderId)
+      const result = await createPurchasesFromProcurementItems(procurementItems, orderId)
+
+      if (result.success) {
+        toast({
+          title: "成功",
+          description: `已成功創建 ${result.results.length} 張採購單`,
+        })
+      } else {
+        toast({
+          title: "錯誤",
+          description: result.error || "創建採購單失敗",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error("創建採購單時出錯:", error)
+      toast({
+        title: "錯誤",
+        description: error.message || "創建採購單時發生錯誤",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (loading) {
@@ -360,8 +429,6 @@ export function ProcurementDataEditor({
                 <TableHead>採購單價</TableHead>
                 <TableHead>採購總價</TableHead>
                 <TableHead>交期</TableHead>
-                <TableHead>付款條件</TableHead>
-                <TableHead>交貨條件</TableHead>
                 <TableHead>備註</TableHead>
               </TableRow>
             </TableHeader>
@@ -431,25 +498,12 @@ export function ProcurementDataEditor({
                     {(item.quantity * item.purchasePrice).toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    <DatePicker
+                    <CustomDatePicker
                       date={item.deliveryDate}
-                      setDate={(date) => updateProcurementItem(item.id, "deliveryDate", date)}
-                      disabled={isCreatingPurchaseOrder}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.paymentTerm || ""}
-                      onChange={(e) => updateProcurementItem(item.id, "paymentTerm", e.target.value)}
-                      placeholder="付款條件"
-                      disabled={isCreatingPurchaseOrder}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.deliveryTerm || ""}
-                      onChange={(e) => updateProcurementItem(item.id, "deliveryTerm", e.target.value)}
-                      placeholder="交貨條件"
+                      setDate={(date) => {
+                        console.log("設置交期:", date)
+                        updateProcurementItem(item.id, "deliveryDate", date)
+                      }}
                       disabled={isCreatingPurchaseOrder}
                     />
                   </TableCell>
@@ -496,11 +550,35 @@ export function ProcurementDataEditor({
               ?.deliveryDate?.toLocaleDateString() || "無"}
           </Badge>
         </div>
-        <div>
+        <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
             <TruckIcon className="h-3 w-3 mr-1" />
             已選擇: {procurementItems.filter((item) => item.isSelected).length}/{procurementItems.length}
           </Badge>
+
+          {/* 添加保存採購單按鈕 */}
+          <Button
+            onClick={savePurchaseOrders}
+            disabled={
+              isSaving ||
+              procurementItems.filter((item) => item.isSelected).length === 0 ||
+              !orderId ||
+              isCreatingPurchaseOrder
+            }
+            size="sm"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Factory className="mr-2 h-4 w-4" />
+                生成採購單
+              </>
+            )}
+          </Button>
         </div>
       </CardFooter>
       {/* 供應商選擇對話框 */}

@@ -28,6 +28,7 @@ export default function NewOrderPage() {
   const [testData, setTestData] = useState<string>("")
   const [isTestingSubmit, setIsTestingSubmit] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<string>("form")
+  const [createdOrderId, setCreatedOrderId] = useState<string>("")
 
   // 更新時間和訂單編號
   useEffect(() => {
@@ -69,6 +70,11 @@ export default function NewOrderPage() {
       const result = await formRef.current.submitOrder(createPurchaseOrder)
       console.log("訂單提交成功:", result)
       setSubmitSuccess(true)
+
+      // 保存創建的訂單ID，以便後續使用
+      if (result && result.data && result.data[0]) {
+        setCreatedOrderId(result.data[0].order_id)
+      }
 
       // 3秒後跳轉到訂單列表
       setTimeout(() => {
@@ -295,6 +301,7 @@ export default function NewOrderPage() {
                 orderNumber={orderNumber}
                 isLoadingOrderNumber={isLoadingOrderNumber}
                 onSubmit={handleSubmit}
+                createdOrderId={createdOrderId} // 傳遞創建的訂單ID
               />
             </CardContent>
           </Card>
