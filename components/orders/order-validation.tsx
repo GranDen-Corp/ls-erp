@@ -92,11 +92,11 @@ export function OrderValidation({ orderItems, procurementItems, customerCurrency
 
       // 轉換為相同貨幣進行比較
       const orderPriceInUSD = convertCurrency(orderItem.unitPrice, orderItem.currency || customerCurrency, "USD")
-
       const purchasePriceInUSD = convertCurrency(avgPurchasePrice, purchaseItems[0].currency || "USD", "USD")
 
-      // 計算價格差異
-      const priceMargin = orderPriceInUSD > 0 ? ((orderPriceInUSD - purchasePriceInUSD) / orderPriceInUSD) * 100 : 0
+      // 計算價格差異 - 修正毛利率計算公式
+      const priceMargin =
+        orderPriceInUSD > purchasePriceInUSD ? ((orderPriceInUSD - purchasePriceInUSD) / orderPriceInUSD) * 100 : 0
 
       // 計算日期差異
       const daysMargin =
@@ -104,7 +104,7 @@ export function OrderValidation({ orderItems, procurementItems, customerCurrency
           ? Math.floor((latestOrderDate.getTime() - latestPurchaseDate.getTime()) / (1000 * 60 * 60 * 24))
           : 0
 
-      // 驗證結果
+      // 驗證結果 - 修正價格驗證邏輯
       const isPriceValid = orderPriceInUSD > purchasePriceInUSD
       const isQuantityValid = orderItem.quantity === totalPurchaseQuantity
       const isDateValid = !latestOrderDate || !latestPurchaseDate || latestOrderDate >= latestPurchaseDate
@@ -284,7 +284,6 @@ export function OrderValidation({ orderItems, procurementItems, customerCurrency
                         <div>
                           採購: {item.purchasePrice.toFixed(2)} {item.purchaseCurrency}
                         </div>
-                        <div className="text-xs">毛利: {item.priceMargin.toFixed(2)}%</div>
                       </div>
                     </div>
                   </td>
