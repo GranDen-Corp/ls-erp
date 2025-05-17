@@ -2403,8 +2403,8 @@ export function ProductForm({
                                   alt="客戶原圖預覽"
                                   className="max-h-40 object-contain"
                                   onError={(e) => {
-                                    ;(e.target as HTMLImageElement).style.display = "none"
-                                    ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                    (e.target as HTMLImageElement).nextElementSibling!.style.display = "block";
                                   }}
                                 />
                                 <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
@@ -3026,7 +3026,7 @@ export function ProductForm({
                               strokeLinejoin="round"
                               className="lucide lucide-arrow-up"
                             >
-                              <path d="m12 5 9 9-9 9" />
+                              <path d="m5 12 7-7 7 7" />
                             </svg>
                           </Button>
                           <Button
@@ -3047,7 +3047,7 @@ export function ProductForm({
                               strokeLinejoin="round"
                               className="lucide lucide-arrow-down"
                             >
-                              <path d="m12 19-9-9 9-9" />
+                              <path d="m19 12-7 7-7-7" />
                             </svg>
                           </Button>
                           <Button
