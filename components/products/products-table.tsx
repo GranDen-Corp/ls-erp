@@ -26,6 +26,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import type { Product } from "@/types/product"
+import { supabase } from "@/lib/supabase"
 
 interface ProductsTableProps {
   products?: Product[]
@@ -47,6 +48,31 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [processedProducts, setProcessedProducts] = useState<Product[]>([])
+
+  // 產品類別映射
+  const [productTypeMap, setProductTypeMap] = useState<Record<string, string>>({})
+
+  // 獲取產品類別數據
+  useEffect(() => {
+    async function fetchProductTypes() {
+      try {
+        const { data, error } = await supabase.from("product_types").select("type_code, type_name")
+
+        if (error) throw error
+
+        const typeMap: Record<string, string> = {}
+        data?.forEach((type) => {
+          typeMap[type.type_code] = type.type_name
+        })
+
+        setProductTypeMap(typeMap)
+      } catch (error) {
+        console.error("獲取產品類別失敗:", error)
+      }
+    }
+
+    fetchProductTypes()
+  }, [])
 
   // 處理產品資料
   useEffect(() => {
@@ -310,7 +336,8 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
               <TableHead>{renderSortButton("component_name", "產品名稱")}</TableHead>
               <TableHead>{renderSortButton("customer_id", "客戶")}</TableHead>
               <TableHead>{renderSortButton("factory_id", "工廠")}</TableHead>
-              <TableHead>{renderSortButton("product_type", "類別")}</TableHead>
+              {/* 找到產品類別的列定義，修改為： */}
+              <TableHead>產品類別</TableHead>
               <TableHead>{renderSortButton("last_price", "最近價格")}</TableHead>
               <TableHead>{renderSortButton("last_order_date", "最近訂單")}</TableHead>
               <TableHead>{renderSortButton("status", "狀態")}</TableHead>
@@ -374,7 +401,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                     </TableCell>
                     <TableCell>{product.customer_id}</TableCell>
                     <TableCell>{product.factory_id}</TableCell>
-                    <TableCell>{product.product_type || "-"}</TableCell>
+                    <TableCell>{productTypeMap[product.product_type] || product.product_type || "-"}</TableCell>
                     <TableCell>
                       {product.last_price ? `${product.last_price} ${product.currency || ""}` : "-"}
                     </TableCell>

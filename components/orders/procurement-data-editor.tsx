@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,14 +15,12 @@ import {
   Calendar,
   TruckIcon,
   Info,
-  Search,
   CheckCircle,
   Settings,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
-import { SupplierSelectorDialog } from "./supplier-selector-dialog"
 import { CustomDatePicker } from "@/components/ui/custom-date-picker"
 import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-service"
 import { useToast } from "@/hooks/use-toast"
@@ -77,10 +74,6 @@ export function ProcurementDataEditor({
   const [selectAll, setSelectAll] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
-
-  // 供應商選擇對話框狀態
-  const [supplierDialogOpen, setSupplierDialogOpen] = useState(false)
-  const [currentEditingItemId, setCurrentEditingItemId] = useState<string | null>(null)
 
   // 載入供應商資料
   useEffect(() => {
@@ -192,21 +185,21 @@ export function ProcurementDataEditor({
       let factoryId = ""
       let factoryName = ""
 
-      // 如果有現有項目，使用其工廠信息
-      if (existingItem) {
+      // 優先從產品資料中獲取工廠信息
+      try {
+        if (item.product && item.product.factory_id) {
+          factoryId = item.product.factory_id
+          const factory = factories.find((f) => f.factory_id === factoryId)
+          factoryName = factory ? factory.factory_name || factory.factory_full_name : "未知供應商"
+        }
+      } catch (err) {
+        console.warn("無法從產品資料獲取工廠信息:", err)
+      }
+
+      // 如果有現有項目且產品沒有工廠ID，則使用現有項目的工廠信息
+      if (!factoryId && existingItem) {
         factoryId = existingItem.factoryId
         factoryName = existingItem.factoryName
-      } else {
-        // 嘗試從產品資料中獲取工廠信息
-        try {
-          if (item.product && item.product.factory_id) {
-            factoryId = item.product.factory_id
-            const factory = factories.find((f) => f.factory_id === factoryId)
-            factoryName = factory ? factory.factory_name || factory.factory_full_name : ""
-          }
-        } catch (err) {
-          console.warn("無法從產品資料獲取工廠信息:", err)
-        }
       }
 
       // 為產品準備工廠選項
@@ -244,29 +237,6 @@ export function ProcurementDataEditor({
   useEffect(() => {
     onProcurementDataChange(procurementItems)
   }, [procurementItems, onProcurementDataChange])
-
-  // 處理選擇供應商
-  const handleSelectSupplier = (supplier: any) => {
-    if (!currentEditingItemId) return
-
-    updateProcurementItem(currentEditingItemId, "factoryId", supplier.factory_id)
-    updateProcurementItem(currentEditingItemId, "factoryName", supplier.factory_name || supplier.factory_full_name)
-
-    // 更新付款條件和交貨條件
-    if (supplier.payment_term) {
-      updateProcurementItem(currentEditingItemId, "paymentTerm", supplier.payment_term)
-    }
-
-    if (supplier.delivery_term) {
-      updateProcurementItem(currentEditingItemId, "deliveryTerm", supplier.delivery_term)
-    }
-  }
-
-  // 打開供應商選擇對話框
-  const openSupplierSelector = (itemId: string) => {
-    setCurrentEditingItemId(itemId)
-    setSupplierDialogOpen(true)
-  }
 
   // 更新採購項目
   const updateProcurementItem = (id: string, field: keyof ProcurementItem, value: any) => {
@@ -440,15 +410,15 @@ export function ProcurementDataEditor({
           <Table>
             <TableHeader>
               <TableRow>
-                {!readOnly && <TableHead className="w-12 sticky left-0 bg-white z-10">選擇</TableHead>}
-                <TableHead className="sticky left-0 bg-white z-10">產品編號</TableHead>
-                <TableHead className="min-w-[180px]">產品名稱</TableHead>
-                <TableHead className="w-[100px] text-center">數量</TableHead>
-                <TableHead className="min-w-[220px]">供應商</TableHead>
-                <TableHead className="w-[120px] text-right">採購單價</TableHead>
-                <TableHead className="w-[120px] text-right">採購總價</TableHead>
-                <TableHead className="w-[150px]">交期</TableHead>
-                <TableHead className="min-w-[150px]">備註</TableHead>
+                {!readOnly && <TableHead className="w-12">選擇</TableHead>}
+                <TableHead className="w-[120px]">產品編號</TableHead>
+                <TableHead>產品名稱</TableHead>
+                <TableHead className="text-center w-[80px]">數量</TableHead>
+                <TableHead className="w-[180px]">供應商</TableHead>
+                <TableHead className="text-right w-[100px]">採購單價</TableHead>
+                <TableHead className="text-right w-[100px]">採購總價</TableHead>
+                <TableHead className="w-[120px]">交期</TableHead>
+                <TableHead>備註</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -485,41 +455,16 @@ export function ProcurementDataEditor({
                     )}
                   </TableCell>
                   <TableCell>
-                    {readOnly ? (
-                      item.factoryName || (
-                        <span className="text-amber-600 font-medium flex items-center">
-                          <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                          未指定
-                        </span>
-                      )
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={item.factoryId}
-                          onValueChange={(value) => updateProcurementItem(item.id, "factoryId", value)}
-                          disabled={isCreatingPurchaseOrder}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="選擇供應商" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {item.factoryOptions.map((factory) => (
-                              <SelectItem key={factory.id} value={factory.id}>
-                                {factory.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => openSupplierSelector(item.id)}
-                          disabled={isCreatingPurchaseOrder}
-                          className="h-10 w-10"
-                        >
-                          <Search className="h-4 w-4" />
-                        </Button>
+                    {item.factoryName ? (
+                      <div className="flex items-center">
+                        <Factory className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>{item.factoryName}</span>
                       </div>
+                    ) : (
+                      <span className="text-amber-600 font-medium flex items-center">
+                        <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                        未指定供應商
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -571,6 +516,21 @@ export function ProcurementDataEditor({
                   </TableCell>
                 </TableRow>
               ))}
+              {isSettingsConfirmed && (
+                <TableRow className="bg-gray-50 font-medium">
+                  <TableCell colSpan={readOnly ? 6 : 7} className="text-right">
+                    採購總金額:
+                  </TableCell>
+                  <TableCell className="text-right font-bold">
+                    {procurementItems
+                      .filter((item) => item.isSelected)
+                      .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
+                      .toFixed(2)}{" "}
+                    USD
+                  </TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              )}
               {procurementItems.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={readOnly ? 8 : 9} className="h-24 text-center text-muted-foreground">
@@ -655,29 +615,6 @@ export function ProcurementDataEditor({
           </Button>
         )}
       </CardFooter>
-      {/* 供應商選擇對話框 */}
-      {!readOnly && (
-        <SupplierSelectorDialog
-          open={supplierDialogOpen}
-          onOpenChange={setSupplierDialogOpen}
-          onSelect={handleSelectSupplier}
-          productPartNo={
-            currentEditingItemId
-              ? procurementItems.find((item) => item.id === currentEditingItemId)?.productPartNo
-              : undefined
-          }
-          productName={
-            currentEditingItemId
-              ? procurementItems.find((item) => item.id === currentEditingItemId)?.productName
-              : undefined
-          }
-          currentSupplierId={
-            currentEditingItemId
-              ? procurementItems.find((item) => item.id === currentEditingItemId)?.factoryId
-              : undefined
-          }
-        />
-      )}
     </Card>
   )
 }

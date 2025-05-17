@@ -102,6 +102,9 @@ const emptyDocumentRecord = {
   filename: "",
 }
 
+// 產品類別映射
+const productTypeMap = {}
+
 export function ProductReadOnlyForm({
   productId,
   initialValues,
@@ -115,6 +118,7 @@ export function ProductReadOnlyForm({
   const [componentDetails, setComponentDetails] = useState<{ [key: string]: string }>({})
   const [selectedComponents, setSelectedComponents] = useState<ProductComponent[]>([])
   const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.is_assembly || isAssembly || false)
+  const [productTypeMapState, setProductTypeMapState] = useState<Record<string, string>>(productTypeMap)
 
   const supabase = createClientComponentClient()
 
@@ -125,6 +129,46 @@ export function ProductReadOnlyForm({
       setIsCompositeProduct(initialValues.is_assembly || false)
     }
   }, [initialValues])
+
+  // 客戶和供應商數據加載完成後，設置名稱
+  useEffect(() => {
+    if (customersData.length > 0 && (product.customerName?.id || product.customer_id) && !product.customerName?.name) {
+      const customerId = product.customerName?.id || product.customer_id
+      const selectedCustomer = customersData.find((c) => c.id === customerId)
+      if (selectedCustomer) {
+        setProduct((prev) => ({
+          ...prev,
+          customerName: {
+            id: selectedCustomer.id,
+            name: selectedCustomer.name,
+            code: selectedCustomer.code,
+          },
+        }))
+      }
+    }
+
+    if (factories.length > 0 && (product.factoryName?.id || product.factory_id) && !product.factoryName?.name) {
+      const factoryId = product.factoryName?.id || product.factory_id
+      const selectedFactory = factories.find((f) => f.id === factoryId)
+      if (selectedFactory) {
+        setProduct((prev) => ({
+          ...prev,
+          factoryName: {
+            id: selectedFactory.id,
+            name: selectedFactory.name,
+            code: selectedFactory.code,
+          },
+        }))
+      }
+    }
+  }, [
+    customersData,
+    factories,
+    product.customerName?.id,
+    product.customer_id,
+    product.factoryName?.id,
+    product.factory_id,
+  ])
 
   // 載入客戶和供應商資料
   useEffect(() => {
@@ -173,6 +217,28 @@ export function ProductReadOnlyForm({
     }
 
     fetchOptions()
+  }, [])
+
+  // 獲取產品類別數據
+  useEffect(() => {
+    async function fetchProductTypes() {
+      try {
+        const { data, error } = await supabase.from("product_types").select("type_code, type_name")
+
+        if (error) throw error
+
+        const typeMap: Record<string, string> = {}
+        data?.forEach((type) => {
+          typeMap[type.type_code] = type.type_name
+        })
+
+        setProductTypeMapState(typeMap)
+      } catch (error) {
+        console.error("獲取產品類別失敗:", error)
+      }
+    }
+
+    fetchProductTypes()
   }, [])
 
   // 初始化組合產品部件
@@ -386,7 +452,10 @@ export function ProductReadOnlyForm({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <ReadOnlyInput label="規格" value={product.specification} />
-                <ReadOnlyInput label="產品類別" value={product.productType} />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-500">產品類別</p>
+                  <p>{productTypeMapState[product.productType] || product.productType || "未設定"}</p>
+                </div>
                 <ReadOnlyInput label="今湛分類碼" value={product.classificationCode} />
                 <ReadOnlyInput label="車廠圖號" value={product.vehicleDrawingNo} />
                 <ReadOnlyInput label="客戶圖號" value={product.customerDrawingNo} />

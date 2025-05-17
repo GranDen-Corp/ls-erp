@@ -32,6 +32,14 @@ interface ProductFormProps {
   defaultTab?: string
 }
 
+// 產品類別類型
+interface ProductType {
+  id: number
+  type_code: string
+  type_name: string
+  description: string
+}
+
 // 製程資料記錄類型
 interface ProcessRecord {
   id: string
@@ -454,6 +462,7 @@ export function ProductForm({
   // 資料載入狀態
   const [customersData, setCustomersData] = useState<Customer[]>([])
   const [factories, setFactories] = useState<Supplier[]>([])
+  const [productTypes, setProductTypes] = useState<ProductType[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [dataError, setDataError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -556,6 +565,20 @@ export function ProductForm({
           }
         } catch (factoryError) {
           console.warn("獲取工廠數據失敗，使用空數組作為後備:", factoryError)
+        }
+
+        // 獲取產品類別數據
+        try {
+          const { data: productTypesData, error: productTypesError } = await supabase
+            .from("product_types")
+            .select("*")
+            .order("type_name")
+
+          if (productTypesError) throw new Error(`獲取產品類別數據失敗: ${productTypesError.message}`)
+
+          setProductTypes(productTypesData || [])
+        } catch (productTypesError) {
+          console.warn("獲取產品類別數據失敗:", productTypesError)
         }
 
         setCustomersData(formattedCustomers)
@@ -2080,12 +2103,21 @@ export function ProductForm({
 
                 <div className="space-y-2">
                   <Label htmlFor="productType">產品類別</Label>
-                  <Input
-                    id="productType"
+                  <Select
                     value={product.productType || ""}
-                    onChange={(e) => handleInputChange("productType", e.target.value)}
-                    placeholder="輸入產品類別"
-                  />
+                    onValueChange={(value) => handleInputChange("productType", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇產品類別" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {productTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.type_code}>
+                          {type.type_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -2883,14 +2915,67 @@ export function ProductForm({
                                 />
                               </td>
                               <td className="border px-4 py-2 text-center">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRemoveProcess(process.id)}
-                                >
-                                  <X className="h-4 w-4 text-red-500" />
-                                </Button>
+                                <div className="flex justify-center space-x-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleMoveProcess(process.id, "up")}
+                                    disabled={
+                                      product.processData &&
+                                      product.processData.findIndex((p) => p.id === process.id) === 0
+                                    }
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className="lucide lucide-chevron-up"
+                                    >
+                                      <path d="m18 15-6-6-6 6" />
+                                    </svg>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleMoveProcess(process.id, "down")}
+                                    disabled={
+                                      product.processData &&
+                                      product.processData.findIndex((p) => p.id === process.id) ===
+                                        product.processData.length - 1
+                                    }
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className="lucide lucide-chevron-down"
+                                    >
+                                      <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemoveProcess(process.id)}
+                                  >
+                                    <X className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))
@@ -3399,3 +3484,92 @@ export function ProductForm({
     </form>
   )
 }
+
+// 處理移動製程資料
+const handleMoveProcess = (id: string, direction: "up" | "down") => {
+  setProduct((prev) => {
+    const processData = [...(prev.processData || [])]
+    const index = processData.findIndex((proc) => proc.id === id)
+
+    if (index === -1) return prev
+
+    if (direction === "up" && index > 0) {
+      // 向上移動
+      const temp = processData[index]
+      processData[index] = processData[index - 1]
+      processData[index - 1] = temp
+    } else if (direction === "down" && index < processData.length - 1) {
+      // 向下移動
+      const temp = processData[index]
+      processData[index] = processData[index + 1]
+      processData[index + 1] = temp
+    } else {
+      // 無法移動
+      return prev
+    }
+
+    // 生成更新後的要求
+    const { orderReqs, purchaseReqs } = generateRequirements(processData)
+
+    return {
+      ...prev,
+      processData,
+      orderRequirements: orderReqs,
+      purchaseRequirements: purchaseReqs,
+    }
+  })
+}
+
+// 客戶和供應商數據加載完成後，設置名稱
+useEffect(() => {
+  if (customersData.length > 0 && (product.customerName?.id || product.customer_id) && !product.customerName?.name) {
+    const customerId = product.customerName?.id || product.customer_id
+    const selectedCustomer = customersData.find((c) => c.id === customerId)
+    if (selectedCustomer) {
+      setProduct((prev) => ({
+        ...prev,
+        customerName: {
+          id: selectedCustomer.id,
+          name: selectedCustomer.name,
+          code: selectedCustomer.code,
+        },
+      }))
+    }
+  }
+
+  if (factories.length > 0 && (product.factoryName?.id || product.factory_id) && !product.factoryName?.name) {
+    const factoryId = product.factoryName?.id || product.factory_id
+    const selectedFactory = factories.find((f) => f.id === factoryId)
+    if (selectedFactory) {
+      setProduct((prev) => ({
+        ...prev,
+        factoryName: {
+          id: selectedFactory.id,
+          name: selectedFactory.name,
+          code: selectedFactory.code,
+        },
+      }))
+    }
+  }
+}, [
+  customersData,
+  factories,
+  product.customerName?.id,
+  product.customer_id,
+  product.factoryName?.id,
+  product.factory_id,
+])
+
+useEffect(() => {
+  // 如果有初始客戶ID，查找對應的客戶名稱
+  if (initialValues?.customerName?.id || initialValues?.customer_id) {
+    const customerId = initialValues?.customerName?.id || initialValues?.customer_id
+    // 下一次數據加載完成後會自動顯示名稱
+  }
+
+  // 如果有初始供應商ID，查找對應的供應商名稱
+  if (initialValues?.factoryName?.id || initialValues?.factory_id) {
+    const factoryId = initialValues?.factoryName?.id || initialValues?.factory_id
+    // 下一次數據加載完成後會自動顯示名稱
+  }
+}, [initialValues])
