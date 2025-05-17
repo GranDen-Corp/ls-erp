@@ -15,7 +15,7 @@ interface AssemblyProductInquiryPageProps {
 }
 
 export default function AssemblyProductInquiryPage({ params }: AssemblyProductInquiryPageProps) {
-  const { id } = params
+  const id = decodeURIComponent(params.id)
   const [selectedFactory, setSelectedFactory] = useState<string | null>(null)
 
   // 模擬獲取組合產品數據
@@ -131,7 +131,7 @@ export default function AssemblyProductInquiryPage({ params }: AssemblyProductIn
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href={`/products/${id}`}>
+          <Link href={`/products/all/${encodeURIComponent(id)}`}>
             <Button variant="outline" size="icon">
               <ArrowLeft className="h-4 w-4" />
             </Button>

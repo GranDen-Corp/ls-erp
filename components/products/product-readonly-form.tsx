@@ -424,6 +424,7 @@ export function ProductReadOnlyForm({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <ReadOnlyInput label="零件名稱" value={product.componentName} />
+                <ReadOnlyInput label="零件名稱 (英文)" value={product.componentNameEn} />
                 <ReadOnlyInput label="Part No." value={product.partNo} />
                 <ReadOnlyInput label="海關碼" value={product.customsCode} />
                 <ReadOnlyInput label="終端客戶" value={product.endCustomer} />

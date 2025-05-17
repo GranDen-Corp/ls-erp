@@ -16,6 +16,7 @@ export async function saveProduct(formData: any) {
 
       // 其他欄位保持不變
       component_name: formData.componentName,
+      component_name_en: formData.componentNameEn, // 新增英文零件名稱欄位
       specification: formData.specification,
       customs_code: formData.customsCode,
       end_customer: formData.endCustomer,

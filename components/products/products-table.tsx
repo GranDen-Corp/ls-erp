@@ -132,12 +132,12 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
   }, [products])
 
   // 獲取唯一的產品類型和客戶ID
-  const productTypes = Array.from(new Set(processedProducts.map((product) => product.product_type).filter(Boolean)))
-  const customerIds = Array.from(new Set(processedProducts.map((product) => product.customer_id).filter(Boolean)))
+  const productTypes = Array.from(new Set(products.map((product) => product.product_type).filter(Boolean)))
+  const customerIds = Array.from(new Set(products.map((product) => product.customer_id).filter(Boolean)))
   const statusOptions = ["active", "sample", "discontinued"]
 
   // 根據條件過濾產品
-  const filteredProducts = processedProducts.filter((product) => {
+  const filteredProducts = products.filter((product) => {
     const match = true
 
     // 搜尋條件
@@ -240,7 +240,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
     // 查找每個部件的產品名稱
     return components.map((component) => {
       const partNo = component.part_no || ""
-      const componentProduct = processedProducts.find((p) => p.part_no === partNo)
+      const componentProduct = products.find((p) => p.part_no === partNo)
       return {
         partNo,
         componentName: componentProduct?.component_name || "",
@@ -455,7 +455,11 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Link
-                              href={`/products/all/${encodeURIComponent(product.part_no)}/inquiry`}
+                              href={
+                                product.is_assembly
+                                  ? `/products/all/${encodeURIComponent(product.part_no)}/assembly-inquiry`
+                                  : `/products/all/${encodeURIComponent(product.part_no)}/inquiry`
+                              }
                               className="flex items-center"
                             >
                               <FileText className="mr-2 h-4 w-4" />
@@ -473,7 +477,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
         </Table>
       </div>
 
-      {processedProducts.length > 0 && (
+      {products.length > 0 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             顯示 {filteredProducts.length} 個產品中的 {startIndex + 1}-

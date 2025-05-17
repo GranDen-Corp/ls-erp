@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -41,6 +41,13 @@ import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-ser
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea"
 import { convertCurrency, formatCurrencyAmount } from "@/lib/currency-utils"
 import { OrderValidation } from "@/components/orders/order-validation"
+import { generateOrderNumber } from "@/lib/order-number-generator"
+import { format } from "date-fns"
+import { zhTW } from "date-fns/locale"
+
+// 在 import 部分添加新的引用
+import { generateOrderBatchId, generateProductIndex } from "@/lib/order-batch-utils"
+import { createOrderBatchItems, type OrderBatchItem } from "@/lib/services/order-batch-service"
 
 interface Customer {
   id: string
@@ -113,16 +120,16 @@ interface OrderItem {
 }
 
 interface NewOrderFormProps {
-  orderNumber: string
-  isLoadingOrderNumber: boolean
   onSubmit: (formData: any) => void
   createdOrderId?: string
   currentStep?: number
   orderData?: any
 }
 
-export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
-  ({ orderNumber, isLoadingOrderNumber, onSubmit, createdOrderId, currentStep = 0, orderData }, ref) => {
+const NewOrderForm = forwardRef<any, NewOrderFormProps>(
+  ({ onSubmit, createdOrderId, currentStep = 0, orderData }, ref) => {
+    const [orderNumber, setOrderNumber] = useState<string>("")
+    const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState<boolean>(true)
     const [customers, setCustomers] = useState<Customer[]>([])
     const [products, setProducts] = useState<Product[]>([])
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>("")
@@ -159,11 +166,16 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [isProcurementSettingsConfirmed, setIsProcurementSettingsConfirmed] = useState<boolean>(false)
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
     const [customerCurrency, setCustomerCurrency] = useState<string>("USD")
+    const [formattedDate, setFormattedDate] = useState<string>("")
+    const [isTestingSubmit, setIsTestingSubmit] = useState<boolean>(false)
+    const [testData, setTestData] = useState<string>("")
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
     const [currentManagingProductPartNo, setCurrentManagingProductPartNo] = useState<string>("")
     const [batchManagementTab, setBatchManagementTab] = useState<string>("basic")
+
+    const formRef = useRef(null)
 
     // 當系統生成的訂單編號變更時，更新自定義訂單編號的初始值
     useEffect(() => {
@@ -412,6 +424,34 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       }
 
       fetchData()
+    }, [])
+
+    // 在 useEffect 中獲取訂單編號的部分
+    useEffect(() => {
+      const updateDateTime = () => {
+        const now = new Date()
+        setFormattedDate(format(now, "yyyy/MM/dd HH:mm:ss", { locale: zhTW }))
+      }
+
+      const interval = setInterval(updateDateTime, 1000)
+
+      // 獲取訂單編號
+      const fetchOrderNumber = async () => {
+        try {
+          setIsLoadingOrderNumber(true)
+          const newOrderNumber = await generateOrderNumber()
+          setOrderNumber(newOrderNumber)
+        } catch (err) {
+          console.error("獲取訂單編號失敗:", err)
+          setOrderNumber("L-YYMMXXXXX (生成失敗)")
+        } finally {
+          setIsLoadingOrderNumber(false)
+        }
+      }
+
+      fetchOrderNumber()
+
+      return () => clearInterval(interval)
     }, [])
 
     // 當客戶變更時，更新可選產品列表和客戶預設值
@@ -1238,6 +1278,75 @@ ${item.quantity} PCS / CTN`
           // 保存創建的訂單
           setCreatedOrder(data[0])
 
+          // 處理訂單批次項目
+          try {
+            // 準備批次項目數據
+            const batchItems: OrderBatchItem[] = []
+            const batchIds: string[] = [] // 用於存儲批次ID
+
+            // 遍歷所有產品項目
+            orderItems.forEach((item, productIndex) => {
+              const productIndexLetter = generateProductIndex(productIndex)
+
+              // 遍歷每個產品的批次
+              item.shipmentBatches.forEach((batch) => {
+                const batchId = generateOrderBatchId(data[0].order_id, productIndexLetter, batch.batchNumber)
+                batchIds.push(batchId) // 添加到批次ID列表
+
+                batchItems.push({
+                  order_batch_id: batchId,
+                  order_id: data[0].order_id,
+                  product_index: productIndexLetter,
+                  batch_number: batch.batchNumber,
+                  part_no: item.productPartNo,
+                  description: item.productName,
+                  quantity: batch.quantity,
+                  unit_price: item.unitPrice,
+                  currency: item.currency || "USD",
+                  is_assembly: item.isAssembly,
+                  specifications: item.specifications,
+                  remarks: item.remarks,
+                  discount: item.discount || 0,
+                  tax_rate: item.taxRate || 0,
+                  total_price: calculateItemTotal(item),
+                  planned_ship_date: batch.plannedShipDate,
+                  status: batch.status || "pending",
+                  tracking_number: batch.trackingNumber,
+                  actual_ship_date: batch.actualShipDate,
+                  estimated_arrival_date: batch.estimatedArrivalDate,
+                  customs_info: batch.customsInfo,
+                  metadata: {
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    version: "1.0",
+                  },
+                })
+              })
+            })
+
+            // 創建批次項目
+            const batchResult = await createOrderBatchItems(batchItems)
+
+            if (!batchResult.success) {
+              console.error("創建訂單批次項目失敗:", batchResult.error)
+              // 不中斷流程，僅記錄錯誤
+            }
+
+            // 更新訂單表中的 order_batch_ids 欄位
+            const { error: updateError } = await supabase
+              .from("orders")
+              .update({ order_batch_ids: batchIds })
+              .eq("order_id", data[0].order_id)
+
+            if (updateError) {
+              console.error("更新訂單批次ID失敗:", updateError)
+              // 不中斷流程，僅記錄錯誤
+            }
+          } catch (batchError: any) {
+            console.error("處理訂���批次項目時出錯:", batchError)
+            // 不中斷流程，僅記錄錯誤
+          }
+
           // 如果需要同時創建採購單
           if (createPurchaseOrder && isProcurementSettingsConfirmed) {
             try {
@@ -1261,6 +1370,221 @@ ${item.quantity} PCS / CTN`
         }
       } finally {
         setIsSubmitting(false)
+      }
+    }
+
+    const handleTestSubmit = async () => {
+      if (!formRef.current) return
+
+      setIsTestingSubmit(true)
+      setTestData("")
+
+      try {
+        // 獲取訂單資料但不提交，並且跳過驗證
+        const orderData = await formRef.current.getOrderData(true)
+
+        // 生成人類可讀的說明
+        let explanation = "# 訂單與採購單資料模擬\n\n"
+        explanation += "以下是模擬「儲存並同時建立訂單與採購單」功能時，各資料表中將儲存的資料結構。\n\n"
+
+        // 檢查表單是否有缺少必填欄位
+        const missingFields = []
+        if (!orderData.customer_id) missingFields.push("客戶")
+        if (!orderData.po_id) missingFields.push("客戶PO編號")
+        if (!orderData.order_items || orderData.order_items.length === 0) missingFields.push("產品")
+
+        if (missingFields.length > 0) {
+          explanation += "⚠️ **警告：表單尚未完成，以下欄位缺少資料：**\n"
+          missingFields.forEach((field) => {
+            explanation += `- ${field}\n`
+          })
+          explanation += "\n這是目前表單的預覽資料，實際提交時需要填寫完整。\n\n"
+        }
+
+        // 1. orders 表資料
+        explanation += "## 1. orders 表資料\n\n"
+        explanation += "```json\n"
+
+        // 創建一個模擬的 orders 表記錄
+        const ordersRecord = {
+          order_id: orderData.order_id,
+          customer_id: orderData.customer_id,
+          po_id: orderData.po_id,
+          payment_term: orderData.payment_term,
+          delivery_terms: orderData.delivery_terms,
+          status: orderData.status,
+          remarks: orderData.remarks,
+          order_info: orderData.order_info,
+          created_at: orderData.created_at,
+          // 模擬 order_batch_ids 欄位
+          order_batch_ids:
+            orderData.order_items?.flatMap((item, productIndex) => {
+              const productIndexLetter = String.fromCharCode(65 + productIndex)
+              return item.shipmentBatches.map(
+                (batch) => `${orderData.order_id}${productIndexLetter}-${batch.batchNumber}`,
+              )
+            }) || [],
+        }
+
+        explanation += JSON.stringify(ordersRecord, null, 2)
+        explanation += "\n```\n\n"
+
+        // 2. order_batch 表資料
+        explanation += "## 2. order_batch 表資料\n\n"
+        explanation += "```json\n"
+
+        // 創建模擬的 order_batch 表記錄
+        const orderBatchRecords = []
+
+        if (orderData.order_items && orderData.order_items.length > 0) {
+          orderData.order_items.forEach((item, productIndex) => {
+            const productIndexLetter = String.fromCharCode(65 + productIndex)
+
+            item.shipmentBatches.forEach((batch) => {
+              orderBatchRecords.push({
+                order_batch_id: `${orderData.order_id}${productIndexLetter}-${batch.batchNumber}`,
+                order_id: orderData.order_id,
+                product_index: productIndexLetter,
+                batch_number: batch.batchNumber,
+                part_no: item.productPartNo,
+                description: item.productName,
+                quantity: batch.quantity,
+                unit_price: item.unitPrice,
+                currency: item.currency || "USD",
+                is_assembly: item.isAssembly,
+                specifications: item.specifications,
+                remarks: item.remarks,
+                discount: item.discount || 0,
+                tax_rate: item.taxRate || 0,
+                total_price: item.quantity * item.unitPrice,
+                planned_ship_date: batch.plannedShipDate ? new Date(batch.plannedShipDate).toISOString() : null,
+                status: batch.status || "pending",
+                tracking_number: batch.trackingNumber,
+                actual_ship_date: batch.actualShipDate ? new Date(batch.actualShipDate).toISOString() : null,
+                estimated_arrival_date: batch.estimatedArrivalDate
+                  ? new Date(batch.estimatedArrivalDate).toISOString()
+                  : null,
+                customs_info: batch.customsInfo,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+            })
+          })
+        }
+
+        explanation += JSON.stringify(orderBatchRecords, null, 2)
+        explanation += "\n```\n\n"
+
+        // 3. purchases 表資料
+        explanation += "## 3. purchases 表資料\n\n"
+
+        // 按供應商分組
+        const itemsBySupplier: Record<string, any[]> = {}
+
+        if (orderData.procurement_items && orderData.procurement_items.length > 0) {
+          orderData.procurement_items
+            .filter((item: any) => item.isSelected && item.factoryId)
+            .forEach((item: any) => {
+              if (!itemsBySupplier[item.factoryId]) {
+                itemsBySupplier[item.factoryId] = []
+              }
+              itemsBySupplier[item.factoryId].push(item)
+            })
+        }
+
+        // 創建模擬的 purchases 表記錄
+        const purchasesRecords = []
+
+        Object.entries(itemsBySupplier).forEach(([supplierId, items], index) => {
+          const firstItem = items[0]
+          const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
+
+          purchasesRecords.push({
+            purchase_id: `P-${orderData.order_id}-${index + 1}`,
+            order_id: orderData.order_id,
+            supplier_id: supplierId,
+            supplier_name: firstItem.factoryName,
+            status: "pending",
+            issue_date: new Date().toISOString().split("T")[0],
+            expected_delivery_date: firstItem.deliveryDate
+              ? new Date(firstItem.deliveryDate).toISOString().split("T")[0]
+              : null,
+            payment_term: firstItem.paymentTerm,
+            delivery_term: firstItem.deliveryTerm,
+            currency: "USD",
+            total_amount: totalAmount,
+            notes: `從訂單 ${orderData.order_id} 自動生成的採購單`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        })
+
+        explanation += "```json\n"
+        explanation += JSON.stringify(purchasesRecords, null, 2)
+        explanation += "\n```\n\n"
+
+        // 4. purchase_items 表資料
+        explanation += "## 4. purchase_items 表資料\n\n"
+        explanation += "```json\n"
+
+        // 創建模擬的 purchase_items 表記錄
+        const purchaseItemsRecords = []
+
+        Object.entries(itemsBySupplier).forEach(([supplierId, items], purchaseIndex) => {
+          items.forEach((item, itemIndex) => {
+            purchaseItemsRecords.push({
+              purchase_sid: purchaseIndex + 1, // 模擬的 purchase_sid
+              product_part_no: item.productPartNo,
+              product_name: item.productName,
+              quantity: item.quantity,
+              unit_price: item.purchasePrice,
+              total_price: item.quantity * item.purchasePrice,
+              expected_delivery_date: item.deliveryDate
+                ? new Date(item.deliveryDate).toISOString().split("T")[0]
+                : null,
+              status: "pending",
+              notes: item.notes,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+          })
+        })
+
+        explanation += "```json\n"
+        explanation += JSON.stringify(purchaseItemsRecords, null, 2)
+        explanation += "\n```\n\n"
+
+        // 5. 資料關聯圖
+        explanation += "## 5. 資料關聯圖\n\n"
+        explanation += "```mermaid\n"
+        explanation += "graph TD\n"
+        explanation += "  A[orders] -->|order_id| B[order_batch]\n"
+        explanation += "  A -->|order_id| C[purchases]\n"
+        explanation += "  C -->|purchase_sid| D[purchase_items]\n"
+        explanation += "  A -->|order_batch_ids| B\n"
+        explanation += "```\n\n"
+
+        explanation += "## 6. 完整JSON資料\n\n"
+        explanation += "```json\n"
+        explanation += JSON.stringify(
+          {
+            orders: ordersRecord,
+            order_batch: orderBatchRecords,
+            purchases: purchasesRecords,
+            purchase_items: purchaseItemsRecords,
+          },
+          null,
+          2,
+        )
+        explanation += "\n```"
+
+        setTestData(explanation)
+        setActiveTab("test")
+      } catch (err: any) {
+        console.error("測試提交失敗:", err)
+        setTestData(`測試提交失敗: ${err.message || "未知錯誤"}`)
+      } finally {
+        setIsTestingSubmit(false)
       }
     }
 
@@ -1438,7 +1762,7 @@ ${item.quantity} PCS / CTN`
                 </Button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">格式: L-YYMMDD-XXXXX</p>
+            <p className="text-xs text-muted-foreground">格式: L-YYMMXXXXX</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="poNumber">客戶PO編號</Label>
@@ -1980,6 +2304,7 @@ ${item.quantity} PCS / CTN`
         {/* 批次管理對話框 */}
         <Dialog open={isManagingBatches} onOpenChange={(open) => !open && setIsManagingBatches(false)}>
           {/* 保持原有的批次管理對話框內容不變 */}
+          {/* ... */}
           <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle className="text-xl">管理批次出貨 - {currentManagingProductPartNo}</DialogTitle>
@@ -2101,7 +2426,38 @@ ${item.quantity} PCS / CTN`
             </Tabs>
           </DialogContent>
         </Dialog>
+
+        {/* 測試提交功能 */}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={handleTestSubmit} disabled={isTestingSubmit}>
+            {isTestingSubmit ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                測試提交中...
+              </>
+            ) : (
+              "測試提交"
+            )}
+          </Button>
+        </div>
+
+        {/* 測試結果顯示 */}
+        {activeTab === "test" && (
+          <div className="space-y-4">
+            <Alert>
+              <Layers className="h-4 w-4" />
+              <AlertTitle>測試結果</AlertTitle>
+              <AlertDescription>以下是模擬提交的資料結構，僅供參考。</AlertDescription>
+            </Alert>
+            <ScrollArea className="h-[600px] w-full rounded-md border p-4">
+              <pre className="whitespace-pre-wrap">{testData}</pre>
+            </ScrollArea>
+          </div>
+        )}
       </div>
     )
   },
 )
+
+// Export the component
+export { NewOrderForm }

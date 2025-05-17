@@ -1,3 +1,5 @@
+// lib/order-number-generator.ts
+
 import { createClient } from "@/lib/supabase-client"
 
 /**
@@ -60,32 +62,4 @@ export async function generateOrderNumber(): Promise<string> {
 
   // 生成最終的訂單編號
   return `L-${yearMonth}${formattedSequence}`
-}
-
-/**
- * 從訂單編號解析出年份和月份
- */
-export function getYearMonthFromOrderNumber(orderNumber: string): { year: number | null; month: number | null } {
-  const match = orderNumber.match(/L-(\d{2})(\d{2})(\d{5})/)
-  if (match) {
-    const shortYear = Number.parseInt(match[1], 10)
-    const month = Number.parseInt(match[2], 10)
-    // 將兩位數年份轉換為四位數年份 (假設 00-99 對應 2000-2099)
-    return {
-      year: 2000 + shortYear,
-      month: month,
-    }
-  }
-  return { year: null, month: null }
-}
-
-/**
- * 從訂單編號解析出序號
- */
-export function getSequenceFromOrderNumber(orderNumber: string): number | null {
-  const match = orderNumber.match(/L-\d{4}(\d{5})/)
-  if (match) {
-    return Number.parseInt(match[1], 10)
-  }
-  return null
 }

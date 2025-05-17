@@ -9,10 +9,10 @@ import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, FileText } from "lucide-react"
-import { generateOrderNumber } from "@/lib/order-utils"
-import { Textarea } from "@/components/ui/textarea"
+import { generateOrderNumber } from "@/lib/order-number-generator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Stepper, Step } from "@/components/ui/stepper"
+import { marked } from "marked"
 
 export default function NewOrderPage() {
   const router = useRouter()
@@ -51,7 +51,7 @@ export default function NewOrderPage() {
         setOrderNumber(newOrderNumber)
       } catch (err) {
         console.error("獲取訂單編號失敗:", err)
-        setOrderNumber("L-YYMMDD-XXXXX (生成失敗)")
+        setOrderNumber("L-YYMMXXXXX (生成失敗)")
       } finally {
         setIsLoadingOrderNumber(false)
       }
@@ -155,43 +155,30 @@ export default function NewOrderPage() {
       explanation += `- 備註 (remarks): ${orderData.remarks || "(無)"}\n`
       explanation += `- 創建時間 (created_at): ${orderData.created_at}\n`
 
-      if (orderData.part_no_assembly) {
-        explanation += `- 組件產品編號 (part_no_assembly): ${orderData.part_no_assembly}\n`
-      }
+      explanation += "\n### 產品列表\n"
 
-      explanation += "\n### 產品列表 (part_no_list)\n"
+      if (orderData.order_items && orderData.order_items.length > 0) {
+        orderData.order_items.forEach((item: any, index: number) => {
+          explanation += `\n#### 產品 ${index + 1}\n`
+          explanation += `- 產品編號 (part_no): ${item.productPartNo}\n`
+          explanation += `- 產品描述 (description): ${item.productName}\n`
+          explanation += `- 數量 (quantity): ${item.quantity}\n`
+          explanation += `- 單價 (unit_price): ${item.unitPrice}\n`
+          explanation += `- 是否為組件 (is_assembly): ${item.isAssembly}\n`
 
-      if (orderData.part_no_list) {
-        try {
-          const partsList = JSON.parse(orderData.part_no_list)
-          if (partsList.length === 0) {
-            explanation += "尚未添加產品\n"
-          } else {
-            partsList.forEach((part: any, index: number) => {
-              explanation += `\n#### 產品 ${index + 1}\n`
-              explanation += `- 產品編號 (part_no): ${part.part_no}\n`
-              explanation += `- 產品描述 (description): ${part.description}\n`
-              explanation += `- 數量 (quantity): ${part.quantity}\n`
-              explanation += `- 單價 (unit_price): ${part.unit_price}\n`
-              explanation += `- 是否為組件 (is_assembly): ${part.is_assembly}\n`
-
-              explanation += "\n##### 批次資訊\n"
-              if (part.shipment_batches && part.shipment_batches.length > 0) {
-                part.shipment_batches.forEach((batch: any, batchIndex: number) => {
-                  explanation += `\n###### 批次 ${batchIndex + 1}\n`
-                  explanation += `- 批次編號 (batch_number): ${batch.batch_number}\n`
-                  explanation += `- 計劃出貨日期 (planned_ship_date): ${batch.planned_ship_date || "(尚未設定)"}\n`
-                  explanation += `- 數量 (quantity): ${batch.quantity}\n`
-                  explanation += `- 備註 (notes): ${batch.notes || "無"}\n`
-                })
-              } else {
-                explanation += "尚未設定批次\n"
-              }
+          explanation += "\n##### 批次資訊\n"
+          if (item.shipmentBatches && item.shipmentBatches.length > 0) {
+            item.shipmentBatches.forEach((batch: any, batchIndex: number) => {
+              explanation += `\n###### 批次 ${batchIndex + 1}\n`
+              explanation += `- 批次編號 (batch_number): ${batch.batchNumber}\n`
+              explanation += `- 計劃出貨日期 (planned_ship_date): ${batch.plannedShipDate || "(尚未設定)"}\n`
+              explanation += `- 數量 (quantity): ${batch.quantity}\n`
+              explanation += `- 備註 (notes): ${batch.notes || "無"}\n`
             })
+          } else {
+            explanation += "尚未設定批次\n"
           }
-        } catch (e) {
-          explanation += "無法解析產品列表JSON\n"
-        }
+        })
       } else {
         explanation += "尚未添加產品\n"
       }
@@ -316,8 +303,6 @@ export default function NewOrderPage() {
             <CardContent>
               <NewOrderForm
                 ref={formRef}
-                orderNumber={orderNumber}
-                isLoadingOrderNumber={isLoadingOrderNumber}
                 onSubmit={handleSubmit}
                 createdOrderId={createdOrderId}
                 currentStep={currentStep}
@@ -333,11 +318,9 @@ export default function NewOrderPage() {
               <CardDescription>以下是將要儲存到資料庫的資料及其對應關係</CardDescription>
             </CardHeader>
             <CardContent>
-              <Textarea
-                value={testData}
-                readOnly
-                className="font-mono text-sm h-96 overflow-auto whitespace-pre-wrap"
-              />
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: marked.parse(testData) }} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

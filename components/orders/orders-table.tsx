@@ -11,6 +11,9 @@ import { supabaseClient } from "@/lib/supabase-client"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 
+// 在 import 部分添加新的引用
+import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
+
 // 狀態映射: 數字到文字
 const statusMap: Record<string, string> = {
   "0": "待確認",
@@ -113,6 +116,9 @@ export function OrdersTable() {
           setProducts(productMap)
         }
 
+        // 修改獲取訂單資料的部分，添加批次項目的處理
+        // 在 useEffect 中獲取訂單資料的部分，修改為:
+
         // 3. 獲取訂單資料 - 使用新的資料表結構
         try {
           const { data: ordersData, error: ordersError } = await supabaseClient
@@ -129,8 +135,37 @@ export function OrdersTable() {
               console.log("訂單資料欄位:", Object.keys(ordersData[0]))
             }
 
-            setOrders(ordersData)
-            setFilteredOrders(ordersData)
+            // 處理訂單資料
+            const processedOrders = [...ordersData]
+
+            // 為每個訂單獲取批次項目
+            for (const order of processedOrders) {
+              try {
+                const batchResult = await getOrderBatchItemsByOrderId(order.order_id)
+                if (batchResult.success && batchResult.data) {
+                  order.batch_items = batchResult.data
+
+                  // 計算訂單總數量和總金額
+                  let totalQuantity = 0
+                  let totalAmount = 0
+
+                  batchResult.data.forEach((item) => {
+                    totalQuantity += item.quantity || 0
+                    totalAmount += item.total_price || item.quantity * item.unit_price || 0
+                  })
+
+                  order.total_quantity = totalQuantity
+                  if (!order.amount) {
+                    order.amount = totalAmount
+                  }
+                }
+              } catch (err) {
+                console.error(`獲取訂單 ${order.order_id} 的批次項目失敗:`, err)
+              }
+            }
+
+            setOrders(processedOrders)
+            setFilteredOrders(processedOrders)
           } else {
             setOrders([])
             setFilteredOrders([])
@@ -138,6 +173,8 @@ export function OrdersTable() {
         } catch (err) {
           console.error("獲取訂單資料時出錯:", err)
           setError("獲取訂單資料時發生錯誤，請稍後再試。")
+        } finally {
+          setIsLoading(false)
         }
       } catch (error) {
         console.error("獲取資料時出錯:", error)
@@ -222,23 +259,40 @@ export function OrdersTable() {
     }
   }
 
-  // 檢查訂單是否包含組件產品
-  const hasAssemblyProduct = (order: any): boolean => {
-    return !!order.part_no_assembly
-  }
-
-  // 獲取產品名稱
+  // 修改 getProductName 函數，使用新的批次項目數據
   const getProductName = (order: any) => {
     try {
       const customerId = order.customer_id || "unknown"
       const customerProducts = products[customerId] || {}
 
-      // 如果有組件產品
+      // 使用新的批次項目數據
+      if (order.batch_items && order.batch_items.length > 0) {
+        // 按產品索引分組
+        const productGroups: Record<string, any[]> = {}
+
+        order.batch_items.forEach((item: any) => {
+          if (!productGroups[item.product_index]) {
+            productGroups[item.product_index] = []
+          }
+          productGroups[item.product_index].push(item)
+        })
+
+        // 獲取產品名稱
+        const productNames = Object.values(productGroups).map((items) => {
+          const firstItem = items[0]
+          const partNo = firstItem.part_no
+          const name = firstItem.description || customerProducts[partNo] || partNo
+          return name
+        })
+
+        return productNames.join("; ")
+      }
+
+      // 如果沒有批次項目數據，嘗試使用舊的方式
       if (order.part_no_assembly) {
         return customerProducts[order.part_no_assembly] || order.part_no_assembly
       }
 
-      // 如果有產品清單 - 使用新的解析函數
       if (order.part_no_list) {
         return parsePartNoList(order.part_no_list, customerId)
       }
@@ -248,6 +302,17 @@ export function OrdersTable() {
       console.error("獲取產品名稱時出錯:", error)
       return "-"
     }
+  }
+
+  // 檢查訂單是否包含組件產品
+  const hasAssemblyProduct = (order: any): boolean => {
+    // 使用新的批次項目數據
+    if (order.batch_items && order.batch_items.length > 0) {
+      return order.batch_items.some((item: any) => item.is_assembly)
+    }
+
+    // 如果沒有批次項目數據，嘗試使用舊的方式
+    return !!order.part_no_assembly
   }
 
   // 從order_id中提取日期

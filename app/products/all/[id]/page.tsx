@@ -99,7 +99,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           <h1 className="text-2xl font-bold">產品詳情: {product.component_name || product.part_no}</h1>
         </div>
         <div>
-          <Link href={`/products/${productId}/inquiry`}>
+          <Link href={`/products/all/${encodeURIComponent(productId)}/inquiry`}>
             <Button variant="outline" className="mr-2">
               <FileText className="mr-2 h-4 w-4" />
               生成詢價單

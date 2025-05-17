@@ -6,6 +6,8 @@ import { OrderStatusUpdate } from "@/components/orders/order-status-update"
 import { OrderStatusHistory } from "@/components/orders/order-status-history"
 import { OrderShipmentBatches } from "@/components/orders/order-shipment-batches"
 import { supabaseClient } from "@/lib/supabase-client"
+import { Badge } from "@/components/ui/badge"
+import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
 
 // 從 Supabase 獲取訂單數據
 async function getOrder(orderId: string) {
@@ -16,6 +18,26 @@ async function getOrder(orderId: string) {
     if (error) {
       console.error("獲取訂單數據失敗:", error)
       return null
+    }
+
+    // 獲取訂單批次項目
+    const batchResult = await getOrderBatchItemsByOrderId(orderId)
+
+    if (batchResult.success && batchResult.data) {
+      // 將批次項目添加到訂單數據中
+      data.batch_items = batchResult.data
+
+      // 計算訂單總數量和總金額
+      let totalQuantity = 0
+      let totalAmount = 0
+
+      batchResult.data.forEach((item) => {
+        totalQuantity += item.quantity || 0
+        totalAmount += item.total_price || item.quantity * item.unit_price || 0
+      })
+
+      data.total_quantity = totalQuantity
+      data.amount = totalAmount
     }
 
     return data
@@ -128,24 +150,48 @@ export default async function OrderPage({
                     <thead>
                       <tr className="border-b">
                         <th className="px-4 py-2 text-left">產品</th>
+                        <th className="px-4 py-2 text-left">批次</th>
                         <th className="px-4 py-2 text-right">數量</th>
                         <th className="px-4 py-2 text-right">單價</th>
                         <th className="px-4 py-2 text-right">總價</th>
+                        <th className="px-4 py-2 text-center">狀態</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {order.items?.map((item: any) => (
-                        <tr key={item.id} className="border-b">
-                          <td className="px-4 py-2">{item.product_name}</td>
+                      {order.batch_items?.map((item: any) => (
+                        <tr key={item.order_batch_id} className="border-b">
+                          <td className="px-4 py-2">
+                            <div className="font-medium">{item.part_no}</div>
+                            <div className="text-sm text-muted-foreground">{item.description}</div>
+                          </td>
+                          <td className="px-4 py-2">
+                            {item.product_index}-{item.batch_number}
+                          </td>
                           <td className="px-4 py-2 text-right">{item.quantity}</td>
                           <td className="px-4 py-2 text-right">${item.unit_price}</td>
                           <td className="px-4 py-2 text-right">
-                            ${(item.quantity * item.unit_price).toLocaleString()}
+                            ${(item.total_price || item.quantity * item.unit_price).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <Badge
+                              variant="outline"
+                              className={
+                                item.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : item.status === "shipped"
+                                    ? "bg-green-100 text-green-800"
+                                    : item.status === "delivered"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {item.status}
+                            </Badge>
                           </td>
                         </tr>
                       )) || (
                         <tr>
-                          <td colSpan={4} className="px-4 py-2 text-center">
+                          <td colSpan={6} className="px-4 py-2 text-center">
                             無訂單項目
                           </td>
                         </tr>
@@ -153,10 +199,11 @@ export default async function OrderPage({
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={3} className="px-4 py-2 text-right font-medium">
+                        <td colSpan={4} className="px-4 py-2 text-right font-medium">
                           總計
                         </td>
                         <td className="px-4 py-2 text-right font-medium">${order.amount?.toLocaleString()}</td>
+                        <td></td>
                       </tr>
                     </tfoot>
                   </table>
