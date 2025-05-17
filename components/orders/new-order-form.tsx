@@ -157,6 +157,7 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     const [isProcurementSettingsConfirmed, setIsProcurementSettingsConfirmed] = useState<boolean>(false)
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
     const [hasAddedProducts, setHasAddedProducts] = useState<boolean>(false)
+    const [isEditingProducts, setIsEditingProducts] = useState<boolean>(false)
 
     // 批次管理相關狀態
     const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
@@ -444,19 +445,25 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         console.log(`客戶 ${selectedCustomerId} 的產品:`, filteredProducts.length, "筆")
         console.log("普通產品:", regular.length, "筆")
         console.log("組件產品:", assembly.length, "筆")
+
+        // 如果尚未添加產品，自動進入編輯模式
+        if (!hasAddedProducts) {
+          setIsEditingProducts(true)
+        }
       } else {
         setCustomerProducts([])
         setRegularProducts([])
         setAssemblyProducts([])
         setPaymentTerm("")
         setDeliveryTerms("")
+        setIsEditingProducts(false) // 清除客戶選擇時，退出編輯模式
       }
 
       // 重置產品選擇
       setSelectedProductPartNo("")
       setProductSearchTerm("")
       setSelectedProducts([]) // 清空已選產品
-    }, [selectedCustomerId, products, customers])
+    }, [selectedCustomerId, products, customers, hasAddedProducts])
 
     // 檢查訂單編號是否重複
     const checkOrderNumberDuplicate = async () => {
@@ -687,22 +694,25 @@ export const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         setLoadingSelectedProducts(false)
         setIsProductsReady(false) // 重置產品準備狀態
       }
+      setIsEditingProducts(false) // 添加完成後退出編輯模式
     }
 
     // 處理修改添加的產品
     const handleModifyProducts = () => {
-      // 清除採購清單
-      setProcurementItems([])
-      // 重置產品準備狀態
-      setIsProductsReady(false)
-      // 重置產品設定確認狀態
-      setIsProductSettingsConfirmed(false)
-      // 重置採購設定確認狀態
-      setIsProcurementSettingsConfirmed(false)
-      // 清空選擇的產品
-      setSelectedProducts([])
-      // 重置已添加產品標記
-      setHasAddedProducts(false)
+      if (isEditingProducts) {
+        // 當前正在編輯，點擊後應添加選中的產品
+        if (selectedProducts.length > 0) {
+          handleAddSelectedProducts()
+        }
+        // 切換為非編輯模式
+        setIsEditingProducts(false)
+      } else {
+        // 當前不在編輯，點擊後應進入編輯模式
+        // 清除已選產品
+        setSelectedProducts([])
+        // 切換為編輯模式
+        setIsEditingProducts(true)
+      }
     }
 
     const handleRemoveProduct = (itemId: string) => {
@@ -1561,7 +1571,7 @@ ${item.quantity} PCS / CTN`
                       variant="outline"
                       size="sm"
                       onClick={clearAllSelections}
-                      disabled={selectedProducts.length === 0 || isProductSettingsConfirmed}
+                      disabled={selectedProducts.length === 0 || isProductSettingsConfirmed || !isEditingProducts}
                     >
                       <X className="h-4 w-4 mr-1" />
                       清除選擇
@@ -1571,10 +1581,19 @@ ${item.quantity} PCS / CTN`
                         size="sm"
                         onClick={handleModifyProducts}
                         disabled={isProductSettingsConfirmed}
-                        variant="secondary"
+                        variant={isEditingProducts ? "default" : "secondary"}
                       >
-                        <Settings className="h-4 w-4 mr-1" />
-                        修改添加產品
+                        {isEditingProducts ? (
+                          <>
+                            <Plus className="h-4 w-4 mr-1" />
+                            添加選中產品 ({selectedProducts.length})
+                          </>
+                        ) : (
+                          <>
+                            <Settings className="h-4 w-4 mr-1" />
+                            修改添加產品
+                          </>
+                        )}
                       </Button>
                     ) : (
                       <Button
@@ -1611,15 +1630,31 @@ ${item.quantity} PCS / CTN`
                           <div
                             key={partNo}
                             className={`flex items-start space-x-2 p-2 border rounded-md ${
-                              isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
+                              isAdded && !isEditingProducts
+                                ? "bg-gray-100 border-gray-300"
+                                : isSelected
+                                  ? "bg-blue-50 border-blue-300"
+                                  : ""
                             }`}
-                            onClick={() => !isAdded && !isProductSettingsConfirmed && toggleProductSelection(partNo)}
-                            style={{ cursor: isAdded || isProductSettingsConfirmed ? "default" : "pointer" }}
+                            onClick={() =>
+                              (!isAdded || isEditingProducts) &&
+                              !isProductSettingsConfirmed &&
+                              isEditingProducts &&
+                              toggleProductSelection(partNo)
+                            }
+                            style={{
+                              cursor:
+                                (isAdded && !isEditingProducts) || isProductSettingsConfirmed || !isEditingProducts
+                                  ? "default"
+                                  : "pointer",
+                            }}
                           >
                             <Checkbox
                               checked={isSelected}
-                              onCheckedChange={() => toggleProductSelection(partNo)}
-                              disabled={isAdded || isProductSettingsConfirmed}
+                              onCheckedChange={() => isEditingProducts && toggleProductSelection(partNo)}
+                              disabled={
+                                (!isEditingProducts && isAdded) || isProductSettingsConfirmed || !isEditingProducts
+                              }
                               className="mt-1 mr-2"
                               onClick={(e) => e.stopPropagation()}
                             />
