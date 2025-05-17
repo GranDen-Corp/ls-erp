@@ -1348,7 +1348,7 @@ ${item.quantity} PCS / CTN`
         </div>
 
         {/* 基本訂單資訊區域 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="orderId">訂單編號</Label>
             <div className="relative">
@@ -1693,14 +1693,14 @@ ${item.quantity} PCS / CTN`
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>產品編號</TableHead>
-                    <TableHead>產品名稱</TableHead>
-                    <TableHead className="text-right">數量</TableHead>
-                    <TableHead className="text-center">貨幣</TableHead>
-                    <TableHead className="text-right">單價</TableHead>
-                    <TableHead className="text-right">金額 ({customerCurrency})</TableHead>
-                    <TableHead className="text-right">批次</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead className="w-[120px]">產品編號</TableHead>
+                    <TableHead className="w-[200px]">產品名稱</TableHead>
+                    <TableHead className="text-center w-[80px]">數量</TableHead>
+                    <TableHead className="text-center w-[80px]">貨幣</TableHead>
+                    <TableHead className="text-right w-[100px]">單價</TableHead>
+                    <TableHead className="text-right w-[120px]">金額 ({customerCurrency})</TableHead>
+                    <TableHead className="text-center w-[100px]">批次</TableHead>
+                    <TableHead className="text-center w-[80px]">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1716,7 +1716,7 @@ ${item.quantity} PCS / CTN`
                         )}
                       </TableCell>
                       <TableCell>{item.productName}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         {isProductSettingsConfirmed ? (
                           item.quantity
                         ) : (
@@ -1727,7 +1727,7 @@ ${item.quantity} PCS / CTN`
                             onChange={(e) =>
                               handleItemChange(item.id, "quantity", Number.parseInt(e.target.value) || 1)
                             }
-                            className="w-20 text-right"
+                            className="w-20 text-right mx-auto"
                           />
                         )}
                       </TableCell>
@@ -1771,7 +1771,7 @@ ${item.quantity} PCS / CTN`
                       <TableCell className="text-right">
                         {formatCurrencyAmount(calculateItemTotal(item), customerCurrency)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1783,7 +1783,7 @@ ${item.quantity} PCS / CTN`
                           批次 ({item.shipmentBatches.length})
                         </Button>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -1797,8 +1797,12 @@ ${item.quantity} PCS / CTN`
                   ))}
                   {orderItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
-                        尚未新增產品
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                          <Package className="h-8 w-8 mb-2 opacity-50" />
+                          <p>尚未新增產品</p>
+                          <p className="text-sm">請從上方選擇並添加產品</p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )}
@@ -1806,15 +1810,15 @@ ${item.quantity} PCS / CTN`
               </Table>
             </div>
 
-            <div className="flex justify-between items-center">
-              <div className="w-72 space-y-1">
-                <div className="flex justify-between">
-                  <span>小計:</span>
-                  <span>{formatCurrencyAmount(calculateTotal(), customerCurrency)}</span>
+            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-md border">
+              <div className="space-y-2">
+                <div className="flex justify-between gap-8">
+                  <span className="text-muted-foreground">小計:</span>
+                  <span className="font-medium">{formatCurrencyAmount(calculateTotal(), customerCurrency)}</span>
                 </div>
-                <div className="flex justify-between font-bold">
-                  <span>總計:</span>
-                  <span>{formatCurrencyAmount(calculateTotal(), customerCurrency)}</span>
+                <div className="flex justify-between gap-8">
+                  <span className="font-medium">總計:</span>
+                  <span className="font-bold text-lg">{formatCurrencyAmount(calculateTotal(), customerCurrency)}</span>
                 </div>
               </div>
 
@@ -1838,7 +1842,7 @@ ${item.quantity} PCS / CTN`
                   <Button
                     onClick={() => {
                       setActiveTab("procurement")
-                      setIsSplitView(true) // 自動啟用分割視圖
+                      setIsSplitView(true)
                     }}
                     disabled={!isProductSettingsConfirmed}
                     className="gap-2"
@@ -1880,7 +1884,7 @@ ${item.quantity} PCS / CTN`
                       <TableHead className="w-[120px]">產品編號</TableHead>
                       <TableHead>產品名稱</TableHead>
                       <TableHead className="text-center w-[80px]">數量</TableHead>
-                      <TableHead className="text-right w-[100px]">單價 (USD)</TableHead>
+                      <TableHead className="text-right w-[100px]">單價</TableHead>
                       <TableHead className="text-right w-[100px]">金額 (USD)</TableHead>
                       <TableHead className="text-center w-[80px]">批次</TableHead>
                     </TableRow>
@@ -1978,8 +1982,10 @@ ${item.quantity} PCS / CTN`
           {/* 保持原有的批次管理對話框內容不變 */}
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>管理批次出貨 - {currentManagingProductPartNo}</DialogTitle>
-              <DialogDescription>設置產品的批次出貨計劃</DialogDescription>
+              <DialogTitle className="text-xl">管理批次出貨 - {currentManagingProductPartNo}</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                設置產品的批次出貨計劃，確保批次總數量等於產品數量
+              </DialogDescription>
             </DialogHeader>
 
             {/* 批次管理對話框內容保持不變 */}
