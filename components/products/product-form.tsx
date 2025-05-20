@@ -194,8 +194,8 @@ export function ProductForm({
     }
   }, [initialValues, defaultProduct, product])
   */
-  
-    // fixed by ChatGPT
+
+  // fixed by ChatGPT
   const hasInitialized = useRef(false)
 
   useEffect(() => {
@@ -227,6 +227,29 @@ export function ProductForm({
         processData: processData,
       }
 
+      // 初始化客戶和供應商名稱顯示
+      if (initialValues.customer_id) {
+        const customer = customersData.find((c) => c.id === initialValues.customer_id)
+        if (customer) {
+          updatedProduct.customerName = {
+            id: customer.id,
+            name: customer.name,
+            code: customer.code,
+          }
+        }
+      }
+
+      if (initialValues.factory_id) {
+        const factory = factories.find((f) => f.id === initialValues.factory_id)
+        if (factory) {
+          updatedProduct.factoryName = {
+            id: factory.id,
+            name: factory.name,
+            code: factory.code,
+          }
+        }
+      }
+
       setProduct(updatedProduct)
       setIsCompositeProduct(initialValues.is_assembly || false)
 
@@ -235,7 +258,7 @@ export function ProductForm({
 
       hasInitialized.current = true
     }
-  }, [initialValues])
+  }, [initialValues, customersData, factories])
 
   // 確保新產品有默認製程資料
   useEffect(() => {
@@ -739,6 +762,12 @@ export function ProductForm({
       }))
       setNewPartManagement({ name: "", value: false })
       setIsPartManagementDialogOpen(false)
+
+      // 顯示成功提示
+      toast({
+        title: "零件管理特性已新增",
+        description: `特性 "${newPartManagement.name}" 已成功新增`,
+      })
     }
   }
 
@@ -767,6 +796,12 @@ export function ProductForm({
         filename: "",
       })
       setIsComplianceDialogOpen(false)
+
+      // 顯示成功提示
+      toast({
+        title: "符合性要求已新增",
+        description: `法規 "${newCompliance.regulation}" 已成功新增`,
+      })
     }
   }
 
@@ -1041,6 +1076,14 @@ export function ProductForm({
             factories={factories}
             productTypes={productTypes}
             setProduct={setProduct}
+            onCustomerChange={(customer) => {
+              handleInputChange("customerName", customer)
+              handleInputChange("customer_id", customer.id)
+            }}
+            onFactoryChange={(factory) => {
+              handleInputChange("factoryName", factory)
+              handleInputChange("factory_id", factory.id)
+            }}
           />
         </TabsContent>
 

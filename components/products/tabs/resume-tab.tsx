@@ -1,123 +1,25 @@
 "use client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Pencil } from "lucide-react"
+
 import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Plus, Trash2, FileText } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { toast } from "@/hooks/use-toast"
 
 interface ResumeTabProps {
   product: any
   handleInputChange: (field: string, value: any) => void
-  setIsOrderHistoryDialogOpen: (open: boolean) => void
-  setIsResumeNoteDialogOpen: (open: boolean) => void
-  handleOrderHistoryChange: (index: number, field: string, value: string | number) => void
-  handleRemoveOrderHistory: (index: number) => void
-}
-
-interface EditNoteDialogProps {
-  open: boolean
-  setOpen: (open: boolean) => void
-  initialNote: string
-  onSaveNote: (note: string) => void
-  title?: string
-}
-
-function EditNoteDialog({ open, setOpen, initialNote, onSaveNote, title = "編輯備註" }: EditNoteDialogProps) {
-  const [note, setNote] = useState(initialNote)
-
-  return (
-    <dialog open={open} className="fixed top-0 left-0 w-full h-full bg-black/50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">{title}</h2>
-        <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} className="w-full mb-4" />
-        <div className="flex justify-end space-x-2">
-          <Button variant="secondary" onClick={() => setOpen(false)}>
-            取消
-          </Button>
-          <Button
-            onClick={() => {
-              onSaveNote(note)
-              setOpen(false)
-            }}
-          >
-            儲存
-          </Button>
-        </div>
-      </div>
-    </dialog>
-  )
-}
-
-interface SpecialReqDialogProps {
-  open: boolean
-  setOpen: (open: boolean) => void
-  initialRequirements: string
-  onSaveRequirements: (requirements: string) => void
-}
-
-function SpecialReqDialog({ open, setOpen, initialRequirements, onSaveRequirements }: SpecialReqDialogProps) {
-  const [requirements, setRequirements] = useState(initialRequirements)
-
-  return (
-    <dialog open={open} className="fixed top-0 left-0 w-full h-full bg-black/50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">編輯特殊要求</h2>
-        <Textarea
-          value={requirements}
-          onChange={(e) => setRequirements(e.target.value)}
-          rows={4}
-          className="w-full mb-4"
-        />
-        <div className="flex justify-end space-x-2">
-          <Button variant="secondary" onClick={() => setOpen(false)}>
-            取消
-          </Button>
-          <Button
-            onClick={() => {
-              onSaveRequirements(requirements)
-              setOpen(false)
-            }}
-          >
-            儲存
-          </Button>
-        </div>
-      </div>
-    </dialog>
-  )
-}
-
-interface ComplianceDialogProps {
-  open: boolean
-  setOpen: (open: boolean) => void
-  initialInfo: string
-  onSaveInfo: (info: string) => void
-}
-
-function ComplianceDialog({ open, setOpen, initialInfo, onSaveInfo }: ComplianceDialogProps) {
-  const [info, setInfo] = useState(initialInfo)
-
-  return (
-    <dialog open={open} className="fixed top-0 left-0 w-full h-full bg-black/50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">編輯合規資料</h2>
-        <Textarea value={info} onChange={(e) => setInfo(e.target.value)} rows={4} className="w-full mb-4" />
-        <div className="flex justify-end space-x-2">
-          <Button variant="secondary" onClick={() => setOpen(false)}>
-            取消
-          </Button>
-          <Button
-            onClick={() => {
-              onSaveInfo(info)
-              setOpen(false)
-            }}
-          >
-            儲存
-          </Button>
-        </div>
-      </div>
-    </dialog>
-  )
+  setIsOrderHistoryDialogOpen?: (isOpen: boolean) => void
+  setIsResumeNoteDialogOpen?: (isOpen: boolean) => void
+  handleOrderHistoryChange?: (index: number, field: string, value: any) => void
+  handleRemoveOrderHistory?: (index: number) => void
 }
 
 export function ResumeTab({
@@ -128,206 +30,421 @@ export function ResumeTab({
   handleOrderHistoryChange,
   handleRemoveOrderHistory,
 }: ResumeTabProps) {
-  const [resumeData, setResumeData] = useState({
-    resume_note: product.resume_note || "",
-    quality_note: product.quality_note || "",
-    special_requirements: product.special_requirements || "",
-    compliance_info: product.compliance_info || "",
-  })
-  const [isEditNoteDialogOpen, setIsEditNoteDialogOpen] = useState(false)
-  const [isQualityNoteDialogOpen, setIsQualityNoteDialogOpen] = useState(false)
-  const [isSpecialReqDialogOpen, setIsSpecialReqDialogOpen] = useState(false)
-  const [isComplianceDialogOpen, setIsComplianceDialogOpen] = useState(false)
+  const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false)
+  const [newNote, setNewNote] = useState({ content: "", date: new Date().toISOString().split("T")[0], user: "" })
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([])
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false)
+  const [qualityEvents, setQualityEvents] = useState<any[]>([])
+  const [isLoadingQualityEvents, setIsLoadingQualityEvents] = useState(false)
 
-  // 確保在組件掛載時不會自動打開對話框
+  const supabase = createClientComponentClient()
+
+  // 從採購單表單中獲取訂單歷史
   useEffect(() => {
-    // 初始化數據，但不打開對話框
-    setResumeData({
-      resume_note: product.resume_note || "",
-      quality_note: product.quality_note || "",
-      special_requirements: product.special_requirements || "",
-      compliance_info: product.compliance_info || "",
-    })
-  }, [product])
+    async function fetchPurchaseOrders() {
+      if (!product.partNo) {
+        return
+      }
 
-  const onResumeDataChange = (updatedData: any) => {
-    handleInputChange("resume_note", updatedData.resume_note)
-    handleInputChange("quality_note", updatedData.quality_note)
-    handleInputChange("special_requirements", updatedData.special_requirements)
-    handleInputChange("compliance_info", updatedData.compliance_info)
+      setIsLoadingOrders(true)
+      try {
+        const { data, error } = await supabase
+          .from("purchases")
+          .select("*")
+          .eq("product_id", product.partNo)
+          .order("purchase_date", { ascending: false })
+
+        if (error) {
+          console.error("Error fetching purchase orders:", error)
+          toast({
+            title: "錯誤",
+            description: "無法獲取採購訂單資料",
+            variant: "destructive",
+          })
+        } else {
+          setPurchaseOrders(data || [])
+        }
+      } catch (error) {
+        console.error("Error fetching purchase orders:", error)
+      } finally {
+        setIsLoadingOrders(false)
+      }
+    }
+
+    fetchPurchaseOrders()
+  }, [product.partNo, supabase])
+
+  // 從客訴表單中獲取品質事件
+  useEffect(() => {
+    async function fetchQualityEvents() {
+      if (!product.partNo) {
+        return
+      }
+
+      setIsLoadingQualityEvents(true)
+      try {
+        const { data, error } = await supabase
+          .from("complaints")
+          .select("*")
+          .eq("product_id", product.partNo)
+          .order("complaint_date", { ascending: false })
+
+        if (error) {
+          console.error("Error fetching quality events:", error)
+          toast({
+            title: "錯誤",
+            description: "無法獲取品質事件資料",
+            variant: "destructive",
+          })
+        } else {
+          setQualityEvents(data || [])
+        }
+      } catch (error) {
+        console.error("Error fetching quality events:", error)
+      } finally {
+        setIsLoadingQualityEvents(false)
+      }
+    }
+
+    fetchQualityEvents()
+  }, [product.partNo, supabase])
+
+  // 處理添加備註
+  const handleAddNote = () => {
+    if (newNote.content && newNote.user) {
+      const updatedNotes = [...(product.resumeNotes || []), newNote]
+      handleInputChange("resumeNotes", updatedNotes)
+      setNewNote({ content: "", date: new Date().toISOString().split("T")[0], user: "" })
+      setIsAddNoteDialogOpen(false)
+
+      toast({
+        title: "成功",
+        description: "備註已添加",
+      })
+    } else {
+      toast({
+        title: "錯誤",
+        description: "請填寫備註內容和使用者",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleSaveResumeNote = (note: string) => {
-    const updatedData = {
-      ...resumeData,
-      resume_note: note,
-    }
-    setResumeData(updatedData)
-    onResumeDataChange(updatedData)
-    setIsEditNoteDialogOpen(false)
+  // 處理刪除備註
+  const handleRemoveNote = (index: number) => {
+    const updatedNotes = [...(product.resumeNotes || [])]
+    updatedNotes.splice(index, 1)
+    handleInputChange("resumeNotes", updatedNotes)
   }
 
-  const handleSaveSpecialRequirements = (requirements: string) => {
-    const updatedData = {
-      ...resumeData,
-      special_requirements: requirements,
-    }
-    setResumeData(updatedData)
-    onResumeDataChange(updatedData)
-    setIsSpecialReqDialogOpen(false)
+  // 查看採購訂單詳情
+  const viewPurchaseOrder = (orderId: string) => {
+    window.open(`/purchases/${orderId}`, "_blank")
   }
 
-  const handleSaveComplianceInfo = (info: string) => {
-    const updatedData = {
-      ...resumeData,
-      compliance_info: info,
-    }
-    setResumeData(updatedData)
-    onResumeDataChange(updatedData)
-    setIsComplianceDialogOpen(false)
-  }
-
-  const handleSaveQualityNote = (note: string) => {
-    const updatedData = {
-      ...resumeData,
-      quality_note: note,
-    }
-    setResumeData(updatedData)
-    onResumeDataChange(updatedData)
-    setIsQualityNoteDialogOpen(false)
+  // 查看客訴詳情
+  const viewComplaint = (complaintId: string) => {
+    window.open(`/complaints/${complaintId}`, "_blank")
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 左側欄 */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-semibold">基本履歷資料</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setIsEditNoteDialogOpen(true)}>
-                  <Pencil className="h-4 w-4 mr-1" /> 編輯備註
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="resume_note">產品備註</Label>
-                    <div className="p-3 bg-muted rounded-md min-h-[100px] whitespace-pre-wrap">
-                      {resumeData.resume_note || "無產品備註"}
-                    </div>
-                  </div>
+      {/* 模具資訊區塊 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>模具資訊</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div className="flex items-center space-x-2">
+              <Label className="text-base font-medium">有無開模具</Label>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasMold"
+                    checked={product.hasMold === true}
+                    onCheckedChange={(checked) => handleInputChange("hasMold", checked === true)}
+                  />
+                  <Label htmlFor="hasMold">有</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="noMold"
+                    checked={product.hasMold === false}
+                    onCheckedChange={(checked) => handleInputChange("hasMold", checked !== true)}
+                  />
+                  <Label htmlFor="noMold">無</Label>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-semibold">品質資料</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setIsQualityNoteDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> 添加品質備註
-                </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="moldCost">模具費</Label>
+                <Input
+                  id="moldCost"
+                  type="number"
+                  value={product.moldCost || ""}
+                  onChange={(e) => handleInputChange("moldCost", e.target.value ? Number(e.target.value) : "")}
+                  disabled={!product.hasMold}
+                />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="quality_note">品質備註</Label>
-                    <div className="p-3 bg-muted rounded-md min-h-[100px] whitespace-pre-wrap">
-                      {resumeData.quality_note || "無品質備註"}
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="refundableMoldQuantity">可退模具數量</Label>
+                <Input
+                  id="refundableMoldQuantity"
+                  type="number"
+                  value={product.refundableMoldQuantity || ""}
+                  onChange={(e) =>
+                    handleInputChange("refundableMoldQuantity", e.target.value ? Number(e.target.value) : "")
+                  }
+                  disabled={!product.hasMold}
+                />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* 右側欄 */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-semibold">特殊要求</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setIsSpecialReqDialogOpen(true)}>
-                  <Pencil className="h-4 w-4 mr-1" /> 編輯特殊要求
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="special_requirements">特殊要求內容</Label>
-                    <div className="p-3 bg-muted rounded-md min-h-[100px] whitespace-pre-wrap">
-                      {resumeData.special_requirements || "無特殊要求"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="flex items-center space-x-2">
+              <Label className="text-base font-medium">已退模</Label>
+              <Checkbox
+                id="moldReturned"
+                checked={product.moldReturned === true}
+                onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
+                disabled={!product.hasMold}
+              />
+            </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-semibold">合規資料</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setIsComplianceDialogOpen(true)}>
-                  <Pencil className="h-4 w-4 mr-1" /> 編輯合規資料
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="compliance_info">合規資訊</Label>
-                    <div className="p-3 bg-muted rounded-md min-h-[100px] whitespace-pre-wrap">
-                      {resumeData.compliance_info || "無合規資訊"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="accountingNote">會計備註</Label>
+              <Textarea
+                id="accountingNote"
+                value={product.accountingNote || ""}
+                onChange={(e) => handleInputChange("accountingNote", e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* 對話框 */}
-      <EditNoteDialog
-        open={isEditNoteDialogOpen}
-        setOpen={setIsEditNoteDialogOpen}
-        initialNote={resumeData.resume_note || ""}
-        onSaveNote={handleSaveResumeNote}
-      />
+      {/* 訂單歷史區塊 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>訂單歷史</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingOrders ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>訂單號碼</TableHead>
+                  <TableHead>數量</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchaseOrders.length > 0 ? (
+                  purchaseOrders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>{order.purchase_number}</TableCell>
+                      <TableCell>{order.quantity}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => viewPurchaseOrder(order.id)}>
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center">
+                      無訂單歷史記錄
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-      <SpecialReqDialog
-        open={isSpecialReqDialogOpen}
-        setOpen={setIsSpecialReqDialogOpen}
-        initialRequirements={resumeData.special_requirements || ""}
-        onSaveRequirements={handleSaveSpecialRequirements}
-      />
+      {/* 零件品質事件區塊 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>零件品質事件</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingQualityEvents ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>客訴編號</TableHead>
+                  <TableHead>問題描述</TableHead>
+                  <TableHead>狀態</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {qualityEvents.length > 0 ? (
+                  qualityEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>{event.complaint_number}</TableCell>
+                      <TableCell>{event.description}</TableCell>
+                      <TableCell>{event.status}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => viewComplaint(event.id)}>
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center">
+                      無品質事件記錄
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
 
-      <ComplianceDialog
-        open={isComplianceDialogOpen}
-        setOpen={setIsComplianceDialogOpen}
-        initialInfo={resumeData.compliance_info || ""}
-        onSaveInfo={handleSaveComplianceInfo}
-      />
+          <div className="mt-6 space-y-2">
+            <Label htmlFor="qualityNotes">零件品質註記</Label>
+            <Textarea
+              id="qualityNotes"
+              value={product.qualityNotes || ""}
+              onChange={(e) => handleInputChange("qualityNotes", e.target.value)}
+              rows={4}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      <EditNoteDialog
-        open={isQualityNoteDialogOpen}
-        setOpen={setIsQualityNoteDialogOpen}
-        initialNote={resumeData.quality_note || ""}
-        onSaveNote={handleSaveQualityNote}
-        title="添加品質備註"
-      />
+      {/* 編輯備註區塊 */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>編輯備註</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.preventDefault()
+              setIsAddNoteDialogOpen(true)
+            }}
+            type="button"
+          >
+            <Plus className="h-4 w-4 mr-1" /> 新增備註
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>日期</TableHead>
+                <TableHead>使用者</TableHead>
+                <TableHead>內容</TableHead>
+                <TableHead className="w-[80px]">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {product.resumeNotes && product.resumeNotes.length > 0 ? (
+                product.resumeNotes.map((note: any, index: number) => (
+                  <TableRow key={index}>
+                    <TableCell>{note.date}</TableCell>
+                    <TableCell>{note.user}</TableCell>
+                    <TableCell>{note.content}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveNote(index)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    無備註記錄
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* 新增備註對話框 */}
+      <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新增備註</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="noteDate">日期</Label>
+              <Input
+                id="noteDate"
+                type="date"
+                value={newNote.date}
+                onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="noteUser">使用者</Label>
+              <Input
+                id="noteUser"
+                value={newNote.user}
+                onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="noteContent">內容</Label>
+              <Textarea
+                id="noteContent"
+                value={newNote.content}
+                onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
+                rows={4}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && e.ctrlKey) {
+                    e.preventDefault()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={() => setIsAddNoteDialogOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                handleAddNote()
+              }}
+            >
+              新增
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

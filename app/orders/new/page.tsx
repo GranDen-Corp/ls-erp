@@ -23,6 +23,7 @@ export default function NewOrderPage() {
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const formRef = useRef<any>(null)
+  const hasSetOrderData = useRef(false)
   const [orderNumber, setOrderNumber] = useState<string>("")
   const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState<boolean>(true)
   const [testData, setTestData] = useState<string>("")
@@ -77,10 +78,11 @@ export default function NewOrderPage() {
         setSubmitSuccess(true)
 
         // 保存創建的訂單ID，以便後續使用
-        if (result && result[0]) {
+        if (result && result[0] && !hasSetOrderData.current) {
           setCreatedOrderId(result[0].order_id)
           setOrderData(result[0])
           setCanCreatePurchase(true)
+          hasSetOrderData.current = true
         }
 
         // 3秒後跳轉到訂單列表

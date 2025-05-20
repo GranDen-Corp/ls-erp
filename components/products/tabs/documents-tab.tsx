@@ -8,21 +8,19 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Plus, X } from "lucide-react"
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Textarea } from "@/components/ui/textarea"
 
 interface DocumentsTabProps {
   product: any
   setProduct: React.Dispatch<React.SetStateAction<any>>
-  setIsNoteDialogOpen: (open: boolean) => void
-  setIsPartManagementDialogOpen: (open: boolean) => void
-  setIsComplianceDialogOpen: (open: boolean) => void
-  handlePartManagementChange: (field: string, value: boolean) => void
-  handleComplianceStatusChange: (regulation: string, status: string) => void
-  handleComplianceFieldChange: (regulation: string, field: string, value: string) => void
-  form?: any // 將 form 設為可選
-  documentData?: any // 將 documentData 設為可選
-  onDocumentDataChange?: (data: any) => void // 將 onDocumentDataChange 設為可選
+  setIsNoteDialogOpen?: (open: boolean) => void
+  setIsPartManagementDialogOpen?: (open: boolean) => void
+  setIsComplianceDialogOpen?: (open: boolean) => void
+  handlePartManagementChange?: (field: string, value: boolean) => void
+  handleComplianceStatusChange?: (regulation: string, status: string) => void
+  handleComplianceFieldChange?: (regulation: string, field: string, value: string) => void
+  form?: any
+  documentData?: any
+  onDocumentDataChange?: (data: any) => void
   isReadOnly?: boolean
 }
 
@@ -162,64 +160,7 @@ export function DocumentsTab({
                 </Button>
               </div>
 
-              {/* 使用條件渲染，只有當 form 存在時才渲染 FormField */}
-              {form ? (
-                <FormField
-                  control={form.control}
-                  name="important_documents"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>重要文件</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="輸入重要文件路徑"
-                          className="min-h-[100px] font-mono text-sm"
-                          value={field.value}
-                          onChange={(e) => {
-                            field.onChange(e.target.value)
-                            if (onDocumentDataChange) {
-                              const updatedData = {
-                                ...(documentData || {}),
-                                important_documents: e.target.value,
-                              }
-                              onDocumentDataChange(updatedData)
-                            }
-                          }}
-                          disabled={isReadOnly}
-                        />
-                      </FormControl>
-                      <FormDescription>請輸入完整的文件路徑，每行一個文件</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ) : (
-                <div className="space-y-2">
-                  <Label>重要文件</Label>
-                  <Textarea
-                    placeholder="輸入重要文件路徑"
-                    className="min-h-[100px] font-mono text-sm"
-                    value={product.importantDocuments ? JSON.stringify(product.importantDocuments, null, 2) : ""}
-                    onChange={(e) => {
-                      try {
-                        const parsed = JSON.parse(e.target.value)
-                        setProduct((prev: any) => ({
-                          ...prev,
-                          importantDocuments: parsed,
-                        }))
-                      } catch (error) {
-                        // 如果不是有效的 JSON，則作為純文本處理
-                        setProduct((prev: any) => ({
-                          ...prev,
-                          importantDocuments: { text: e.target.value },
-                        }))
-                      }
-                    }}
-                    disabled={isReadOnly}
-                  />
-                  <p className="text-sm text-gray-500">請輸入完整的文件路徑，每行一個文件</p>
-                </div>
-              )}
+              {/* 直接顯示文件上傳區域，移除JSON欄位和提示文字 */}
 
               {/* Standard Documents */}
               <div className="space-y-4 mt-4">
@@ -410,7 +351,7 @@ export function DocumentsTab({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsPartManagementDialogOpen(true)}
+                  onClick={() => setIsPartManagementDialogOpen && setIsPartManagementDialogOpen(true)}
                   disabled={isReadOnly}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -435,7 +376,9 @@ export function DocumentsTab({
                       id="safetyPart"
                       checked={product.partManagement?.safetyPart || false}
                       onCheckedChange={(checked) =>
-                        !isReadOnly && handlePartManagementChange("safetyPart", checked === true)
+                        !isReadOnly &&
+                        handlePartManagementChange &&
+                        handlePartManagementChange("safetyPart", checked === true)
                       }
                       disabled={isReadOnly}
                     />
@@ -451,7 +394,9 @@ export function DocumentsTab({
                       id="automotivePart"
                       checked={product.partManagement?.automotivePart || false}
                       onCheckedChange={(checked) =>
-                        !isReadOnly && handlePartManagementChange("automotivePart", checked === true)
+                        !isReadOnly &&
+                        handlePartManagementChange &&
+                        handlePartManagementChange("automotivePart", checked === true)
                       }
                       disabled={isReadOnly}
                     />
@@ -467,7 +412,9 @@ export function DocumentsTab({
                       id="CBAMPart"
                       checked={product.partManagement?.CBAMPart || false}
                       onCheckedChange={(checked) =>
-                        !isReadOnly && handlePartManagementChange("CBAMPart", checked === true)
+                        !isReadOnly &&
+                        handlePartManagementChange &&
+                        handlePartManagementChange("CBAMPart", checked === true)
                       }
                       disabled={isReadOnly}
                     />
@@ -483,7 +430,9 @@ export function DocumentsTab({
                       id="clockRequirement"
                       checked={product.partManagement?.clockRequirement || false}
                       onCheckedChange={(checked) =>
-                        !isReadOnly && handlePartManagementChange("clockRequirement", checked === true)
+                        !isReadOnly &&
+                        handlePartManagementChange &&
+                        handlePartManagementChange("clockRequirement", checked === true)
                       }
                       disabled={isReadOnly}
                     />
@@ -504,7 +453,7 @@ export function DocumentsTab({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsComplianceDialogOpen(true)}
+                  onClick={() => setIsComplianceDialogOpen && setIsComplianceDialogOpen(true)}
                   disabled={isReadOnly}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -539,7 +488,9 @@ export function DocumentsTab({
                     {regulation === "PFAS" || regulation === "CMRT" || regulation === "EMRT" ? (
                       <RadioGroup
                         value={product.complianceStatus?.[regulation]?.status || ""}
-                        onValueChange={(value) => !isReadOnly && handleComplianceStatusChange(regulation, value)}
+                        onValueChange={(value) =>
+                          !isReadOnly && handleComplianceStatusChange && handleComplianceStatusChange(regulation, value)
+                        }
                         className="flex justify-center space-x-4"
                         disabled={isReadOnly}
                       >
@@ -559,7 +510,9 @@ export function DocumentsTab({
                     ) : (
                       <RadioGroup
                         value={product.complianceStatus?.[regulation]?.status || ""}
-                        onValueChange={(value) => !isReadOnly && handleComplianceStatusChange(regulation, value)}
+                        onValueChange={(value) =>
+                          !isReadOnly && handleComplianceStatusChange && handleComplianceStatusChange(regulation, value)
+                        }
                         className="flex justify-center space-x-4"
                         disabled={isReadOnly}
                       >
@@ -582,7 +535,9 @@ export function DocumentsTab({
                         type="text"
                         value={product.complianceStatus?.[regulation]?.substances || ""}
                         onChange={(e) =>
-                          !isReadOnly && handleComplianceFieldChange(regulation, "substances", e.target.value)
+                          !isReadOnly &&
+                          handleComplianceFieldChange &&
+                          handleComplianceFieldChange(regulation, "substances", e.target.value)
                         }
                         placeholder="含有物質"
                         disabled={isReadOnly}
@@ -593,7 +548,9 @@ export function DocumentsTab({
                         type="text"
                         value={product.complianceStatus?.[regulation]?.reason || ""}
                         onChange={(e) =>
-                          !isReadOnly && handleComplianceFieldChange(regulation, "reason", e.target.value)
+                          !isReadOnly &&
+                          handleComplianceFieldChange &&
+                          handleComplianceFieldChange(regulation, "reason", e.target.value)
                         }
                         placeholder="理由"
                         disabled={isReadOnly}
@@ -635,7 +592,25 @@ export function DocumentsTab({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsNoteDialogOpen(true)}
+                  onClick={() => {
+                    if (setIsNoteDialogOpen) {
+                      setIsNoteDialogOpen(true)
+                    } else {
+                      // 如果沒有提供對話框控制函數，則直接在頁面上添加一個臨時備註
+                      const newNote = {
+                        content: prompt("請輸入備註內容") || "",
+                        user: prompt("請輸入使用者名稱") || "系統",
+                        date: new Date().toLocaleDateString("zh-TW"),
+                      }
+
+                      if (newNote.content) {
+                        setProduct((prev: any) => ({
+                          ...prev,
+                          editNotes: [...(prev.editNotes || []), newNote],
+                        }))
+                      }
+                    }
+                  }}
                   disabled={isReadOnly}
                 >
                   <Plus className="h-4 w-4 mr-2" />

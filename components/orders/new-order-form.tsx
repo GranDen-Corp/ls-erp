@@ -1,6 +1,6 @@
 "use client"
 
-import { forwardRef, useImperativeHandle, useEffect, memo } from "react"
+import { forwardRef, useImperativeHandle, useEffect, memo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -149,6 +149,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     }, [currentStep, orderForm])
 
     // 當訂單數據變更時，更新表單 - only run when orderData or currentStep changes
+    /*
     useEffect(() => {
       if (orderData) {
         // 如果有訂單數據，則禁用編輯
@@ -156,6 +157,17 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           // 在採購步驟中，只需要確保採購資料已準備好
           orderForm.setIsProcurementReady(true)
         }
+      }
+    }, [orderData, currentStep, orderForm])
+    */
+
+    // fixed by ChatGPT
+    const hasProcurementReady = useRef(false)
+
+    useEffect(() => {
+      if (orderData && currentStep === 1 && !hasProcurementReady.current) {
+        orderForm.setIsProcurementReady(true)
+        hasProcurementReady.current = true
       }
     }, [orderData, currentStep, orderForm])
 

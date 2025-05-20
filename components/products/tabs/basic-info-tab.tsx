@@ -1,11 +1,16 @@
 "use client"
 
-import type React from "react"
-import { Label } from "@/components/ui/label"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useEffect } from "react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Command, CommandList, CommandGroup, CommandInput, CommandItem, CommandEmpty } from "@/components/ui/command"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 interface BasicInfoTabProps {
   product: any
@@ -13,11 +18,9 @@ interface BasicInfoTabProps {
   customersData: any[]
   factories: any[]
   productTypes: any[]
-  setProduct: React.Dispatch<React.SetStateAction<any>>
-  // 將這些屬性設為可選
-  form?: any
-  formData?: any
-  onFormDataChange?: (data: any) => void
+  setProduct: (product: any) => void
+  onCustomerChange?: (customer: any) => void
+  onFactoryChange?: (factory: any) => void
 }
 
 export function BasicInfoTab({
@@ -27,253 +30,339 @@ export function BasicInfoTab({
   factories,
   productTypes,
   setProduct,
-  form,
-  formData,
-  onFormDataChange,
+  onCustomerChange,
+  onFactoryChange,
 }: BasicInfoTabProps) {
-  // 只有當 form 存在時才設置監聽
-  useEffect(() => {
-    if (form && form.watch && onFormDataChange && formData) {
-      // 監聽客戶編號變更
-      const subscription = form.watch((value: any, { name }: { name: string }) => {
-        if (name === "customer_id" || name === "supplier_id") {
-          // 清除組合產品選擇
-          const updatedFormData = {
-            ...formData,
-            assembly_components: [],
-          }
-          form.setValue("assembly_components", [])
-          onFormDataChange(updatedFormData)
-        }
-      })
+  const [open, setOpen] = useState(false)
+  const [factoryOpen, setFactoryOpen] = useState(false)
+  const [customerName, setCustomerName] = useState("")
+  const [factoryName, setFactoryName] = useState("")
+  const supabase = createClientComponentClient()
 
-      return () => subscription.unsubscribe()
+  // 初始化時從資料庫獲取客戶和供應商名稱
+  useEffect(() => {
+    async function fetchNames() {
+      try {
+        console.log("Fetching names for product:", product)
+
+        // 獲取客戶名稱
+        if (product.customer_id) {
+          console.log("Fetching customer name for ID:", product.customer_id)
+          const { data: customerData, error: customerError } = await supabase
+            .from("customers")
+            .select("customer_short_name")
+            .eq("customer_id", product.customer_id)
+            .single()
+
+          if (!customerError && customerData) {
+            console.log("Found customer data:", customerData)
+            setCustomerName(customerData.customer_short_name)
+          } else {
+            console.error("Error fetching customer name:", customerError)
+          }
+        }
+
+        // 獲取供應商名稱
+        if (product.factory_id) {
+          console.log("Fetching factory name for ID:", product.factory_id)
+          const { data: factoryData, error: factoryError } = await supabase
+            .from("suppliers")
+            .select("factory_name")
+            .eq("factory_id", product.factory_id)
+            .single()
+
+          if (!factoryError && factoryData) {
+            console.log("Found factory data:", factoryData)
+            setFactoryName(factoryData.factory_name)
+          } else {
+            console.error("Error fetching factory name:", factoryError)
+          }
+        }
+      } catch (error) {
+        console.error("Error in fetchNames:", error)
+      }
     }
-    // 如果 form 不存在，返回空函數
-    return () => {}
-  }, [form, formData, onFormDataChange])
+
+    fetchNames()
+  }, [product, supabase])
+
+  // 處理客戶選擇
+  const handleCustomerSelect = async (customerId: string) => {
+    try {
+      console.log("Selected customer ID:", customerId)
+
+      // 從資料庫獲取客戶名稱
+      const { data: customerData, error: customerError } = await supabase
+        .from("customers")
+        .select("customer_short_name")
+        .eq("customer_id", customerId)
+        .single()
+
+      if (customerError) {
+        console.error("Error fetching customer data:", customerError)
+        return
+      }
+
+      if (customerData) {
+        const customerShortName = customerData.customer_short_name
+        console.log("Found customer name:", customerShortName)
+
+        // 更新客戶名稱狀態
+        setCustomerName(customerShortName)
+
+        // 更新產品資料
+        handleInputChange("customer_id", customerId)
+      }
+
+      setOpen(false)
+    } catch (error) {
+      console.error("Error in handleCustomerSelect:", error)
+    }
+  }
+
+  // 處理供應商選擇
+  const handleFactorySelect = async (factoryId: string) => {
+    try {
+      console.log("Selected factory ID:", factoryId)
+
+      // 從資料庫獲取供應商名稱
+      const { data: factoryData, error: factoryError } = await supabase
+        .from("suppliers")
+        .select("factory_name")
+        .eq("factory_id", factoryId)
+        .single()
+
+      if (factoryError) {
+        console.error("Error fetching factory data:", factoryError)
+        return
+      }
+
+      if (factoryData) {
+        const factoryName = factoryData.factory_name
+        console.log("Found factory name:", factoryName)
+
+        // 更新供應商名稱狀態
+        setFactoryName(factoryName)
+
+        // 更新產品資料
+        handleInputChange("factory_id", factoryId)
+      }
+
+      setFactoryOpen(false)
+    } catch (error) {
+      console.error("Error in handleFactorySelect:", error)
+    }
+  }
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="grid grid-cols-2 gap-6">
-        {/* Left column fields */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="componentName" className="flex items-center">
-                <span className="text-red-500 mr-1">*</span>零件名稱
-              </Label>
-              <Input
-                id="componentName"
-                value={product.componentName || ""}
-                onChange={(e) => handleInputChange("componentName", e.target.value)}
-                placeholder="輸入零件名稱"
-              />
-            </div>
-
-            {/* New English component name field */}
-            <div className="space-y-2">
-              <Label htmlFor="componentNameEn" className="flex items-center">
-                <span className="text-red-500 mr-1">*</span>零件名稱 (英文)
-              </Label>
-              <Input
-                id="componentNameEn"
-                value={product.componentNameEn || ""}
-                onChange={(e) => handleInputChange("componentNameEn", e.target.value)}
-                placeholder="Enter component name in English"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="partNo" className="flex items-center">
-                <span className="text-red-500 mr-1">*</span>Part No.
-              </Label>
-              <Input
-                id="partNo"
-                value={product.partNo || ""}
-                onChange={(e) => handleInputChange("partNo", e.target.value)}
-                placeholder="輸入產品料號"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="customsCode">海關碼</Label>
-              <Input
-                id="customsCode"
-                value={product.customsCode || ""}
-                onChange={(e) => handleInputChange("customsCode", e.target.value)}
-                placeholder="輸入海關編碼"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="endCustomer">終端客戶</Label>
-              <Input
-                id="endCustomer"
-                value={product.endCustomer || ""}
-                onChange={(e) => handleInputChange("endCustomer", e.target.value)}
-                placeholder="輸入終端客戶"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="customerCode" className="flex items-center">
-                <span className="text-red-500 mr-1">*</span>客戶編號
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Select
-                  value={product.customerName?.id || ""}
-                  onValueChange={(value) => {
-                    const selectedCustomer = customersData.find((c) => c.id === value)
-                    if (selectedCustomer) {
-                      setProduct((prev: any) => ({
-                        ...prev,
-                        customerName: {
-                          id: selectedCustomer.id,
-                          name: selectedCustomer.name,
-                          code: selectedCustomer.code,
-                        },
-                      }))
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="選擇客戶編號" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customersData.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>{" "}
-                <Input value={product.customerName?.name || ""} readOnly placeholder="客戶名稱將自動顯示" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="factoryCode">供應商編號</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Select
-                  value={product.factoryName?.id || ""}
-                  onValueChange={(value) => {
-                    const selectedFactory = factories.find((f) => f.id === value)
-                    if (selectedFactory) {
-                      setProduct((prev: any) => ({
-                        ...prev,
-                        factoryName: {
-                          id: selectedFactory.id,
-                          name: selectedFactory.name,
-                          code: selectedFactory.code,
-                        },
-                      }))
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="選擇供應商編號" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {factories.map((factory) => (
-                      <SelectItem key={factory.id} value={factory.id}>
-                        {factory.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Input value={product.factoryName?.name || ""} readOnly placeholder="供應商名稱將自動顯示" />
-              </div>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* 基本信息 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="componentName">零件名稱</Label>
+          <Input
+            id="componentName"
+            value={product.componentName || ""}
+            onChange={(e) => handleInputChange("componentName", e.target.value)}
+            placeholder="輸入零件名稱"
+          />
         </div>
 
-        {/* Right column fields */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="specification">規格</Label>
-              <Input
-                id="specification"
-                value={product.specification || ""}
-                onChange={(e) => handleInputChange("specification", e.target.value)}
-                placeholder="輸入產品規格"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="componentNameEn">零件名稱 (英文)</Label>
+          <Input
+            id="componentNameEn"
+            value={product.componentNameEn || ""}
+            onChange={(e) => handleInputChange("componentNameEn", e.target.value)}
+            placeholder="輸入英文零件名稱"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="productType">產品類別</Label>
-              <Select
-                value={product.productType || ""}
-                onValueChange={(value) => handleInputChange("productType", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="選擇產品類別" />
-                </SelectTrigger>
-                <SelectContent>
-                  {productTypes.map((type: any) => (
-                    <SelectItem key={type.id} value={type.type_code}>
-                      {type.type_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="partNo">Part No.</Label>
+          <Input
+            id="partNo"
+            value={product.partNo || ""}
+            onChange={(e) => handleInputChange("partNo", e.target.value)}
+            placeholder="輸入PN"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="classificationCode">今湛分類碼</Label>
-              <Input
-                id="classificationCode"
-                value={product.classificationCode || ""}
-                onChange={(e) => handleInputChange("classificationCode", e.target.value)}
-                placeholder="輸入分類代碼"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="customsCode">海關碼</Label>
+          <Input
+            id="customsCode"
+            value={product.customsCode || ""}
+            onChange={(e) => handleInputChange("customsCode", e.target.value)}
+            placeholder="輸入海關碼"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="vehicleDrawingNo">車廠圖號</Label>
-              <Input
-                id="vehicleDrawingNo"
-                value={product.vehicleDrawingNo || ""}
-                onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
-                placeholder="輸入車廠圖號"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="endCustomer">終端客戶</Label>
+          <Input
+            id="endCustomer"
+            value={product.endCustomer || ""}
+            onChange={(e) => handleInputChange("endCustomer", e.target.value)}
+            placeholder="輸入終端客戶"
+          />
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="customerDrawingNo">客戶圖號</Label>
-              <Input
-                id="customerDrawingNo"
-                value={product.customerDrawingNo || ""}
-                onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
-                placeholder="輸入客戶圖號"
-              />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="productType">產品類別</Label>
+          <Select value={product.productType || ""} onValueChange={(value) => handleInputChange("productType", value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="選擇產品類別" />
+            </SelectTrigger>
+            <SelectContent>
+              {productTypes.map((type) => (
+                <SelectItem key={type.type_id} value={type.type_name}>
+                  {type.type_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="productPeriod">產品別稱</Label>
-              <Input
-                id="productPeriod"
-                value={product.productPeriod || ""}
-                onChange={(e) => handleInputChange("productPeriod", e.target.value)}
-                placeholder="輸入產品期稿"
-              />
-            </div>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="classificationCode">今湛分類碼</Label>
+          <Input
+            id="classificationCode"
+            value={product.classificationCode || ""}
+            onChange={(e) => handleInputChange("classificationCode", e.target.value)}
+            placeholder="輸入今湛分類碼"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="vehicleDrawingNo">車廠圖號</Label>
+          <Input
+            id="vehicleDrawingNo"
+            value={product.vehicleDrawingNo || ""}
+            onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
+            placeholder="輸入車廠圖號"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customerDrawingNo">客戶圖號</Label>
+          <Input
+            id="customerDrawingNo"
+            value={product.customerDrawingNo || ""}
+            onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
+            placeholder="輸入客戶圖號"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="status">狀態</Label>
+          <Select value={product.status || ""} onValueChange={(value) => handleInputChange("status", value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="選擇狀態" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">活躍</SelectItem>
+              <SelectItem value="inactive">非活躍</SelectItem>
+              <SelectItem value="discontinued">已停產</SelectItem>
+              <SelectItem value="development">開發中</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customerName">客戶編號</Label>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
+                {product.customer_id || "選擇客戶"}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0">
+              <Command>
+                <CommandInput placeholder="搜索客戶..." />
+                <CommandList>
+                  <CommandEmpty>沒有找到客戶</CommandEmpty>
+                  <CommandGroup className="max-h-[300px] overflow-y-auto">
+                    {customersData.map((customer) => (
+                      <CommandItem
+                        key={customer.customer_id}
+                        value={customer.customer_id}
+                        onSelect={() => handleCustomerSelect(customer.customer_id)}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            product.customer_id === customer.customer_id ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        {customer.customer_id} - {customer.customer_short_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customerNameDisplay">客戶名稱</Label>
+          <Input id="customerNameDisplay" value={customerName || ""} readOnly disabled />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="factoryName">供應商編號</Label>
+          <Popover open={factoryOpen} onOpenChange={setFactoryOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" aria-expanded={factoryOpen} className="w-full justify-between">
+                {product.factory_id || "選擇供應商"}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0">
+              <Command>
+                <CommandInput placeholder="搜索供應商..." />
+                <CommandList>
+                  <CommandEmpty>沒有找到供應商</CommandEmpty>
+                  <CommandGroup className="max-h-[300px] overflow-y-auto">
+                    {factories.map((factory) => (
+                      <CommandItem
+                        key={factory.factory_id}
+                        value={factory.factory_id}
+                        onSelect={() => handleFactorySelect(factory.factory_id)}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            product.factory_id === factory.factory_id ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        {factory.factory_id} - {factory.factory_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="factoryNameDisplay">供應商名稱</Label>
+          <Input id="factoryNameDisplay" value={factoryName || ""} readOnly disabled />
         </div>
       </div>
 
-      {/* Product description */}
-      <div className="space-y-2 pt-4">
-        <Label htmlFor="description">產品描述</Label>
+      {/* 描述 */}
+      <div className="space-y-2">
+        <Label htmlFor="description">描述</Label>
         <Textarea
           id="description"
           value={product.description || ""}
           onChange={(e) => handleInputChange("description", e.target.value)}
-          rows={3}
-          placeholder="輸入產品詳細描述"
-          className="w-full min-h-[80px]"
+          placeholder="輸入產品描述"
+          rows={4}
         />
       </div>
     </div>

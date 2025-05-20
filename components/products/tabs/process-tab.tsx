@@ -8,6 +8,61 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
 import { getTranslationsByCategory, formatProcessesForOrderRemarks } from "@/lib/translation-service"
 import { ProcessDialog } from "../dialogs/process-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+
+// 預設製程資料 - 根據提供的圖片更新
+export const defaultProcesses = [
+  {
+    id: "proc_1",
+    process: "材料",
+    vendor: "中鋼",
+    capacity: "產能數值",
+    requirements: "SAE 10B21",
+    report: "材證",
+  },
+  {
+    id: "proc_2",
+    process: "成型",
+    vendor: "岡岩",
+    capacity: "產能數值",
+    requirements: "",
+    report: "",
+  },
+  {
+    id: "proc_3",
+    process: "搓牙",
+    vendor: "岡岩",
+    capacity: "產能數值",
+    requirements: "",
+    report: "",
+  },
+  {
+    id: "proc_4",
+    process: "熱處理",
+    vendor: "力大",
+    capacity: "產能數值",
+    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640Mpa",
+    report: "硬度，拉力",
+  },
+  {
+    id: "proc_5",
+    process: "電鍍",
+    vendor: "頂上興",
+    capacity: "產能數值",
+    requirements: "三價鉻鋅SUM MIN，鹽測12/48",
+    report: "膜厚，鹽測，除氫",
+  },
+  {
+    id: "proc_6",
+    process: "篩選",
+    vendor: "聖鼎",
+    capacity: "產能數值",
+    requirements: "50 PPM：混料、總長",
+    report: "篩選報告",
+  },
+]
 
 interface ProcessTabProps {
   product?: any
@@ -35,6 +90,8 @@ export function ProcessTab({
   const [translations, setTranslations] = useState<any[]>([])
   const [isTranslating, setIsTranslating] = useState(false)
   const [isAddProcessDialogOpen, setIsAddProcessDialogOpen] = useState(false)
+  const [isSpecialReqDialogOpen, setIsSpecialReqDialogOpen] = useState(false)
+  const [isProcessNoteDialogOpen, setIsProcessNoteDialogOpen] = useState(false)
   const [newProcess, setNewProcess] = useState({
     id: "",
     process: "",
@@ -43,6 +100,8 @@ export function ProcessTab({
     requirements: "",
     report: "",
   })
+  const [newSpecialReq, setNewSpecialReq] = useState({ content: "", date: "", user: "" })
+  const [newProcessNote, setNewProcessNote] = useState({ content: "", date: "", user: "" })
   const [editingProcessIndex, setEditingProcessIndex] = useState<number | null>(null)
 
   // 確保 formData 有初始值
@@ -270,6 +329,71 @@ export function ProcessTab({
     }
   }
 
+  // 處理添加特殊要求
+  const handleAddSpecialReq = () => {
+    if (!newSpecialReq.content) return
+
+    const date = newSpecialReq.date || new Date().toLocaleDateString("zh-TW")
+    const user = newSpecialReq.user || "系統使用者"
+
+    if (setProduct) {
+      setProduct((prev: any) => ({
+        ...prev,
+        specialRequirements: [
+          ...(prev.specialRequirements || []),
+          {
+            content: newSpecialReq.content,
+            date,
+            user,
+          },
+        ],
+      }))
+    }
+
+    // 重置表單
+    setNewSpecialReq({ content: "", date: "", user: "" })
+    setIsSpecialReqDialogOpen(false)
+
+    // 顯示成功提示
+    toast({
+      title: "特殊要求已新增",
+      description: "特殊要求已成功新增",
+    })
+  }
+
+  // 處理添加製程備註
+  const handleAddProcessNote = () => {
+    if (!newProcessNote.content) return
+
+    const date = newProcessNote.date || new Date().toLocaleDateString("zh-TW")
+    const user = newProcessNote.user || "系統使用者"
+
+    if (setProduct) {
+      setProduct((prev: any) => ({
+        ...prev,
+        processNotes: [
+          ...(prev.processNotes || []),
+          {
+            content: newProcessNote.content,
+            type: "一般備註",
+            date,
+            user,
+          },
+        ],
+      }))
+    }
+
+    // 重置表單
+    setNewProcessNote({ content: "", date: "", user: "" })
+    setIsProcessNoteDialogOpen(false)
+
+    // 顯示成功提示
+    toast({
+      title: "製程備註已新增",
+      description: "製程備註已成功新增",
+    })
+  }
+
   // 同步製程到訂單零件需求
   const syncProcessToOrder = async () => {
     try {
@@ -410,15 +534,6 @@ export function ProcessTab({
       })
     } finally {
       setIsTranslating(false)
-    }
-  }
-
-  // Debug function to check current processes
-  const debugProcesses = () => {
-    console.log("Current processes:", getProcesses())
-    console.log("Product:", safeProduct)
-    if (safeProduct.processData) {
-      console.log("Process data length:", safeProduct.processData.length)
     }
   }
 
@@ -601,13 +716,7 @@ export function ProcessTab({
               size="sm"
               onClick={(e) => {
                 e.preventDefault()
-                // 這裡保留原有的特殊要求對話框開啟邏輯
-                if (setProduct) {
-                  setProduct({
-                    ...safeProduct,
-                    showSpecialReqDialog: true,
-                  })
-                }
+                setIsSpecialReqDialogOpen(true)
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -643,10 +752,18 @@ export function ProcessTab({
                           onClick={() => {
                             // 這裡保留原有的特殊要求編輯邏輯
                             if (setProduct) {
+                              setNewSpecialReq({
+                                content: req.content,
+                                user: req.user,
+                                date: req.date,
+                              })
+                              setIsSpecialReqDialogOpen(true)
+                              // 刪除原有的特殊要求
+                              const updatedReqs = [...(safeProduct.specialRequirements || [])]
+                              updatedReqs.splice(index, 1)
                               setProduct({
                                 ...safeProduct,
-                                showSpecialReqDialog: true,
-                                editingSpecialReqIndex: index,
+                                specialRequirements: updatedReqs,
                               })
                             }
                           }}
@@ -714,13 +831,7 @@ export function ProcessTab({
               size="sm"
               onClick={(e) => {
                 e.preventDefault()
-                // 這裡保留原有的製程備註對話框開啟邏輯
-                if (setProduct) {
-                  setProduct({
-                    ...safeProduct,
-                    showProcessNoteDialog: true,
-                  })
-                }
+                setIsProcessNoteDialogOpen(true)
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -744,7 +855,7 @@ export function ProcessTab({
             <tbody className="divide-y">
               {getProcessNotes().map((note: any, index: number) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm">{note.type}</td>
+                  <td className="px-4 py-2 text-sm">{note.type || "一般備註"}</td>
                   <td className="px-4 py-2 text-sm">{note.content}</td>
                   <td className="px-4 py-2 text-sm">{note.date}</td>
                   {!readOnly && (
@@ -756,10 +867,18 @@ export function ProcessTab({
                           onClick={() => {
                             // 這裡保留原有的製程備註編輯邏輯
                             if (setProduct) {
+                              setNewProcessNote({
+                                content: note.content,
+                                user: note.user,
+                                date: note.date,
+                              })
+                              setIsProcessNoteDialogOpen(true)
+                              // 刪除原有的製程備註
+                              const updatedNotes = [...(safeProduct.processNotes || [])]
+                              updatedNotes.splice(index, 1)
                               setProduct({
                                 ...safeProduct,
-                                showProcessNoteDialog: true,
-                                editingProcessNoteIndex: index,
+                                processNotes: updatedNotes,
                               })
                             }
                           }}
@@ -822,58 +941,106 @@ export function ProcessTab({
         onSave={handleAddProcessData}
         initialData={editingProcessIndex !== null ? newProcess : undefined}
       />
+
+      {/* 特殊要求對話框 */}
+      <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>添加特殊要求</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="content">特殊要求內容</Label>
+              <Textarea
+                id="content"
+                value={newSpecialReq.content}
+                onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
+                placeholder="輸入特殊要求內容"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">日期</Label>
+                <Input
+                  id="date"
+                  type="text"
+                  value={newSpecialReq.date}
+                  onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
+                  placeholder="YYYY/MM/DD"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user">使用者</Label>
+                <Input
+                  id="user"
+                  value={newSpecialReq.user}
+                  onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
+                  placeholder="輸入使用者名稱"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsSpecialReqDialogOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" onClick={handleAddSpecialReq}>
+              添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 製程備註對話框 */}
+      <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>添加製程備註</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="processNoteContent">備註內容</Label>
+              <Textarea
+                id="processNoteContent"
+                value={newProcessNote.content}
+                onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
+                placeholder="輸入備註內容"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="processNoteDate">日期</Label>
+                <Input
+                  id="processNoteDate"
+                  type="text"
+                  value={newProcessNote.date}
+                  onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
+                  placeholder="YYYY/MM/DD"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="processNoteUser">使用者</Label>
+                <Input
+                  id="processNoteUser"
+                  value={newProcessNote.user}
+                  onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
+                  placeholder="輸入使用者名稱"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsProcessNoteDialogOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" onClick={handleAddProcessNote}>
+              添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
-// 預設製程資料 - 根據提供的圖片更新
-export const defaultProcesses = [
-  {
-    id: "proc_1",
-    process: "材料",
-    vendor: "中鋼",
-    capacity: "產能數值",
-    requirements: "SAE 10B21",
-    report: "材證",
-  },
-  {
-    id: "proc_2",
-    process: "成型",
-    vendor: "岡岩",
-    capacity: "產能數值",
-    requirements: "",
-    report: "",
-  },
-  {
-    id: "proc_3",
-    process: "搓牙",
-    vendor: "岡岩",
-    capacity: "產能數值",
-    requirements: "",
-    report: "",
-  },
-  {
-    id: "proc_4",
-    process: "熱處理",
-    vendor: "力大",
-    capacity: "產能數值",
-    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640Mpa",
-    report: "硬度，拉力",
-  },
-  {
-    id: "proc_5",
-    process: "電鍍",
-    vendor: "頂上興",
-    capacity: "產能數值",
-    requirements: "三價鉻鋅SUM MIN，鹽測12/48",
-    report: "膜厚，鹽測，除氫",
-  },
-  {
-    id: "proc_6",
-    process: "篩選",
-    vendor: "聖鼎",
-    capacity: "產能數值",
-    requirements: "50 PPM：混料、總長",
-    report: "篩選報告",
-  },
-]
