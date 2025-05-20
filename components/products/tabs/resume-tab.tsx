@@ -20,6 +20,7 @@ interface ResumeTabProps {
   setIsResumeNoteDialogOpen?: (isOpen: boolean) => void
   handleOrderHistoryChange?: (index: number, field: string, value: any) => void
   handleRemoveOrderHistory?: (index: number) => void
+  isReadOnly?: boolean
 }
 
 export function ResumeTab({
@@ -29,6 +30,7 @@ export function ResumeTab({
   setIsResumeNoteDialogOpen,
   handleOrderHistoryChange,
   handleRemoveOrderHistory,
+  isReadOnly = false,
 }: ResumeTabProps) {
   const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false)
   const [newNote, setNewNote] = useState({ content: "", date: new Date().toISOString().split("T")[0], user: "" })
@@ -160,19 +162,27 @@ export function ResumeTab({
               <Label className="text-base font-medium">有無開模具</Label>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="hasMold"
-                    checked={product.hasMold === true}
-                    onCheckedChange={(checked) => handleInputChange("hasMold", checked === true)}
-                  />
+                  {isReadOnly ? (
+                    <Checkbox id="hasMold" checked={product.hasMold === true} disabled className="cursor-not-allowed" />
+                  ) : (
+                    <Checkbox
+                      id="hasMold"
+                      checked={product.hasMold === true}
+                      onCheckedChange={(checked) => handleInputChange("hasMold", checked === true)}
+                    />
+                  )}
                   <Label htmlFor="hasMold">有</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="noMold"
-                    checked={product.hasMold === false}
-                    onCheckedChange={(checked) => handleInputChange("hasMold", checked !== true)}
-                  />
+                  {isReadOnly ? (
+                    <Checkbox id="noMold" checked={product.hasMold === false} disabled className="cursor-not-allowed" />
+                  ) : (
+                    <Checkbox
+                      id="noMold"
+                      checked={product.hasMold === false}
+                      onCheckedChange={(checked) => handleInputChange("hasMold", checked !== true)}
+                    />
+                  )}
                   <Label htmlFor="noMold">無</Label>
                 </div>
               </div>
@@ -185,8 +195,12 @@ export function ResumeTab({
                   id="moldCost"
                   type="number"
                   value={product.moldCost || ""}
-                  onChange={(e) => handleInputChange("moldCost", e.target.value ? Number(e.target.value) : "")}
-                  disabled={!product.hasMold}
+                  onChange={(e) =>
+                    !isReadOnly && handleInputChange("moldCost", e.target.value ? Number(e.target.value) : "")
+                  }
+                  disabled={!product.hasMold || isReadOnly}
+                  className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
+                  readOnly={isReadOnly}
                 />
               </div>
               <div className="space-y-2">
@@ -196,31 +210,49 @@ export function ResumeTab({
                   type="number"
                   value={product.refundableMoldQuantity || ""}
                   onChange={(e) =>
+                    !isReadOnly &&
                     handleInputChange("refundableMoldQuantity", e.target.value ? Number(e.target.value) : "")
                   }
-                  disabled={!product.hasMold}
+                  disabled={!product.hasMold || isReadOnly}
+                  className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
+                  readOnly={isReadOnly}
                 />
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
               <Label className="text-base font-medium">已退模</Label>
-              <Checkbox
-                id="moldReturned"
-                checked={product.moldReturned === true}
-                onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
-                disabled={!product.hasMold}
-              />
+              {isReadOnly ? (
+                <Checkbox
+                  id="moldReturned"
+                  checked={product.moldReturned === true}
+                  disabled
+                  className="cursor-not-allowed"
+                />
+              ) : (
+                <Checkbox
+                  id="moldReturned"
+                  checked={product.moldReturned === true}
+                  onCheckedChange={(checked) => handleInputChange("moldReturned", checked === true)}
+                  disabled={!product.hasMold}
+                />
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="accountingNote">會計備註</Label>
-              <Textarea
-                id="accountingNote"
-                value={product.accountingNote || ""}
-                onChange={(e) => handleInputChange("accountingNote", e.target.value)}
-                rows={4}
-              />
+              {isReadOnly ? (
+                <div className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
+                  {product.accountingNote || ""}
+                </div>
+              ) : (
+                <Textarea
+                  id="accountingNote"
+                  value={product.accountingNote || ""}
+                  onChange={(e) => handleInputChange("accountingNote", e.target.value)}
+                  rows={4}
+                />
+              )}
             </div>
           </div>
         </CardContent>
@@ -318,12 +350,18 @@ export function ResumeTab({
 
           <div className="mt-6 space-y-2">
             <Label htmlFor="qualityNotes">零件品質註記</Label>
-            <Textarea
-              id="qualityNotes"
-              value={product.qualityNotes || ""}
-              onChange={(e) => handleInputChange("qualityNotes", e.target.value)}
-              rows={4}
-            />
+            {isReadOnly ? (
+              <div className="p-2 border rounded-md bg-gray-50 min-h-[100px] whitespace-pre-wrap">
+                {product.qualityNotes || ""}
+              </div>
+            ) : (
+              <Textarea
+                id="qualityNotes"
+                value={product.qualityNotes || ""}
+                onChange={(e) => handleInputChange("qualityNotes", e.target.value)}
+                rows={4}
+              />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -332,17 +370,19 @@ export function ResumeTab({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>編輯備註</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.preventDefault()
-              setIsAddNoteDialogOpen(true)
-            }}
-            type="button"
-          >
-            <Plus className="h-4 w-4 mr-1" /> 新增備註
-          </Button>
+          {!isReadOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault()
+                setIsAddNoteDialogOpen(true)
+              }}
+              type="button"
+            >
+              <Plus className="h-4 w-4 mr-1" /> 新增備註
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -362,9 +402,11 @@ export function ResumeTab({
                     <TableCell>{note.user}</TableCell>
                     <TableCell>{note.content}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveNote(index)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {!isReadOnly && (
+                        <Button variant="ghost" size="sm" onClick={() => handleRemoveNote(index)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -381,70 +423,72 @@ export function ResumeTab({
       </Card>
 
       {/* 新增備註對話框 */}
-      <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>新增備註</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="noteDate">日期</Label>
-              <Input
-                id="noteDate"
-                type="date"
-                value={newNote.date}
-                onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                  }
-                }}
-              />
+      {!isReadOnly && (
+        <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>新增備註</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="noteDate">日期</Label>
+                <Input
+                  id="noteDate"
+                  type="date"
+                  value={newNote.date}
+                  onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="noteUser">使用者</Label>
+                <Input
+                  id="noteUser"
+                  value={newNote.user}
+                  onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="noteContent">內容</Label>
+                <Textarea
+                  id="noteContent"
+                  value={newNote.content}
+                  onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
+                  rows={4}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey) {
+                      e.preventDefault()
+                    }
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="noteUser">使用者</Label>
-              <Input
-                id="noteUser"
-                value={newNote.user}
-                onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                  }
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setIsAddNoteDialogOpen(false)}>
+                取消
+              </Button>
+              <Button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleAddNote()
                 }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="noteContent">內容</Label>
-              <Textarea
-                id="noteContent"
-                value={newNote.content}
-                onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-                rows={4}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && e.ctrlKey) {
-                    e.preventDefault()
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => setIsAddNoteDialogOpen(false)}>
-              取消
-            </Button>
-            <Button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                handleAddNote()
-              }}
-            >
-              新增
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              >
+                新增
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

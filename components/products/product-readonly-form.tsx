@@ -488,56 +488,15 @@ export function ProductReadOnlyForm({
 
         {/* 基本資訊頁籤 */}
         <TabsContent value="basic" className="space-y-4 pt-4">
-          <div className="grid grid-cols-2 gap-6">
-            {/* 左側欄位 */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <ReadOnlyInput label="零件名稱" value={product.componentName} />
-                <ReadOnlyInput label="零件名稱 (英文)" value={product.componentNameEn} />
-                <ReadOnlyInput label="Part No." value={product.partNo} />
-                <ReadOnlyInput label="海關碼" value={product.customsCode} />
-                <ReadOnlyInput label="終端客戶" value={product.endCustomer} />
-                <div className="space-y-2">
-                  <Label>客戶編號</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input value={product.customerName?.id || ""} readOnly className="bg-gray-50 cursor-not-allowed" />
-                    <Input
-                      value={product.customerName?.name || ""}
-                      readOnly
-                      className="bg-gray-50 cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>供應商編號</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input value={product.factoryName?.id || ""} readOnly className="bg-gray-50 cursor-not-allowed" />
-                    <Input value={product.factoryName?.name || ""} readOnly className="bg-gray-50 cursor-not-allowed" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 右側欄位 */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <ReadOnlyInput label="規格" value={product.specification} />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-500">產品類別</p>
-                  <p>{productTypeMapState[product.productType] || product.productType || "未設定"}</p>
-                </div>
-                <ReadOnlyInput label="今湛分類碼" value={product.classificationCode} />
-                <ReadOnlyInput label="車廠圖號" value={product.vehicleDrawingNo} />
-                <ReadOnlyInput label="客戶圖號" value={product.customerDrawingNo} />
-                <ReadOnlyInput label="產品別稱" value={product.productPeriod} />
-              </div>
-            </div>
-          </div>
-
-          {/* 產品描述 */}
-          <div className="space-y-2 pt-4">
-            <ReadOnlyTextarea label="產品描述" value={product.description} />
-          </div>
+          <BasicInfoTab
+            product={product}
+            handleInputChange={() => {}}
+            customersData={customersData}
+            factories={factories}
+            productTypes={[]}
+            setProduct={() => {}}
+            isReadOnly={true}
+          />
         </TabsContent>
 
         {/* 組合產品頁籤 */}
@@ -886,117 +845,7 @@ export function ProductReadOnlyForm({
 
         {/* 履歷資料頁籤 */}
         <TabsContent value="resume" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-6">
-            {/* 模具資訊 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">模具資訊</h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <ReadOnlyCheckbox label="有模具" checked={product.hasMold || false} />
-                    </div>
-                  </div>
-
-                  {product.hasMold && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <ReadOnlyInput label="模具費用" value={product.moldCost} />
-                      <ReadOnlyInput label="可退模具數量" value={product.refundableMoldQuantity} />
-                      <div className="space-y-2">
-                        <ReadOnlyCheckbox label="模具已退回" checked={product.moldReturned || false} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 會計備註 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">會計備註</h3>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <ReadOnlyTextarea label="會計備註" value={product.accountingNote} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 品質備註 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">品質備註</h3>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>備註內容</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>日期</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>使用者</Label>
-                    </div>
-                  </div>
-
-                  {product.qualityNotes && product.qualityNotes.length > 0 ? (
-                    product.qualityNotes.map((note, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{note.content}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.date}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.user}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何品質備註</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 訂單歷史 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">訂單歷史</h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>訂單號碼</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>數量</Label>
-                    </div>
-                  </div>
-
-                  {product.orderHistory && product.orderHistory.length > 0 ? (
-                    product.orderHistory.map((order, index) => (
-                      <div key={index} className="grid grid-cols-2 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{order.orderNumber}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{order.quantity}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何訂單歷史</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <ResumeTab product={product} handleInputChange={() => {}} isReadOnly={true} />
         </TabsContent>
       </Tabs>
     </form>

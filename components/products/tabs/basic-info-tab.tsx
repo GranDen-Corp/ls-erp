@@ -21,6 +21,7 @@ interface BasicInfoTabProps {
   setProduct: (product: any) => void
   onCustomerChange?: (customer: any) => void
   onFactoryChange?: (factory: any) => void
+  isReadOnly?: boolean
 }
 
 export function BasicInfoTab({
@@ -32,6 +33,7 @@ export function BasicInfoTab({
   setProduct,
   onCustomerChange,
   onFactoryChange,
+  isReadOnly = false,
 }: BasicInfoTabProps) {
   const [open, setOpen] = useState(false)
   const [factoryOpen, setFactoryOpen] = useState(false)
@@ -165,6 +167,8 @@ export function BasicInfoTab({
             value={product.componentName || ""}
             onChange={(e) => handleInputChange("componentName", e.target.value)}
             placeholder="輸入零件名稱"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
@@ -175,6 +179,8 @@ export function BasicInfoTab({
             value={product.componentNameEn || ""}
             onChange={(e) => handleInputChange("componentNameEn", e.target.value)}
             placeholder="輸入英文零件名稱"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
@@ -185,6 +191,8 @@ export function BasicInfoTab({
             value={product.partNo || ""}
             onChange={(e) => handleInputChange("partNo", e.target.value)}
             placeholder="輸入PN"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
@@ -195,6 +203,8 @@ export function BasicInfoTab({
             value={product.customsCode || ""}
             onChange={(e) => handleInputChange("customsCode", e.target.value)}
             placeholder="輸入海關碼"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
@@ -205,12 +215,18 @@ export function BasicInfoTab({
             value={product.endCustomer || ""}
             onChange={(e) => handleInputChange("endCustomer", e.target.value)}
             placeholder="輸入終端客戶"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="productType">產品類別</Label>
-          <Select value={product.productType || ""} onValueChange={(value) => handleInputChange("productType", value)}>
+          <Select
+            value={product.productType || ""}
+            onValueChange={(value) => handleInputChange("productType", value)}
+            disabled={isReadOnly}
+          >
             <SelectTrigger>
               <SelectValue placeholder="選擇產品類別" />
             </SelectTrigger>
@@ -231,6 +247,8 @@ export function BasicInfoTab({
             value={product.classificationCode || ""}
             onChange={(e) => handleInputChange("classificationCode", e.target.value)}
             placeholder="輸入今湛分類碼"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
@@ -241,6 +259,8 @@ export function BasicInfoTab({
             value={product.vehicleDrawingNo || ""}
             onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
             placeholder="輸入車廠圖號"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
@@ -251,12 +271,18 @@ export function BasicInfoTab({
             value={product.customerDrawingNo || ""}
             onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
             placeholder="輸入客戶圖號"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="status">狀態</Label>
-          <Select value={product.status || ""} onValueChange={(value) => handleInputChange("status", value)}>
+          <Select
+            value={product.status || ""}
+            onValueChange={(value) => handleInputChange("status", value)}
+            disabled={isReadOnly}
+          >
             <SelectTrigger>
               <SelectValue placeholder="選擇狀態" />
             </SelectTrigger>
@@ -269,88 +295,136 @@ export function BasicInfoTab({
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="customerName">客戶編號</Label>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
-                {product.customer_id || "選擇客戶"}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[400px] p-0">
-              <Command>
-                <CommandInput placeholder="搜索客戶..." />
-                <CommandList>
-                  <CommandEmpty>沒有找到客戶</CommandEmpty>
-                  <CommandGroup className="max-h-[300px] overflow-y-auto">
-                    {customersData.map((customer) => (
-                      <CommandItem
-                        key={customer.customer_id}
-                        value={customer.customer_id}
-                        onSelect={() => handleCustomerSelect(customer.customer_id)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            product.customer_id === customer.customer_id ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                        {customer.customer_id} - {customer.customer_short_name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+        {isReadOnly ? (
+          <div className="space-y-2">
+            <Label htmlFor="customerNameDisplay">客戶編號</Label>
+            <Input
+              id="customerNameDisplay"
+              value={product.customer_id || ""}
+              readOnly
+              className="bg-gray-50 cursor-not-allowed"
+            />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="customerName">客戶編號</Label>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                  disabled={isReadOnly}
+                >
+                  {product.customer_id || "選擇客戶"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="搜索客戶..." />
+                  <CommandList>
+                    <CommandEmpty>沒有找到客戶</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
+                      {customersData.map((customer) => (
+                        <CommandItem
+                          key={customer.customer_id}
+                          value={customer.customer_id}
+                          onSelect={() => handleCustomerSelect(customer.customer_id)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              product.customer_id === customer.customer_id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          {customer.customer_id} - {customer.customer_short_name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="customerNameDisplay">客戶名稱</Label>
-          <Input id="customerNameDisplay" value={customerName || ""} readOnly disabled />
+          <Input
+            id="customerNameDisplay"
+            value={customerName || ""}
+            readOnly
+            disabled
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
+          />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="factoryName">供應商編號</Label>
-          <Popover open={factoryOpen} onOpenChange={setFactoryOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" aria-expanded={factoryOpen} className="w-full justify-between">
-                {product.factory_id || "選擇供應商"}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[400px] p-0">
-              <Command>
-                <CommandInput placeholder="搜索供應商..." />
-                <CommandList>
-                  <CommandEmpty>沒有找到供應商</CommandEmpty>
-                  <CommandGroup className="max-h-[300px] overflow-y-auto">
-                    {factories.map((factory) => (
-                      <CommandItem
-                        key={factory.factory_id}
-                        value={factory.factory_id}
-                        onSelect={() => handleFactorySelect(factory.factory_id)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            product.factory_id === factory.factory_id ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                        {factory.factory_id} - {factory.factory_name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+        {isReadOnly ? (
+          <div className="space-y-2">
+            <Label htmlFor="factoryNameDisplay">供應商編號</Label>
+            <Input
+              id="factoryNameDisplay"
+              value={product.factory_id || ""}
+              readOnly
+              className="bg-gray-50 cursor-not-allowed"
+            />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="factoryName">供應商編號</Label>
+            <Popover open={factoryOpen} onOpenChange={setFactoryOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={factoryOpen}
+                  className="w-full justify-between"
+                  disabled={isReadOnly}
+                >
+                  {product.factory_id || "選擇供應商"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="搜索供應商..." />
+                  <CommandList>
+                    <CommandEmpty>沒有找到供應商</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
+                      {factories.map((factory) => (
+                        <CommandItem
+                          key={factory.factory_id}
+                          value={factory.factory_id}
+                          onSelect={() => handleFactorySelect(factory.factory_id)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              product.factory_id === factory.factory_id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          {factory.factory_id} - {factory.factory_name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="factoryNameDisplay">供應商名稱</Label>
-          <Input id="factoryNameDisplay" value={factoryName || ""} readOnly disabled />
+          <Input
+            id="factoryNameDisplay"
+            value={factoryName || ""}
+            readOnly
+            disabled
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
+          />
         </div>
       </div>
 
@@ -363,6 +437,8 @@ export function BasicInfoTab({
           onChange={(e) => handleInputChange("description", e.target.value)}
           placeholder="輸入產品描述"
           rows={4}
+          readOnly={isReadOnly}
+          className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
         />
       </div>
     </div>
