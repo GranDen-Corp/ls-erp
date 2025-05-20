@@ -338,3 +338,8 @@ export async function createPurchasesFromProcurementItems(procurementItems: any[
     }
   }
 }
+
+/**
+ * 創建採購訂單 (alias for createPurchase for backward compatibility)
+ */
+export const createPurchaseOrder = createPurchase

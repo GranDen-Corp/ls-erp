@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
@@ -43,7 +43,6 @@ import { ImagesTab } from "./tabs/images-tab"
 import { DocumentsTab } from "./tabs/documents-tab"
 import { ProcessTab, defaultProcesses } from "./tabs/process-tab"
 import { ResumeTab } from "./tabs/resume-tab"
-import { CommercialTab } from "./tabs/commercial-tab"
 
 export function ProductForm({
   productId,
@@ -67,7 +66,7 @@ export function ProductForm({
       return initialProduct.processData
     }
     // 否則使用默認製程資料
-    return defaultProcesses
+    return [...defaultProcesses]
   }, [initialProduct.processData])
 
   // Ensure all necessary objects exist
@@ -111,7 +110,7 @@ export function ProductForm({
   const [newResumeNote, setNewResumeNote] = useState<Note>({ content: "", date: "", user: "" })
   const [newSpec, setNewSpec] = useState<ProductSpecification>({ name: "", value: "" })
 
-  // Dialog states
+  // Dialog states - all initialized to false to prevent auto-opening
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false)
   const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false)
   const [isSpecialReqDialogOpen, setIsSpecialReqDialogOpen] = useState(false)
@@ -151,12 +150,19 @@ export function ProductForm({
   const [loadingComponents, setLoadingComponents] = useState(false)
   const [componentDetails, setComponentDetails] = useState<{ [key: string]: string }>({})
 
+  // 追蹤客戶和供應商ID的變更
+  const prevCustomerId = useRef<string | null>(null)
+  const prevFactoryId = useRef<string | null>(null)
+
   // When initialValues changes, update product
+  /* Cause "Maximum update depth exceeded"
   useEffect(() => {
-    if (initialValues) {
+    if (initialValues && JSON.stringify(initialValues) !== JSON.stringify(product)) {
       // 處理製程資料
       const processData =
-        initialValues.processData && initialValues.processData.length > 0 ? initialValues.processData : defaultProcesses
+        initialValues.processData && initialValues.processData.length > 0
+          ? initialValues.processData
+          : [...defaultProcesses]
 
       const updatedProduct = {
         ...defaultProduct,
@@ -181,8 +187,91 @@ export function ProductForm({
       }
       setProduct(updatedProduct)
       setIsCompositeProduct(initialValues.is_assembly || false)
+
+      // 初始化客戶和供應商ID的參考值
+      prevCustomerId.current = initialValues.customerName?.id || initialValues.customer_id || null
+      prevFactoryId.current = initialValues.factoryName?.id || initialValues.factory_id || null
     }
-  }, [initialValues, defaultProduct])
+  }, [initialValues, defaultProduct, product])
+  */
+  
+    // fixed by ChatGPT
+  const hasInitialized = useRef(false)
+
+  useEffect(() => {
+    if (!hasInitialized.current && initialValues) {
+      const processData =
+        initialValues.processData && initialValues.processData.length > 0
+          ? initialValues.processData
+          : [...defaultProcesses]
+
+      const updatedProduct = {
+        ...defaultProduct,
+        ...initialValues,
+        customerOriginalDrawing: initialValues.customerOriginalDrawing || emptyFileObject,
+        jinzhanDrawing: initialValues.jinzhanDrawing || emptyFileObject,
+        customerDrawing: initialValues.customerDrawing || emptyFileObject,
+        factoryDrawing: initialValues.factoryDrawing || emptyFileObject,
+        complianceStatus: {
+          ...defaultProduct.complianceStatus,
+          ...(initialValues.complianceStatus || {}),
+        },
+        importantDocuments: {
+          ...defaultProduct.importantDocuments,
+          ...(initialValues.importantDocuments || {}),
+        },
+        partManagement: {
+          ...defaultProduct.partManagement,
+          ...(initialValues.partManagement || {}),
+        },
+        processData: processData,
+      }
+
+      setProduct(updatedProduct)
+      setIsCompositeProduct(initialValues.is_assembly || false)
+
+      prevCustomerId.current = initialValues.customerName?.id || initialValues.customer_id || null
+      prevFactoryId.current = initialValues.factoryName?.id || initialValues.factory_id || null
+
+      hasInitialized.current = true
+    }
+  }, [initialValues])
+
+  // 確保新產品有默認製程資料
+  useEffect(() => {
+    if (!initialValues && !productId && !product.processData?.length) {
+      console.log("Setting default processes for new product")
+      setProduct((prev) => {
+        if (!prev.processData || prev.processData.length === 0) {
+          return {
+            ...prev,
+            processData: [...defaultProcesses],
+          }
+        }
+        return prev
+      })
+    }
+  }, [initialValues, productId, product.processData?.length])
+
+  // 監控客戶ID和供應商ID的變更
+  useEffect(() => {
+    const currentCustomerId = product.customerName?.id
+    const currentFactoryId = product.factoryName?.id
+
+    // 如果客戶ID變更，清除組合產品選擇
+    if (currentCustomerId && currentCustomerId !== prevCustomerId.current) {
+      setSelectedComponents([])
+      setComponentDetails({})
+      prevCustomerId.current = currentCustomerId
+    }
+
+    // 如果供應商ID變更，也清除組合產品選擇
+    if (currentFactoryId && currentFactoryId !== prevFactoryId.current) {
+      setSelectedComponents([])
+      setComponentDetails({})
+      prevFactoryId.current = currentFactoryId
+    }
+  }, [product.customerName?.id, product.factoryName?.id])
 
   // Load customer and supplier data
   useEffect(() => {
@@ -517,23 +606,36 @@ export function ProductForm({
   }
 
   // Handle add process
-  const handleAddProcess = () => {
-    if (!newProcess.process) return
+  const handleAddProcess = (processData: any) => {
+    console.log("handleAddProcess called with:", processData)
 
-    const processRecord: ProcessRecord = {
-      id: `proc_${Date.now()}`,
-      process: newProcess.process,
-      vendor: newProcess.vendor,
-      capacity: newProcess.capacity,
-      requirements: newProcess.requirements,
-      report: newProcess.report,
+    if (!processData.process) {
+      console.warn("Process name is required")
+      return
     }
 
-    setProduct((prev) => ({
-      ...prev,
-      processData: [...(prev.processData || []), processRecord],
-    }))
+    setProduct((prev) => {
+      // Make sure processData exists and is an array
+      const currentProcessData = Array.isArray(prev.processData) ? [...prev.processData] : []
 
+      // Add new process
+      return {
+        ...prev,
+        processData: [
+          ...currentProcessData,
+          {
+            id: processData.id || `proc_${Date.now()}`,
+            process: processData.process,
+            vendor: processData.vendor,
+            capacity: processData.capacity,
+            requirements: processData.requirements,
+            report: processData.report,
+          },
+        ],
+      }
+    })
+
+    // Reset form state
     setNewProcess({
       id: "",
       process: "",
@@ -543,7 +645,14 @@ export function ProductForm({
       report: "",
     })
 
+    // Close dialog
     setIsProcessDialogOpen(false)
+
+    // Show success toast
+    toast({
+      title: "製程已新增",
+      description: `製程 "${processData.process}" 已成功新增`,
+    })
   }
 
   // Handle add special requirement
@@ -896,15 +1005,31 @@ export function ProductForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          // Prevent any dialogs from automatically opening when changing tabs
+          setIsNoteDialogOpen(false)
+          setIsProcessDialogOpen(false)
+          setIsSpecialReqDialogOpen(false)
+          setIsProcessNoteDialogOpen(false)
+          setIsOrderHistoryDialogOpen(false)
+          setIsResumeNoteDialogOpen(false)
+          setIsPartManagementDialogOpen(false)
+          setIsComplianceDialogOpen(false)
+
+          // Then set the active tab
+          setActiveTab(value)
+        }}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
           <TabsTrigger value="composite">組合產品</TabsTrigger>
           <TabsTrigger value="images">產品圖片</TabsTrigger>
           <TabsTrigger value="documents">文件與認證</TabsTrigger>
           <TabsTrigger value="process">製程資料</TabsTrigger>
           <TabsTrigger value="resume">履歷資料</TabsTrigger>
-          <TabsTrigger value="commercial">商業條款</TabsTrigger>
         </TabsList>
 
         {/* Basic info tab */}
@@ -983,13 +1108,10 @@ export function ProductForm({
           <ProcessTab
             product={product}
             setProduct={setProduct}
-            setIsProcessDialogOpen={setIsProcessDialogOpen}
-            setIsSpecialReqDialogOpen={setIsSpecialReqDialogOpen}
-            setIsProcessNoteDialogOpen={setIsProcessNoteDialogOpen}
             handleInputChange={handleInputChange}
-            handleProcessFieldChange={processFieldHandlers.handleProcessFieldChange}
-            handleRemoveProcess={processFieldHandlers.handleRemoveProcess}
-            handleMoveProcess={processFieldHandlers.handleMoveProcess}
+            formData={{}}
+            updateFormData={() => {}}
+            readOnly={false}
           />
         </TabsContent>
 
@@ -1024,10 +1146,6 @@ export function ProductForm({
             }}
           />
         </TabsContent>
-
-        <TabsContent value="commercial">
-          <CommercialTab product={product} handleInputChange={handleInputChange} />
-        </TabsContent>
       </Tabs>
 
       <div className="flex justify-end">
@@ -1054,10 +1172,9 @@ export function ProductForm({
 
       <ProcessDialog
         isOpen={isProcessDialogOpen}
-        onOpenChange={setIsProcessDialogOpen}
-        newProcess={newProcess}
-        setNewProcess={setNewProcess}
-        onAddProcess={handleAddProcess}
+        onClose={() => setIsProcessDialogOpen(false)}
+        onSave={handleAddProcess}
+        initialData={newProcess}
       />
 
       <SpecialReqDialog
@@ -1070,10 +1187,9 @@ export function ProductForm({
 
       <ProcessNoteDialog
         isOpen={isProcessNoteDialogOpen}
-        onOpenChange={setIsProcessNoteDialogOpen}
-        newProcessNote={newProcessNote}
-        setNewProcessNote={setNewProcessNote}
-        onAddProcessNote={handleAddProcessNote}
+        onClose={() => setIsProcessNoteDialogOpen(false)}
+        onSave={handleAddProcessNote}
+        initialData={newProcessNote}
       />
 
       <OrderHistoryDialog

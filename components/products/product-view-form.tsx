@@ -124,6 +124,36 @@ export function ProductViewForm({
     )
   }
 
+  // 在 ProductViewForm 組件中，確保 tabs 數組與 product-form.tsx 一致，但移除商業條款頁籤
+  const tabs = [
+    {
+      id: "basic-info",
+      label: "基本資料",
+      content: <div>Basic Info</div>,
+    },
+    {
+      id: "process",
+      label: "製程資料",
+      content: <div>Process</div>,
+    },
+    {
+      id: "resume",
+      label: "履歷資料",
+      content: <div>Resume</div>,
+    },
+    {
+      id: "images",
+      label: "圖片資料",
+      content: <div>Images</div>,
+    },
+    {
+      id: "documents",
+      label: "文件與認證",
+      content: <div>Documents</div>,
+    },
+    // 移除商業條款頁籤
+  ]
+
   return (
     <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
       <TabsList className="grid w-full grid-cols-5">

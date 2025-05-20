@@ -1,242 +1,498 @@
 "use client"
 
 import type React from "react"
-
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Trash, Plus, Calculator, FileText } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
-import type { ProductComponent } from "@/types/assembly-product"
-import { Trash2, Plus } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { DialogClose } from "@radix-ui/react-dialog"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatCurrencyAmount } from "@/lib/currency-utils"
+import type { Component } from "@/types/assembly-product"
 
 interface ComponentManagementProps {
-  initialComponents?: ProductComponent[]
-  onComponentsChange?: (components: ProductComponent[]) => void
+  components: Component[]
+  onChange: (components: Component[]) => void
+  currency?: string
+  readOnly?: boolean
+  availableComponents?: any[] // 可用的組件列表
 }
 
-export function ComponentManagement({ initialComponents = [], onComponentsChange }: ComponentManagementProps) {
-  const [components, setComponents] = useState<ProductComponent[]>(initialComponents)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+export const ComponentManagement: React.FC<ComponentManagementProps> = ({
+  components: initialComponents,
+  onChange,
+  currency = "USD",
+  readOnly = false,
+  availableComponents = [],
+}) => {
+  const [components, setComponents] = useState<Component[]>(initialComponents || [])
+  const [showComponentSelector, setShowComponentSelector] = useState(false)
+  const [selectedComponents, setSelectedComponents] = useState<string[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showCostCalculator, setShowCostCalculator] = useState(false)
+  const [showComponentDetails, setShowComponentDetails] = useState(false)
+  const [selectedComponent, setSelectedComponent] = useState<Component | null>(null)
 
-  // 模擬從數據庫獲取的工廠列表
-  const factories = [
-    { id: "1", name: "深圳電子廠", code: "SZE" },
-    { id: "2", name: "上海科技廠", code: "SHT" },
-    { id: "3", name: "東莞塑膠廠", code: "DGP" },
-    { id: "4", name: "廣州金屬廠", code: "GZM" },
-    { id: "5", name: "蘇州電子廠", code: "SZE2" },
-  ]
+  // 當初始組件變更時更新狀態
+  useEffect(() => {
+    setComponents(initialComponents || [])
+  }, [initialComponents])
 
-  // 模擬從數據庫獲取的產品列表
-  const products = [
-    { id: "1", name: "15吋 HD LCD面板", pn: "LCD-15-HD", price: 40.5 },
-    { id: "2", name: "主板 PCB V1", pn: "PCB-MAIN-V1", price: 15.75 },
-    { id: "3", name: "電源適配器", pn: "PWR-ADPT-12V", price: 8.25 },
-    { id: "4", name: "HDMI線", pn: "CABLE-HDMI-1M", price: 2.5 },
-    { id: "5", name: "散熱風扇", pn: "FAN-80MM", price: 3.75 },
-    { id: "6", name: "塑膠外殼", pn: "CASE-PLASTIC", price: 5.25 },
-  ]
+  // 當組件變更時通知父組件
+  useEffect(() => {
+    onChange(components)
+  }, [components, onChange])
 
-  const addComponent = (component: Partial<ProductComponent>) => {
-    const newComponent: ProductComponent = {
-      id: `comp-${Date.now()}`,
-      productId: component.productId || "",
-      productName: component.productName || "",
-      productPN: component.productPN || "",
-      quantity: component.quantity || 1,
-      unitPrice: component.unitPrice || 0,
-      factoryId: component.factoryId || "",
-      factoryName: component.factoryName || "",
+  // 添加組件
+  const addComponent = () => {
+    const newComponent: Component = {
+      id: Math.random().toString(36).substring(2, 9),
+      partNo: "",
+      name: "",
+      quantity: 1,
+      price: 0,
+      unit: "pcs",
+      notes: "",
     }
 
-    const updatedComponents = [...components, newComponent]
-    setComponents(updatedComponents)
-    onComponentsChange?.(updatedComponents)
-    setIsAddDialogOpen(false)
+    setComponents([...components, newComponent])
   }
 
+  // 更新組件
+  const updateComponent = (id: string, field: keyof Component, value: any) => {
+    setComponents(
+      components.map((component) => {
+        if (component.id === id) {
+          return { ...component, [field]: value }
+        }
+        return component
+      }),
+    )
+  }
+
+  // 移除組件
   const removeComponent = (id: string) => {
-    const updatedComponents = components.filter((comp) => comp.id !== id)
-    setComponents(updatedComponents)
-    onComponentsChange?.(updatedComponents)
+    setComponents(components.filter((component) => component.id !== id))
   }
 
-  const updateComponentQuantity = (id: string, quantity: number) => {
-    const updatedComponents = components.map((comp) => (comp.id === id ? { ...comp, quantity } : comp))
-    setComponents(updatedComponents)
-    onComponentsChange?.(updatedComponents)
+  // 計算總成本
+  const calculateTotalCost = () => {
+    return components.reduce((sum, component) => sum + (component.price || 0) * component.quantity, 0)
+  }
+
+  // 從可用組件中添加選中的組件
+  const addSelectedComponents = () => {
+    const newComponents = selectedComponents
+      .map((partNo) => {
+        const foundComponent = availableComponents.find((c) => c.part_no === partNo)
+        if (foundComponent) {
+          return {
+            id: Math.random().toString(36).substring(2, 9),
+            partNo: foundComponent.part_no,
+            name: foundComponent.name || foundComponent.product_name,
+            quantity: 1,
+            price: foundComponent.unit_price || foundComponent.last_price || 0,
+            unit: foundComponent.unit || "pcs",
+            notes: "",
+            specifications: foundComponent.specifications,
+            material: foundComponent.material,
+          }
+        }
+        return null
+      })
+      .filter(Boolean) as Component[]
+
+    setComponents([...components, ...newComponents])
+    setSelectedComponents([])
+    setShowComponentSelector(false)
+  }
+
+  // 過濾可用組件
+  const filteredComponents = availableComponents.filter((component) => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      component.part_no?.toLowerCase().includes(searchLower) ||
+      component.name?.toLowerCase().includes(searchLower) ||
+      component.product_name?.toLowerCase().includes(searchLower)
+    )
+  })
+
+  // 切換選中狀態
+  const toggleComponentSelection = (partNo: string) => {
+    setSelectedComponents((prev) => {
+      if (prev.includes(partNo)) {
+        return prev.filter((p) => p !== partNo)
+      } else {
+        return [...prev, partNo]
+      }
+    })
+  }
+
+  // 檢查組件是否已添加
+  const isComponentAdded = (partNo: string) => {
+    return components.some((component) => component.partNo === partNo)
+  }
+
+  // 查看組件詳情
+  const viewComponentDetails = (component: Component) => {
+    setSelectedComponent(component)
+    setShowComponentDetails(true)
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>組件管理</CardTitle>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              添加組件
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>添加新組件</DialogTitle>
-            </DialogHeader>
-            <AddComponentForm factories={factories} products={products} onAdd={addComponent} />
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {components.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            尚未添加任何組件。點擊「添加組件」按鈕開始構建您的組合產品。
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-medium">組件管理</h3>
+          <p className="text-sm text-muted-foreground">管理產品的組成部件</p>
+        </div>
+        <div className="flex gap-2">
+          {!readOnly && (
+            <>
+              <Button variant="outline" onClick={() => setShowComponentSelector(true)}>
+                <FileText className="h-4 w-4 mr-2" />
+                從產品庫選擇
+              </Button>
+              <Button variant="outline" onClick={addComponent}>
+                <Plus className="h-4 w-4 mr-2" />
+                添加組件
+              </Button>
+            </>
+          )}
+          <Button variant="outline" onClick={() => setShowCostCalculator(true)}>
+            <Calculator className="h-4 w-4 mr-2" />
+            成本計算器
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>組件編號</TableHead>
+              <TableHead>組件名稱</TableHead>
+              <TableHead className="text-center">數量</TableHead>
+              <TableHead>單位</TableHead>
+              <TableHead className="text-right">單價 ({currency})</TableHead>
+              <TableHead className="text-right">總價 ({currency})</TableHead>
+              {!readOnly && <TableHead className="w-[100px]">操作</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {components.length > 0 ? (
+              components.map((component) => (
+                <TableRow key={component.id}>
+                  <TableCell>{component.partNo}</TableCell>
+                  <TableCell>
+                    <div className="cursor-pointer hover:text-blue-600" onClick={() => viewComponentDetails(component)}>
+                      {component.name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {readOnly ? (
+                      component.quantity
+                    ) : (
+                      <Input
+                        type="number"
+                        min="1"
+                        value={component.quantity}
+                        onChange={(e) => updateComponent(component.id, "quantity", Number(e.target.value) || 1)}
+                        className="w-20 text-right mx-auto"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {readOnly ? (
+                      component.unit
+                    ) : (
+                      <Select
+                        value={component.unit}
+                        onValueChange={(value) => updateComponent(component.id, "unit", value)}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="單位" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pcs">件 (pcs)</SelectItem>
+                          <SelectItem value="set">套 (set)</SelectItem>
+                          <SelectItem value="kg">公斤 (kg)</SelectItem>
+                          <SelectItem value="m">米 (m)</SelectItem>
+                          <SelectItem value="roll">卷 (roll)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {readOnly ? (
+                      formatCurrencyAmount(component.price || 0, currency)
+                    ) : (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={component.price || 0}
+                        onChange={(e) => updateComponent(component.id, "price", Number(e.target.value) || 0)}
+                        className="w-24 text-right ml-auto"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrencyAmount((component.price || 0) * component.quantity, currency)}
+                  </TableCell>
+                  {!readOnly && (
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => removeComponent(component.id)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={readOnly ? 6 : 7} className="h-24 text-center">
+                  尚未添加組件
+                </TableCell>
+              </TableRow>
+            )}
+            <TableRow>
+              <TableCell colSpan={readOnly ? 4 : 5} className="text-right font-bold">
+                總成本:
+              </TableCell>
+              <TableCell className="text-right font-bold">
+                {formatCurrencyAmount(calculateTotalCost(), currency)}
+              </TableCell>
+              {!readOnly && <TableCell></TableCell>}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* 組件選擇器對話框 */}
+      <Dialog open={showComponentSelector} onOpenChange={setShowComponentSelector}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>選擇組件</DialogTitle>
+            <DialogDescription>從產品庫中選擇要添加的組件</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Input
+              placeholder="搜尋組件編號或名稱..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            <ScrollArea className="h-[400px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {filteredComponents.length > 0 ? (
+                  filteredComponents.map((component) => {
+                    const partNo = component.part_no
+                    const isAdded = isComponentAdded(partNo)
+                    const isSelected = selectedComponents.includes(partNo)
+
+                    return (
+                      <div
+                        key={partNo}
+                        className={`flex items-start space-x-2 p-2 border rounded-md ${
+                          isAdded ? "bg-gray-100 border-gray-300" : isSelected ? "bg-blue-50 border-blue-300" : ""
+                        }`}
+                        onClick={() => !isAdded && toggleComponentSelection(partNo)}
+                        style={{ cursor: isAdded ? "default" : "pointer" }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleComponentSelection(partNo)}
+                          disabled={isAdded}
+                          className="mt-1 mr-2"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{partNo}</div>
+                          <div className="text-sm">{component.name || component.product_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            單價: {component.unit_price || component.last_price || 0} {currency}
+                          </div>
+                        </div>
+                        {isAdded && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            已添加
+                          </Badge>
+                        )}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="col-span-full text-center text-gray-500 py-4">
+                    {searchTerm ? "沒有符合搜尋條件的組件" : "沒有可用的組件"}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
-        ) : (
-          <div className="rounded-md border">
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowComponentSelector(false)}>
+              取消
+            </Button>
+            <Button onClick={addSelectedComponents} disabled={selectedComponents.length === 0}>
+              添加選中組件 ({selectedComponents.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 成本計算器對話框 */}
+      <Dialog open={showCostCalculator} onOpenChange={setShowCostCalculator}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>組件成本計算器</DialogTitle>
+            <DialogDescription>查看組件成本明細</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>組件編號</TableHead>
-                  <TableHead>組件名稱</TableHead>
-                  <TableHead>工廠</TableHead>
-                  <TableHead className="text-right">數量</TableHead>
-                  <TableHead className="text-right">單價 (USD)</TableHead>
-                  <TableHead className="text-right">小計 (USD)</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead>組件</TableHead>
+                  <TableHead className="text-center">數量</TableHead>
+                  <TableHead className="text-right">單價</TableHead>
+                  <TableHead className="text-right">總價</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {components.map((component) => (
                   <TableRow key={component.id}>
-                    <TableCell className="font-medium">{component.productPN}</TableCell>
-                    <TableCell>{component.productName}</TableCell>
-                    <TableCell>{component.factoryName}</TableCell>
+                    <TableCell>{component.name}</TableCell>
+                    <TableCell className="text-center">{component.quantity}</TableCell>
+                    <TableCell className="text-right">{formatCurrencyAmount(component.price || 0, currency)}</TableCell>
                     <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        min="1"
-                        className="w-16 text-right"
-                        value={component.quantity}
-                        onChange={(e) => updateComponentQuantity(component.id, Number.parseInt(e.target.value) || 1)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{component.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      {(component.quantity * component.unitPrice).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => removeComponent(component.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {formatCurrencyAmount((component.price || 0) * component.quantity, currency)}
                     </TableCell>
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={4}></TableCell>
-                  <TableCell className="font-medium text-right">總計:</TableCell>
-                  <TableCell className="font-medium text-right">
-                    {components.reduce((sum, comp) => sum + comp.quantity * comp.unitPrice, 0).toFixed(2)}
+                  <TableCell colSpan={3} className="text-right font-bold">
+                    總成本:
                   </TableCell>
-                  <TableCell></TableCell>
+                  <TableCell className="text-right font-bold">
+                    {formatCurrencyAmount(calculateTotalCost(), currency)}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
+
+            <div className="bg-gray-50 p-4 rounded-md">
+              <h4 className="font-medium mb-2">成本分析</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>組件總數:</span>
+                  <span>{components.length} 項</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>平均單件成本:</span>
+                  <span>
+                    {components.length > 0
+                      ? formatCurrencyAmount(calculateTotalCost() / components.length, currency)
+                      : formatCurrencyAmount(0, currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>最高單價組件:</span>
+                  <span>
+                    {components.length > 0
+                      ? `${components.reduce((max, c) => ((c.price || 0) > (max.price || 0) ? c : max), components[0]).name} (${formatCurrencyAmount(
+                          components.reduce((max, c) => ((c.price || 0) > (max.price || 0) ? c : max), components[0])
+                            .price || 0,
+                          currency,
+                        )})`
+                      : "無"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
 
-interface AddComponentFormProps {
-  factories: Array<{ id: string; name: string; code: string }>
-  products: Array<{ id: string; name: string; pn: string; price: number }>
-  onAdd: (component: Partial<ProductComponent>) => void
-}
+          <DialogFooter>
+            <Button onClick={() => setShowCostCalculator(false)}>關閉</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-function AddComponentForm({ factories, products, onAdd }: AddComponentFormProps) {
-  const [selectedProduct, setSelectedProduct] = useState<string>("")
-  const [selectedFactory, setSelectedFactory] = useState<string>("")
-  const [quantity, setQuantity] = useState<number>(1)
+      {/* 組件詳情對話框 */}
+      <Dialog open={showComponentDetails} onOpenChange={setShowComponentDetails}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>組件詳情</DialogTitle>
+            <DialogDescription>
+              {selectedComponent?.partNo} - {selectedComponent?.name}
+            </DialogDescription>
+          </DialogHeader>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+          {selectedComponent && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>組件編號</Label>
+                  <div className="font-medium">{selectedComponent.partNo}</div>
+                </div>
+                <div>
+                  <Label>組件名稱</Label>
+                  <div className="font-medium">{selectedComponent.name}</div>
+                </div>
+                <div>
+                  <Label>數量</Label>
+                  <div className="font-medium">
+                    {selectedComponent.quantity} {selectedComponent.unit}
+                  </div>
+                </div>
+                <div>
+                  <Label>單價</Label>
+                  <div className="font-medium">{formatCurrencyAmount(selectedComponent.price || 0, currency)}</div>
+                </div>
+              </div>
 
-    const product = products.find((p) => p.id === selectedProduct)
-    const factory = factories.find((f) => f.id === selectedFactory)
+              {selectedComponent.specifications && (
+                <div>
+                  <Label>規格</Label>
+                  <div className="bg-gray-50 p-2 rounded-md mt-1">{selectedComponent.specifications}</div>
+                </div>
+              )}
 
-    if (product && factory) {
-      onAdd({
-        productId: product.id,
-        productName: product.name,
-        productPN: product.pn,
-        quantity: quantity,
-        unitPrice: product.price,
-        factoryId: factory.id,
-        factoryName: factory.name,
-      })
-    }
-  }
+              {selectedComponent.material && (
+                <div>
+                  <Label>材料</Label>
+                  <div className="bg-gray-50 p-2 rounded-md mt-1">{selectedComponent.material}</div>
+                </div>
+              )}
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="product">產品</Label>
-        <Select value={selectedProduct} onValueChange={setSelectedProduct} required>
-          <SelectTrigger id="product">
-            <SelectValue placeholder="選擇產品" />
-          </SelectTrigger>
-          <SelectContent>
-            {products.map((product) => (
-              <SelectItem key={product.id} value={product.id}>
-                {product.name} ({product.pn}) - ${product.price}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              {selectedComponent.notes && (
+                <div>
+                  <Label>備註</Label>
+                  <div className="bg-gray-50 p-2 rounded-md mt-1">{selectedComponent.notes}</div>
+                </div>
+              )}
+            </div>
+          )}
 
-      <div className="space-y-2">
-        <Label htmlFor="factory">工廠</Label>
-        <Select value={selectedFactory} onValueChange={setSelectedFactory} required>
-          <SelectTrigger id="factory">
-            <SelectValue placeholder="選擇工廠" />
-          </SelectTrigger>
-          <SelectContent>
-            {factories.map((factory) => (
-              <SelectItem key={factory.id} value={factory.id}>
-                {factory.name} ({factory.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="quantity">數量</Label>
-        <Input
-          id="quantity"
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) => setQuantity(Number.parseInt(e.target.value) || 1)}
-          required
-        />
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <DialogClose asChild>
-          <Button type="button" variant="outline">
-            取消
-          </Button>
-        </DialogClose>
-        <Button type="submit">添加</Button>
-      </div>
-    </form>
+          <DialogFooter>
+            <Button onClick={() => setShowComponentDetails(false)}>關閉</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

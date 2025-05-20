@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { NewOrderForm } from "@/components/orders/new-order-form"
@@ -8,10 +8,9 @@ import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, FileText } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { generateOrderNumber } from "@/lib/order-number-generator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Stepper, Step } from "@/components/ui/stepper"
 import { marked } from "marked"
 
 export default function NewOrderPage() {
@@ -62,40 +61,44 @@ export default function NewOrderPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleSubmit = async (createPurchaseOrder = false) => {
-    if (!formRef.current) return
+  // Use useCallback to prevent recreating these functions on every render
+  const handleSubmit = useCallback(
+    async (createPurchaseOrder = false) => {
+      if (!formRef.current) return
 
-    setIsSubmitting(true)
-    setIsCreatingPurchaseOrder(createPurchaseOrder)
-    setSubmitError(null)
-    setSubmitSuccess(false)
+      setIsSubmitting(true)
+      setIsCreatingPurchaseOrder(createPurchaseOrder)
+      setSubmitError(null)
+      setSubmitSuccess(false)
 
-    try {
-      const result = await formRef.current.submitOrder(createPurchaseOrder)
-      console.log("訂單提交成功:", result)
-      setSubmitSuccess(true)
+      try {
+        const result = await formRef.current.submitOrder(createPurchaseOrder)
+        console.log("訂單提交成功:", result)
+        setSubmitSuccess(true)
 
-      // 保存創建的訂單ID，以便後續使用
-      if (result && result.data && result.data[0]) {
-        setCreatedOrderId(result.data[0].order_id)
-        setOrderData(result.data[0])
-        setCanCreatePurchase(true)
+        // 保存創建的訂單ID，以便後續使用
+        if (result && result[0]) {
+          setCreatedOrderId(result[0].order_id)
+          setOrderData(result[0])
+          setCanCreatePurchase(true)
+        }
+
+        // 3秒後跳轉到訂單列表
+        setTimeout(() => {
+          router.push("/orders")
+        }, 3000)
+      } catch (err: any) {
+        console.error("訂單提交失敗:", err)
+        setSubmitError(err.message || "提交訂單時發生錯誤")
+      } finally {
+        setIsSubmitting(false)
+        setIsCreatingPurchaseOrder(false)
       }
+    },
+    [router],
+  )
 
-      // 3秒後跳轉到訂單列表
-      setTimeout(() => {
-        router.push("/orders")
-      }, 3000)
-    } catch (err: any) {
-      console.error("訂單提交失敗:", err)
-      setSubmitError(err.message || "提交訂單時發生錯誤")
-    } finally {
-      setIsSubmitting(false)
-      setIsCreatingPurchaseOrder(false)
-    }
-  }
-
-  const handleCreatePurchaseOrder = async () => {
+  const handleCreatePurchaseOrder = useCallback(async () => {
     if (!formRef.current || !createdOrderId) return
 
     setIsCreatingPurchaseOrder(true)
@@ -116,9 +119,9 @@ export default function NewOrderPage() {
     } finally {
       setIsCreatingPurchaseOrder(false)
     }
-  }
+  }, [createdOrderId, router])
 
-  const handleTestSubmit = async () => {
+  const handleTestSubmit = useCallback(async () => {
     if (!formRef.current) return
 
     setIsTestingSubmit(true)
@@ -170,137 +173,55 @@ export default function NewOrderPage() {
           if (item.shipmentBatches && item.shipmentBatches.length > 0) {
             item.shipmentBatches.forEach((batch: any, batchIndex: number) => {
               explanation += `\n###### 批次 ${batchIndex + 1}\n`
-              explanation += `- 批次編號 (batch_number): ${batch.batchNumber}\n`
-              explanation += `- 計劃出貨日期 (planned_ship_date): ${batch.plannedShipDate || "(尚未設定)"}\n`
+              explanation += `- 批次編號 (batch_no): ${batch.batch_no || "(尚未設定)"}\n`
               explanation += `- 數量 (quantity): ${batch.quantity}\n`
-              explanation += `- 備註 (notes): ${batch.notes || "無"}\n`
+              explanation += `- 交貨日期 (delivery_date): ${batch.delivery_date}\n`
             })
           } else {
-            explanation += "尚未設定批次\n"
+            explanation += "無批次資訊\n"
           }
         })
       } else {
-        explanation += "尚未添加產品\n"
+        explanation += "無產品資訊\n"
       }
 
-      // 添加採購資料
-      explanation += "\n### 採購資料\n"
-      if (orderData.procurement_items && orderData.procurement_items.length > 0) {
-        explanation += `共 ${orderData.procurement_items.length} 項採購資料，其中 ${
-          orderData.procurement_items.filter((item: any) => item.isSelected).length
-        } 項已選擇\n\n`
-
-        // 按工廠分組
-        const itemsByFactory: Record<string, any[]> = {}
-        orderData.procurement_items
-          .filter((item: any) => item.isSelected)
-          .forEach((item: any) => {
-            if (!item.factoryId) return
-            if (!itemsByFactory[item.factoryId]) {
-              itemsByFactory[item.factoryId] = []
-            }
-            itemsByFactory[item.factoryId].push(item)
-          })
-
-        // 顯示每個工廠的採購項目
-        Object.entries(itemsByFactory).forEach(([factoryId, items]) => {
-          const factoryName = items[0].factoryName
-          explanation += `#### 工廠: ${factoryName} (${factoryId})\n`
-          items.forEach((item, index) => {
-            explanation += `- 產品 ${index + 1}: ${item.productPartNo} - ${item.productName}\n`
-            explanation += `  - 數量: ${item.quantity}\n`
-            explanation += `  - 採購單價: ${item.purchasePrice}\n`
-            explanation += `  - 交期: ${item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : "未設定"}\n`
-          })
-          explanation += `- 總採購金額: ${items
-            .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
-            .toFixed(2)} USD\n\n`
-        })
-      } else {
-        explanation += "尚未設定採購資料\n"
-      }
-
-      explanation += "\n\n## 完整JSON資料\n\n```json\n"
-      explanation += JSON.stringify(orderData, null, 2)
-      explanation += "\n```"
-
-      setTestData(explanation)
-      setActiveTab("test")
+      setTestData(marked.parse(explanation).toString())
     } catch (err: any) {
-      console.error("測試提交失敗:", err)
-      setTestData(`測試提交失敗: ${err.message || "未知錯誤"}`)
+      console.error("獲取訂單資料失敗:", err)
+      setTestData("獲取訂單資料失敗")
     } finally {
       setIsTestingSubmit(false)
     }
-  }
+  }, [])
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">新增訂單</h1>
-          <p className="text-muted-foreground">建立新訂單 - 當前時間: {formattedDate}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push("/orders")}>
-            取消
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleTestSubmit}
-            disabled={isTestingSubmit || isSubmitting}
-            className="bg-amber-50 hover:bg-amber-100 border-amber-200"
-          >
-            {isTestingSubmit ? (
-              "處理中..."
-            ) : (
-              <>
-                <FileText className="h-4 w-4 mr-2" />
-                測試資料
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <Stepper currentStep={currentStep} className="mb-8">
-        <Step title="填寫訂單資料" description="輸入訂單基本資訊和產品明細" />
-        <Step title="確認採購資料" description="檢查並設定採購單資訊" />
-        <Step title="完成" description="訂單和採購單創建完成" />
-      </Stepper>
-
-      {submitSuccess && (
-        <Alert className="bg-green-50 border-green-200">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle>訂單建立成功</AlertTitle>
-          <AlertDescription>
-            {currentStep === 1 ? "訂單已成功建立，請確認採購資料後創建採購單" : "訂單已成功建立，即將跳轉到訂單列表..."}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {submitError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{currentStep === 1 ? "採購單創建失敗" : "訂單建立失敗"}</AlertTitle>
-          <AlertDescription>{submitError}</AlertDescription>
-        </Alert>
-      )}
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="form">訂單表單</TabsTrigger>
-          <TabsTrigger value="test" disabled={!testData}>
-            測試資料
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="form">
-          <Card>
-            <CardHeader>
-              <CardTitle>訂單資訊</CardTitle>
-              <CardDescription>填寫訂單詳細資訊，包括客戶、產品和交付條件等。</CardDescription>
-            </CardHeader>
-            <CardContent>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <Card className="w-full max-w-4xl">
+        <CardHeader>
+          <CardTitle>新建訂單</CardTitle>
+          <CardDescription>請填寫訂單資訊</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {submitSuccess && (
+            <Alert variant="success" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>成功</AlertTitle>
+              <AlertDescription>訂單已成功提交。</AlertDescription>
+            </Alert>
+          )}
+          {submitError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>錯誤</AlertTitle>
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="form">訂單表單</TabsTrigger>
+              <TabsTrigger value="preview">預覽</TabsTrigger>
+            </TabsList>
+            <TabsContent value="form">
               <NewOrderForm
                 ref={formRef}
                 onSubmit={handleSubmit}
@@ -308,23 +229,28 @@ export default function NewOrderPage() {
                 currentStep={currentStep}
                 orderData={orderData}
               />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="test">
-          <Card>
-            <CardHeader>
-              <CardTitle>測試資料</CardTitle>
-              <CardDescription>以下是將要儲存到資料庫的資料及其對應關係</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: marked.parse(testData) }} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+            <TabsContent value="preview">
+              <div dangerouslySetInnerHTML={{ __html: testData }} />
+            </TabsContent>
+          </Tabs>
+          <div className="flex justify-end mt-4">
+            {!submitSuccess && (
+              <Button onClick={() => handleSubmit(false)} disabled={isSubmitting} className="mr-2">
+                提交訂單
+              </Button>
+            )}
+            {canCreatePurchase && (
+              <Button onClick={handleCreatePurchaseOrder} disabled={isCreatingPurchaseOrder} className="mr-2">
+                創建採購單
+              </Button>
+            )}
+            <Button onClick={handleTestSubmit} disabled={isTestingSubmit} variant="outline">
+              測試提交
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

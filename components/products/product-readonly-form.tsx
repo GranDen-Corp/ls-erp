@@ -7,6 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { BasicInfoTab } from "./tabs/basic-info-tab"
+import { ProcessTab } from "./tabs/process-tab"
+import { ResumeTab } from "./tabs/resume-tab"
+import { ImagesTab } from "./tabs/images-tab"
+import { DocumentsTab } from "./tabs/documents-tab"
 
 // 產品表單屬性
 interface ProductReadOnlyFormProps {
@@ -102,7 +107,7 @@ const emptyDocumentRecord = {
 }
 
 // 產品類別映射
-const productTypeMap = {}
+const productTypeMap: Record<string, string> = {}
 
 export function ProductReadOnlyForm({
   productId,
@@ -123,11 +128,11 @@ export function ProductReadOnlyForm({
 
   // 當initialValues變更時更新product
   useEffect(() => {
-    if (initialValues) {
+    if (initialValues && JSON.stringify(initialValues) !== JSON.stringify(product)) {
       setProduct(initialValues)
       setIsCompositeProduct(initialValues.is_assembly || false)
     }
-  }, [initialValues])
+  }, [initialValues, product])
 
   // 客戶和供應商數據加載完成後，設置名稱
   useEffect(() => {
@@ -431,9 +436,47 @@ export function ProductReadOnlyForm({
     )
   }
 
+  // 在 ProductReadonlyForm 組件中，確保 tabs 數組與 product-form.tsx 一致，但移除商業條款頁籤
+  const tabs = [
+    {
+      id: "basic-info",
+      label: "基本資料",
+      content: <BasicInfoTab formData={product} onFormDataChange={() => {}} isReadOnly={true} />,
+    },
+    {
+      id: "process",
+      label: "製程資料",
+      content: <ProcessTab processData={product.process_data || []} onProcessDataChange={() => {}} isReadOnly={true} />,
+    },
+    {
+      id: "resume",
+      label: "履歷資料",
+      content: <ResumeTab resumeData={product.resume_data || {}} onResumeDataChange={() => {}} isReadOnly={true} />,
+    },
+    {
+      id: "images",
+      label: "圖片資料",
+      content: <ImagesTab imageData={product.image_data || {}} onImageDataChange={() => {}} isReadOnly={true} />,
+    },
+    {
+      id: "documents",
+      label: "文件與認證",
+      content: (
+        <DocumentsTab documentData={product.document_data || {}} onDocumentDataChange={() => {}} isReadOnly={true} />
+      ),
+    },
+  ]
+
   return (
     <form className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          // Set the active tab without opening any dialogs
+          setActiveTab(value)
+        }}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic">基本資訊</TabsTrigger>
           <TabsTrigger value="composite">組合產品</TabsTrigger>
@@ -441,7 +484,6 @@ export function ProductReadOnlyForm({
           <TabsTrigger value="documents">文件與認證</TabsTrigger>
           <TabsTrigger value="process">製程資料</TabsTrigger>
           <TabsTrigger value="resume">履歷資料</TabsTrigger>
-          <TabsTrigger value="commercial">商業條款</TabsTrigger>
         </TabsList>
 
         {/* 基本資訊頁籤 */}
@@ -839,147 +881,7 @@ export function ProductReadOnlyForm({
 
         {/* 製程資料頁籤 */}
         <TabsContent value="process" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-6">
-            {/* 製程資料 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">製程資料</h3>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border px-4 py-2 text-left">製程</th>
-                          <th className="border px-4 py-2 text-left">廠商</th>
-                          <th className="border px-4 py-2 text-left">產能(8H)</th>
-                          <th className="border px-4 py-2 text-left">要求</th>
-                          <th className="border px-4 py-2 text-left">報告</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {product.processData && product.processData.length > 0 ? (
-                          product.processData.map((process) => (
-                            <tr key={process.id} className="bg-yellow-50">
-                              <td className="border px-4 py-2">{process.process}</td>
-                              <td className="border px-4 py-2">{process.vendor}</td>
-                              <td className="border px-4 py-2">{process.capacity}</td>
-                              <td className="border px-4 py-2">{process.requirements}</td>
-                              <td className="border px-4 py-2">{process.report}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="border px-4 py-2 text-center">
-                              尚未添加任何製程資料
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 訂單和採購單要求 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">訂單和採購單要求</h3>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <ReadOnlyTextarea label="訂單零件要求" value={product.orderRequirements} />
-                    <ReadOnlyTextarea label="採購單零件要求" value={product.purchaseRequirements} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 特殊要求 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">特殊要求與測試</h3>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>要求內容</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>日期</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>使用者</Label>
-                    </div>
-                  </div>
-
-                  {product.specialRequirements && product.specialRequirements.length > 0 ? (
-                    product.specialRequirements.map((req, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{req.content}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{req.date}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{req.user}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何特殊要求</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 製程備註 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">製程備註</h3>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>備註內容</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>日期</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>使用者</Label>
-                    </div>
-                  </div>
-
-                  {product.processNotes && product.processNotes.length > 0 ? (
-                    product.processNotes.map((note, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{note.content}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.date}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.user}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何製程備註</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <ProcessTab product={product} readOnly={true} />
         </TabsContent>
 
         {/* 履歷資料頁籤 */}
@@ -1091,47 +993,6 @@ export function ProductReadOnlyForm({
                   ) : (
                     <div className="text-center py-4 text-gray-500">尚未添加任何訂單歷史</div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* 商業條款頁籤 */}
-        <TabsContent value="commercial" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-6">
-            {/* 商業條款 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">商業條款</h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <ReadOnlyInput label="最小訂購量 (MOQ)" value={product.moq} />
-                    <ReadOnlyInput label="交貨時間" value={product.leadTime} />
-                    <div className="col-span-2">
-                      <ReadOnlyTextarea label="包裝要求" value={product.packagingRequirements} />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 價格資訊 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">價格資訊</h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <ReadOnlyInput
-                      label="最近價格"
-                      value={product.lastPrice ? `${product.lastPrice} ${product.currency || ""}` : "-"}
-                    />
-                    <ReadOnlyInput label="幣別" value={product.currency} />
-                    <ReadOnlyInput label="最近訂單日期" value={product.lastOrderDate} />
-                    <ReadOnlyInput label="創建日期" value={product.createdDate} />
-                  </div>
                 </div>
               </CardContent>
             </Card>

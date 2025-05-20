@@ -60,7 +60,7 @@ export function ProductImagePreview({ images, thumbnailSize = "medium", classNam
 
   // 安全的圖片 URL
   const safeImageUrl = (url: string) => {
-    if (!url) return "/diverse-products-still-life.png"
+    if (!url || typeof url !== "string") return "/diverse-products-still-life.png"
 
     // 如果是相對路徑，確保它以 / 開頭
     if (!url.startsWith("http") && !url.startsWith("/")) {

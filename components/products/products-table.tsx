@@ -360,14 +360,16 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                     <TableCell>
                       <ProductImagePreview
                         images={
-                          product.images || [
-                            {
-                              id: "default",
-                              url: "/diverse-products-still-life.png",
-                              alt: product.component_name || "產品圖片",
-                              isThumbnail: true,
-                            },
-                          ]
+                          product.images && Array.isArray(product.images) && product.images.length > 0
+                            ? product.images
+                            : [
+                                {
+                                  id: "default",
+                                  url: "/diverse-products-still-life.png",
+                                  alt: product.component_name || "產品圖片",
+                                  isThumbnail: true,
+                                },
+                              ]
                         }
                         thumbnailSize="small"
                       />

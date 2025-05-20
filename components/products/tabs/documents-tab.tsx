@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Plus, X } from "lucide-react"
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Textarea } from "@/components/ui/textarea"
 
 interface DocumentsTabProps {
   product: any
@@ -18,6 +20,10 @@ interface DocumentsTabProps {
   handlePartManagementChange: (field: string, value: boolean) => void
   handleComplianceStatusChange: (regulation: string, status: string) => void
   handleComplianceFieldChange: (regulation: string, field: string, value: string) => void
+  form?: any // 將 form 設為可選
+  documentData?: any // 將 documentData 設為可選
+  onDocumentDataChange?: (data: any) => void // 將 onDocumentDataChange 設為可選
+  isReadOnly?: boolean
 }
 
 export function DocumentsTab({
@@ -29,6 +35,10 @@ export function DocumentsTab({
   handlePartManagementChange,
   handleComplianceStatusChange,
   handleComplianceFieldChange,
+  form,
+  documentData,
+  onDocumentDataChange,
+  isReadOnly = false,
 }: DocumentsTabProps) {
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldType: string) => {
@@ -106,6 +116,22 @@ export function DocumentsTab({
     e.target.value = ""
   }
 
+  // 如果有文件選擇對話框，確保它保存完整路徑
+  const handleDocumentSelect = (documentPath: string) => {
+    // 保存完整路徑
+    if (form && onDocumentDataChange) {
+      const currentDocs = form.getValues("important_documents") || ""
+      const newDocs = currentDocs ? `${currentDocs}\n${documentPath}` : documentPath
+
+      form.setValue("important_documents", newDocs)
+      const updatedData = {
+        ...(documentData || {}),
+        important_documents: newDocs,
+      }
+      onDocumentDataChange(updatedData)
+    }
+  }
+
   return (
     <div className="space-y-4 pt-4">
       <div className="grid grid-cols-1 gap-6">
@@ -129,24 +155,102 @@ export function DocumentsTab({
                       },
                     }))
                   }}
+                  disabled={isReadOnly}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   新增文件
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                {/* Standard Documents */}
+              {/* 使用條件渲染，只有當 form 存在時才渲染 FormField */}
+              {form ? (
+                <FormField
+                  control={form.control}
+                  name="important_documents"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>重要文件</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="輸入重要文件路徑"
+                          className="min-h-[100px] font-mono text-sm"
+                          value={field.value}
+                          onChange={(e) => {
+                            field.onChange(e.target.value)
+                            if (onDocumentDataChange) {
+                              const updatedData = {
+                                ...(documentData || {}),
+                                important_documents: e.target.value,
+                              }
+                              onDocumentDataChange(updatedData)
+                            }
+                          }}
+                          disabled={isReadOnly}
+                        />
+                      </FormControl>
+                      <FormDescription>請輸入完整的文件路徑，每行一個文件</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <div className="space-y-2">
+                  <Label>重要文件</Label>
+                  <Textarea
+                    placeholder="輸入重要文件路徑"
+                    className="min-h-[100px] font-mono text-sm"
+                    value={product.importantDocuments ? JSON.stringify(product.importantDocuments, null, 2) : ""}
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value)
+                        setProduct((prev: any) => ({
+                          ...prev,
+                          importantDocuments: parsed,
+                        }))
+                      } catch (error) {
+                        // 如果不是有效的 JSON，則作為純文本處理
+                        setProduct((prev: any) => ({
+                          ...prev,
+                          importantDocuments: { text: e.target.value },
+                        }))
+                      }
+                    }}
+                    disabled={isReadOnly}
+                  />
+                  <p className="text-sm text-gray-500">請輸入完整的文件路徑，每行一個文件</p>
+                </div>
+              )}
+
+              {/* Standard Documents */}
+              <div className="space-y-4 mt-4">
+                <h4 className="text-sm font-medium">標準文件</h4>
+
                 <div className="space-y-2">
                   <Label htmlFor="PPAP">PPAP認可資料夾</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="file" id="PPAP" onChange={(e) => handleFileUpload(e, "PPAP")} className="hidden" />
                     <Input
+                      type="file"
+                      id="PPAP"
+                      onChange={(e) => handleFileUpload(e, "PPAP")}
+                      className="hidden"
+                      disabled={isReadOnly}
+                    />
+                    <Input
+                      type="text"
                       readOnly
-                      value={product.importantDocuments?.PPAP?.filename || "未選擇文件"}
+                      value={
+                        product.importantDocuments?.PPAP?.document ||
+                        product.importantDocuments?.PPAP?.filename ||
+                        "未選擇文件"
+                      }
                       className="flex-1"
                     />
-                    <Button type="button" variant="outline" onClick={() => document.getElementById("PPAP")?.click()}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById("PPAP")?.click()}
+                      disabled={isReadOnly}
+                    >
                       選擇文件連結
                     </Button>
                   </div>
@@ -155,13 +259,29 @@ export function DocumentsTab({
                 <div className="space-y-2">
                   <Label htmlFor="PSW">PSW報告</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="file" id="PSW" onChange={(e) => handleFileUpload(e, "PSW")} className="hidden" />
                     <Input
+                      type="file"
+                      id="PSW"
+                      onChange={(e) => handleFileUpload(e, "PSW")}
+                      className="hidden"
+                      disabled={isReadOnly}
+                    />
+                    <Input
+                      type="text"
                       readOnly
-                      value={product.importantDocuments?.PSW?.filename || "未選擇文件"}
+                      value={
+                        product.importantDocuments?.PSW?.document ||
+                        product.importantDocuments?.PSW?.filename ||
+                        "未選擇文件"
+                      }
                       className="flex-1"
                     />
-                    <Button type="button" variant="outline" onClick={() => document.getElementById("PSW")?.click()}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById("PSW")?.click()}
+                      disabled={isReadOnly}
+                    >
                       選擇文件連結
                     </Button>
                   </div>
@@ -175,34 +295,44 @@ export function DocumentsTab({
                       id="capacityAnalysis"
                       onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
                       className="hidden"
+                      disabled={isReadOnly}
                     />
                     <Input
+                      type="text"
                       readOnly
-                      value={product.importantDocuments?.capacityAnalysis?.filename || "未選擇文件"}
+                      value={
+                        product.importantDocuments?.capacityAnalysis?.document ||
+                        product.importantDocuments?.capacityAnalysis?.filename ||
+                        "未選擇文件"
+                      }
                       className="flex-1"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => document.getElementById("capacityAnalysis")?.click()}
+                      disabled={isReadOnly}
                     >
                       選擇文件連結
                     </Button>
                   </div>
                 </div>
+              </div>
 
-                {/* Custom Documents */}
-                {product.importantDocuments &&
-                  Object.entries(product.importantDocuments).map(([key, doc]) => {
-                    if (key === "PPAP" || key === "PSW" || key === "capacityAnalysis") return null
+              {/* Custom Documents */}
+              {product.importantDocuments &&
+                Object.entries(product.importantDocuments).map(([key, doc]) => {
+                  if (key === "PPAP" || key === "PSW" || key === "capacityAnalysis" || key === "text") return null
 
-                    return (
-                      <div key={key} className="space-y-2 border-t pt-4">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={(doc as any).title || key}
-                              onChange={(e) => {
+                  return (
+                    <div key={key} className="space-y-2 border-t pt-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            value={(doc as any).title || key}
+                            onChange={(e) => {
+                              if (!isReadOnly) {
                                 setProduct((prev: any) => ({
                                   ...prev,
                                   importantDocuments: {
@@ -213,11 +343,14 @@ export function DocumentsTab({
                                     },
                                   },
                                 }))
-                              }}
-                              className="w-48"
-                              placeholder="文件標題"
-                            />
-                          </div>
+                              }
+                            }}
+                            className="w-48"
+                            placeholder="文件標題"
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        {!isReadOnly && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -235,27 +368,34 @@ export function DocumentsTab({
                           >
                             <X className="h-4 w-4 text-red-500" />
                           </Button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="file"
-                            id={`customDoc_${key}`}
-                            onChange={(e) => handleFileUpload(e, `customDoc_${key}`)}
-                            className="hidden"
-                          />
-                          <Input readOnly value={(doc as any).filename || "未選擇文件"} className="flex-1" />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById(`customDoc_${key}`)?.click()}
-                          >
-                            選擇文件連結
-                          </Button>
-                        </div>
+                        )}
                       </div>
-                    )
-                  })}
-              </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          id={`customDoc_${key}`}
+                          onChange={(e) => handleFileUpload(e, `customDoc_${key}`)}
+                          className="hidden"
+                          disabled={isReadOnly}
+                        />
+                        <Input
+                          type="text"
+                          readOnly
+                          value={(doc as any).document || (doc as any).filename || "未選擇文件"}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById(`customDoc_${key}`)?.click()}
+                          disabled={isReadOnly}
+                        >
+                          選擇文件連結
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           </CardContent>
         </Card>
@@ -266,7 +406,13 @@ export function DocumentsTab({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">零件管理特性</h3>
-                <Button type="button" size="sm" variant="outline" onClick={() => setIsPartManagementDialogOpen(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsPartManagementDialogOpen(true)}
+                  disabled={isReadOnly}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   新增特性
                 </Button>
@@ -288,7 +434,10 @@ export function DocumentsTab({
                     <Checkbox
                       id="safetyPart"
                       checked={product.partManagement?.safetyPart || false}
-                      onCheckedChange={(checked) => handlePartManagementChange("safetyPart", checked === true)}
+                      onCheckedChange={(checked) =>
+                        !isReadOnly && handlePartManagementChange("safetyPart", checked === true)
+                      }
+                      disabled={isReadOnly}
                     />
                   </div>
                 </div>
@@ -301,7 +450,10 @@ export function DocumentsTab({
                     <Checkbox
                       id="automotivePart"
                       checked={product.partManagement?.automotivePart || false}
-                      onCheckedChange={(checked) => handlePartManagementChange("automotivePart", checked === true)}
+                      onCheckedChange={(checked) =>
+                        !isReadOnly && handlePartManagementChange("automotivePart", checked === true)
+                      }
+                      disabled={isReadOnly}
                     />
                   </div>
                 </div>
@@ -314,7 +466,10 @@ export function DocumentsTab({
                     <Checkbox
                       id="CBAMPart"
                       checked={product.partManagement?.CBAMPart || false}
-                      onCheckedChange={(checked) => handlePartManagementChange("CBAMPart", checked === true)}
+                      onCheckedChange={(checked) =>
+                        !isReadOnly && handlePartManagementChange("CBAMPart", checked === true)
+                      }
+                      disabled={isReadOnly}
                     />
                   </div>
                 </div>
@@ -327,7 +482,10 @@ export function DocumentsTab({
                     <Checkbox
                       id="clockRequirement"
                       checked={product.partManagement?.clockRequirement || false}
-                      onCheckedChange={(checked) => handlePartManagementChange("clockRequirement", checked === true)}
+                      onCheckedChange={(checked) =>
+                        !isReadOnly && handlePartManagementChange("clockRequirement", checked === true)
+                      }
+                      disabled={isReadOnly}
                     />
                   </div>
                 </div>
@@ -342,7 +500,13 @@ export function DocumentsTab({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">符合性要求</h3>
-                <Button type="button" size="sm" variant="outline" onClick={() => setIsComplianceDialogOpen(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsComplianceDialogOpen(true)}
+                  disabled={isReadOnly}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   新增法規
                 </Button>
@@ -375,8 +539,9 @@ export function DocumentsTab({
                     {regulation === "PFAS" || regulation === "CMRT" || regulation === "EMRT" ? (
                       <RadioGroup
                         value={product.complianceStatus?.[regulation]?.status || ""}
-                        onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
+                        onValueChange={(value) => !isReadOnly && handleComplianceStatusChange(regulation, value)}
                         className="flex justify-center space-x-4"
+                        disabled={isReadOnly}
                       >
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="含有" id={`${regulation}-has`} />
@@ -394,8 +559,9 @@ export function DocumentsTab({
                     ) : (
                       <RadioGroup
                         value={product.complianceStatus?.[regulation]?.status || ""}
-                        onValueChange={(value) => handleComplianceStatusChange(regulation, value)}
+                        onValueChange={(value) => !isReadOnly && handleComplianceStatusChange(regulation, value)}
                         className="flex justify-center space-x-4"
+                        disabled={isReadOnly}
                       >
                         <div className="flex items-center space-x-1">
                           <RadioGroupItem value="符合" id={`${regulation}-comply`} />
@@ -413,16 +579,24 @@ export function DocumentsTab({
                     )}
                     <div>
                       <Input
+                        type="text"
                         value={product.complianceStatus?.[regulation]?.substances || ""}
-                        onChange={(e) => handleComplianceFieldChange(regulation, "substances", e.target.value)}
+                        onChange={(e) =>
+                          !isReadOnly && handleComplianceFieldChange(regulation, "substances", e.target.value)
+                        }
                         placeholder="含有物質"
+                        disabled={isReadOnly}
                       />
                     </div>
                     <div>
                       <Input
+                        type="text"
                         value={product.complianceStatus?.[regulation]?.reason || ""}
-                        onChange={(e) => handleComplianceFieldChange(regulation, "reason", e.target.value)}
+                        onChange={(e) =>
+                          !isReadOnly && handleComplianceFieldChange(regulation, "reason", e.target.value)
+                        }
                         placeholder="理由"
+                        disabled={isReadOnly}
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -431,6 +605,7 @@ export function DocumentsTab({
                         id={`compliance_${regulation}`}
                         onChange={(e) => handleFileUpload(e, `compliance_${regulation}`)}
                         className="hidden"
+                        disabled={isReadOnly}
                       />
                       <Button
                         type="button"
@@ -438,6 +613,7 @@ export function DocumentsTab({
                         size="sm"
                         className="w-full"
                         onClick={() => document.getElementById(`compliance_${regulation}`)?.click()}
+                        disabled={isReadOnly}
                       >
                         選擇文件連結
                       </Button>
@@ -455,33 +631,42 @@ export function DocumentsTab({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">編輯備註</h3>
-                <Button type="button" size="sm" variant="outline" onClick={() => setIsNoteDialogOpen(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsNoteDialogOpen(true)}
+                  disabled={isReadOnly}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   添加備註
                 </Button>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>備註內容</Label>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>備註內容</Label>
+                  </div>
+                  <div>
+                    <Label>使用者</Label>
+                  </div>
+                  <div>
+                    <Label>日期</Label>
+                  </div>
                 </div>
-                <div>
-                  <Label>使用者</Label>
-                </div>
-                <div>
-                  <Label>日期</Label>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                {product.editNotes &&
+                {product.editNotes && product.editNotes.length > 0 ? (
                   product.editNotes.map((note: any, index: number) => (
                     <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
                       <div>{note.content}</div>
                       <div>{note.user}</div>
                       <div>{note.date}</div>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">暫無備註</div>
+                )}
               </div>
             </div>
           </CardContent>

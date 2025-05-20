@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useEffect } from "react"
 
 interface BasicInfoTabProps {
   product: any
@@ -13,6 +14,10 @@ interface BasicInfoTabProps {
   factories: any[]
   productTypes: any[]
   setProduct: React.Dispatch<React.SetStateAction<any>>
+  // 將這些屬性設為可選
+  form?: any
+  formData?: any
+  onFormDataChange?: (data: any) => void
 }
 
 export function BasicInfoTab({
@@ -22,7 +27,32 @@ export function BasicInfoTab({
   factories,
   productTypes,
   setProduct,
+  form,
+  formData,
+  onFormDataChange,
 }: BasicInfoTabProps) {
+  // 只有當 form 存在時才設置監聽
+  useEffect(() => {
+    if (form && form.watch && onFormDataChange && formData) {
+      // 監聽客戶編號變更
+      const subscription = form.watch((value: any, { name }: { name: string }) => {
+        if (name === "customer_id" || name === "supplier_id") {
+          // 清除組合產品選擇
+          const updatedFormData = {
+            ...formData,
+            assembly_components: [],
+          }
+          form.setValue("assembly_components", [])
+          onFormDataChange(updatedFormData)
+        }
+      })
+
+      return () => subscription.unsubscribe()
+    }
+    // 如果 form 不存在，返回空函數
+    return () => {}
+  }, [form, formData, onFormDataChange])
+
   return (
     <div className="space-y-4 pt-4">
       <div className="grid grid-cols-2 gap-6">

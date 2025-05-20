@@ -1,484 +1,838 @@
 "use client"
 
-import type React from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { Plus, X, ChevronUp, ChevronDown, FolderSync, Languages } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, X, FileText, ShoppingCart, Loader2, Copy } from "lucide-react"
-import { batchTranslate } from "@/lib/translation-service"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { useState, memo } from "react"
+import { toast } from "@/hooks/use-toast"
+import { getTranslationsByCategory, formatProcessesForOrderRemarks } from "@/lib/translation-service"
+import { ProcessDialog } from "../dialogs/process-dialog"
 
 interface ProcessTabProps {
-  product: any
-  setProduct: React.Dispatch<React.SetStateAction<any>>
-  setIsProcessDialogOpen: (open: boolean) => void
-  setIsSpecialReqDialogOpen: (open: boolean) => void
-  setIsProcessNoteDialogOpen: (open: boolean) => void
-  handleInputChange: (field: string, value: any) => void
-  handleProcessFieldChange: (id: string, field: string, value: string) => void
-  handleRemoveProcess: (id: string) => void
-  handleMoveProcess: (id: string, direction: "up" | "down") => void
+  product?: any
+  setProduct?: (product: any) => void
+  handleInputChange?: (field: string, value: any) => void
+  handleProcessFieldChange?: (id: string, field: string, value: string) => void
+  handleRemoveProcess?: (id: string) => void
+  handleMoveProcess?: (id: string, direction: "up" | "down") => void
+  formData?: any
+  updateFormData?: (data: any) => void
+  readOnly?: boolean
 }
 
-// 定義生成備註的類型
-type RemarksType = "order" | "purchase"
-
-// 使用 memo 包裝組件以避免不必要的重新渲染
-const ProcessTab = memo(function ProcessTab({
+export function ProcessTab({
   product,
   setProduct,
-  setIsProcessDialogOpen,
-  setIsSpecialReqDialogOpen,
-  setIsProcessNoteDialogOpen,
   handleInputChange,
   handleProcessFieldChange,
   handleRemoveProcess,
   handleMoveProcess,
+  formData = {},
+  updateFormData = () => {},
+  readOnly = false,
 }: ProcessTabProps) {
-  const [isGenerateRemarksDialogOpen, setIsGenerateRemarksDialogOpen] = useState(false)
-  const [useTranslation, setUseTranslation] = useState(false)
-  const [generatedRemarks, setGeneratedRemarks] = useState("")
-  const [currentRemarksType, setCurrentRemarksType] = useState<RemarksType>("order")
+  const [translations, setTranslations] = useState<any[]>([])
   const [isTranslating, setIsTranslating] = useState(false)
+  const [isAddProcessDialogOpen, setIsAddProcessDialogOpen] = useState(false)
+  const [newProcess, setNewProcess] = useState({
+    id: "",
+    process: "",
+    vendor: "",
+    capacity: "",
+    requirements: "",
+    report: "",
+  })
+  const [editingProcessIndex, setEditingProcessIndex] = useState<number | null>(null)
 
-  // 生成製程要求
-  const generateRequirements = () => {
-    if (!product || !product.processData) return []
+  // 確保 formData 有初始值
+  const safeFormData = formData || {}
+  const safeProduct = product || {}
 
-    // 獲取所有製程要求
-    return product.processData
-      .filter((proc: any) => proc.requirements)
-      .map((proc: any) => `${proc.process}：${proc.requirements}`)
+  // 初始化製程列表
+  useEffect(() => {
+    if (updateFormData && (!safeFormData.processes || safeFormData.processes.length === 0)) {
+      updateFormData({ ...safeFormData, processes: defaultProcesses })
+    } else if (setProduct && (!safeProduct.processData || safeProduct.processData.length === 0)) {
+      // 設置默認製程數據
+      setProduct((prev) => {
+        if (!prev.processData || prev.processData.length === 0) {
+          return {
+            ...prev,
+            processData: defaultProcesses,
+          }
+        }
+        return prev
+      })
+    }
+  }, []) // Empty dependency array to run only once on mount
+
+  // 載入翻譯資料
+  useEffect(() => {
+    const loadTranslations = async () => {
+      try {
+        const processTranslations = await getTranslationsByCategory("process")
+        setTranslations(processTranslations)
+      } catch (error) {
+        console.error("載入翻譯資料失敗:", error)
+      }
+    }
+
+    loadTranslations()
+  }, [])
+
+  // 處理表單欄位變更
+  const handleFieldChange = (field: string, value: any) => {
+    if (handleInputChange) {
+      handleInputChange(field, value)
+    } else if (updateFormData) {
+      updateFormData({ ...safeFormData, [field]: value })
+    }
   }
 
-  // 生成所有製程（包括沒有要求的）
-  const generateAllProcesses = () => {
-    if (!product || !product.processData) return []
+  // 獲取製程資料
+  const getProcesses = () => {
+    if (updateFormData) {
+      return safeFormData.processes || []
+    } else if (safeProduct.processData) {
+      return safeProduct.processData || []
+    }
+    return []
+  }
 
-    // 獲取所有製程，無論是否有要求
-    return product.processData.map((proc: any) => {
-      if (proc.requirements) {
-        return `${proc.process}：${proc.requirements}`
-      } else {
-        return `${proc.process}：`
-      }
+  // 獲取製程備註
+  const getProcessNotes = () => {
+    if (updateFormData) {
+      return safeFormData.processNotes || []
+    } else if (safeProduct.processNotes) {
+      return safeProduct.processNotes || []
+    }
+    return []
+  }
+
+  // 獲取特殊要求
+  const getSpecialRequirements = () => {
+    if (updateFormData) {
+      return safeFormData.specialRequirements || []
+    } else if (safeProduct.specialRequirements) {
+      return safeProduct.specialRequirements || []
+    }
+    return []
+  }
+
+  // 獲取訂單零件需求
+  const getOrderRequirements = () => {
+    if (updateFormData) {
+      return safeFormData.orderComponentRequirements || ""
+    } else if (safeProduct.orderRequirements) {
+      return safeProduct.orderRequirements || ""
+    }
+    return ""
+  }
+
+  // 獲取採購零件需求
+  const getPurchaseRequirements = () => {
+    if (updateFormData) {
+      return safeFormData.purchaseComponentRequirements || ""
+    } else if (safeProduct.purchaseRequirements) {
+      return safeProduct.purchaseRequirements || ""
+    }
+    return ""
+  }
+
+  // 處理製程資料更新
+  const handleAddProcessData = (processData: any) => {
+    console.log("Adding process data:", processData)
+
+    if (!processData.process) return
+
+    if (setProduct) {
+      setProduct((prev: any) => {
+        // Make sure processData exists and is an array
+        const currentProcessData = Array.isArray(prev.processData) ? [...prev.processData] : []
+
+        if (
+          editingProcessIndex !== null &&
+          editingProcessIndex >= 0 &&
+          editingProcessIndex < currentProcessData.length
+        ) {
+          // Update existing process
+          currentProcessData[editingProcessIndex] = {
+            ...currentProcessData[editingProcessIndex],
+            ...processData,
+          }
+        } else {
+          // Add new process
+          currentProcessData.push({
+            id: processData.id || `proc_${Date.now()}`,
+            process: processData.process,
+            vendor: processData.vendor,
+            capacity: processData.capacity,
+            requirements: processData.requirements,
+            report: processData.report,
+          })
+        }
+
+        return {
+          ...prev,
+          processData: currentProcessData,
+        }
+      })
+    }
+
+    // Reset form and close dialog
+    setNewProcess({
+      id: "",
+      process: "",
+      vendor: "",
+      capacity: "",
+      requirements: "",
+      report: "",
+    })
+    setEditingProcessIndex(null)
+    setIsAddProcessDialogOpen(false)
+
+    // Show success toast
+    toast({
+      title: editingProcessIndex !== null ? "製程已更新" : "製程已新增",
+      description: `製程 "${processData.process}" ${editingProcessIndex !== null ? "已更新" : "已新增"}`,
     })
   }
 
-  // 複製所有製程到訂單零件要求
-  const copyAllProcessesToOrderRequirements = () => {
-    const allProcesses = generateAllProcesses()
-    if (allProcesses.length === 0) {
-      alert("沒有可用的製程資料")
-      return
+  // 處理刪除製程
+  const handleDeleteProcess = (index: number) => {
+    if (updateFormData) {
+      const updatedProcesses = [...(safeFormData.processes || [])]
+      updatedProcesses.splice(index, 1)
+      updateFormData({ ...safeFormData, processes: updatedProcesses })
+    } else if (handleRemoveProcess && safeProduct.processData) {
+      handleRemoveProcess(safeProduct.processData[index].id)
+    } else if (setProduct) {
+      setProduct((prev: any) => {
+        const updatedProcessData = [...(prev.processData || [])]
+        updatedProcessData.splice(index, 1)
+        return {
+          ...prev,
+          processData: updatedProcessData,
+        }
+      })
     }
-
-    const formattedText = allProcesses.join("\n")
-    handleInputChange("orderRequirements", formattedText)
   }
 
-  // 複製所有製程到採購單零件要求
-  const copyAllProcessesToPurchaseRequirements = () => {
-    const allProcesses = generateAllProcesses()
-    if (allProcesses.length === 0) {
-      alert("沒有可用的製程資料")
-      return
+  // 處理編輯製程
+  const handleEditProcess = (index: number) => {
+    const processes = getProcesses()
+    if (processes[index]) {
+      setNewProcess({
+        id: processes[index].id || `proc_${Date.now()}`,
+        process: processes[index].process || processes[index].name || "",
+        vendor: processes[index].vendor || processes[index].factory || "",
+        capacity: processes[index].capacity || "",
+        requirements: processes[index].requirements || processes[index].description || "",
+        report: processes[index].report || "",
+      })
+      setEditingProcessIndex(index)
+      setIsAddProcessDialogOpen(true)
     }
-
-    const formattedText = allProcesses.join("\n")
-    handleInputChange("purchaseRequirements", formattedText)
   }
 
-  // 打開生成備註對話框
-  const openGenerateRemarksDialog = async (type: RemarksType) => {
-    const processRequirements = generateRequirements()
-    if (processRequirements.length === 0) {
-      alert("沒有可用的製程要求")
-      return
-    }
-
-    // 設置當前備註類型
-    setCurrentRemarksType(type)
-
-    // 默認不翻譯
-    setGeneratedRemarks("製程要求:\n" + processRequirements.map((req) => `${req}`).join("\n"))
-    setUseTranslation(false)
-    setIsGenerateRemarksDialogOpen(true)
-  }
-
-  // 切換翻譯選項
-  const handleToggleTranslation = async (checked: boolean) => {
-    setUseTranslation(checked)
-
-    if (checked) {
-      setIsTranslating(true)
-      try {
-        // 獲取所有製程名稱和要求
-        const processTerms = product.processData
-          .filter((proc: any) => proc.requirements)
-          .map((proc: any) => proc.process)
-
-        const requirementTerms = product.processData
-          .filter((proc: any) => proc.requirements)
-          .map((proc: any) => proc.requirements)
-
-        // 翻譯製程名稱
-        const translatedProcesses = await batchTranslate(processTerms, "process")
-
-        // 翻譯要求
-        const translatedRequirements = await Promise.all(
-          requirementTerms.map(async (req: string) => {
-            // 將要求拆分為詞組進行翻譯
-            const terms = req.split(/[，,、：:；;]/).filter(Boolean)
-            const translatedTerms = await batchTranslate(terms, "requirement")
-
-            // 嘗試保留原始的分隔符
-            let result = req
-            for (let i = 0; i < terms.length; i++) {
-              result = result.replace(terms[i], translatedTerms[i])
-            }
-            return result
-          }),
-        )
-
-        // 組合翻譯後的製程要求
-        const translatedRemarks = translatedProcesses.map((proc, index) => `${proc}: ${translatedRequirements[index]}`)
-
-        // 格式化為英文訂單備註格式
-        setGeneratedRemarks("MANUFACTURING PROCESS:\n" + translatedRemarks.map((req) => `${req}`).join("\n"))
-      } catch (error) {
-        console.error("翻譯失敗:", error)
-        // 如果翻譯失敗，回退到中文
-        const processRequirements = generateRequirements()
-        setGeneratedRemarks("製程要求:\n" + processRequirements.map((req) => `${req}`).join("\n"))
-      } finally {
-        setIsTranslating(false)
+  // 處理移動製程
+  const handleMoveProcessItem = (index: number, direction: "up" | "down") => {
+    if (updateFormData) {
+      const updatedProcesses = [...(safeFormData.processes || [])]
+      if (direction === "up" && index > 0) {
+        ;[updatedProcesses[index], updatedProcesses[index - 1]] = [updatedProcesses[index - 1], updatedProcesses[index]]
+      } else if (direction === "down" && index < updatedProcesses.length - 1) {
+        ;[updatedProcesses[index], updatedProcesses[index + 1]] = [updatedProcesses[index + 1], updatedProcesses[index]]
       }
-    } else {
-      // 不翻譯，使用原中文
-      const processRequirements = generateRequirements()
-      setGeneratedRemarks("製程要求:\n" + processRequirements.map((req) => `${req}`).join("\n"))
+      updateFormData({ ...safeFormData, processes: updatedProcesses })
+    } else if (handleMoveProcess && safeProduct.processData) {
+      handleMoveProcess(safeProduct.processData[index].id, direction)
+    } else if (setProduct) {
+      setProduct((prev: any) => {
+        const updatedProcessData = [...(prev.processData || [])]
+        if (direction === "up" && index > 0) {
+          ;[updatedProcessData[index], updatedProcessData[index - 1]] = [
+            updatedProcessData[index - 1],
+            updatedProcessData[index],
+          ]
+        } else if (direction === "down" && index < updatedProcessData.length - 1) {
+          ;[updatedProcessData[index], updatedProcessData[index + 1]] = [
+            updatedProcessData[index + 1],
+            updatedProcessData[index],
+          ]
+        }
+        return {
+          ...prev,
+          processData: updatedProcessData,
+        }
+      })
     }
   }
 
-  // 應用生成的備註
-  const applyGeneratedRemarks = () => {
-    // 根據當前備註類型更新相應的字段
-    if (currentRemarksType === "order") {
-      handleInputChange("orderRequirements", generatedRemarks)
-    } else {
-      handleInputChange("purchaseRequirements", generatedRemarks)
+  // 同步製程到訂單零件需求
+  const syncProcessToOrder = async () => {
+    try {
+      let processes: string[] = []
+
+      if (updateFormData) {
+        processes = (safeFormData.processes || [])
+          .map((p: any) => `${p.process}: ${p.requirements || ""}`)
+          .filter((p: string) => p.trim() !== "")
+      } else if (safeProduct.processData) {
+        processes = safeProduct.processData
+          .map((p: any) => `${p.process}: ${p.requirements || ""}`)
+          .filter((p: string) => p.trim() !== "")
+      }
+
+      if (processes.length === 0) {
+        toast({
+          title: "警告",
+          description: "沒有可同步的製程資料",
+          variant: "warning",
+        })
+        return
+      }
+
+      const formattedText = processes.map((p) => `- ${p}`).join("\n")
+      const orderRequirements = `製程要求:\n${formattedText}`
+
+      if (handleInputChange) {
+        handleInputChange("orderRequirements", orderRequirements)
+      } else if (updateFormData) {
+        updateFormData({ ...safeFormData, orderComponentRequirements: orderRequirements })
+      }
+
+      toast({
+        title: "同步成功",
+        description: "製程資料已同步到訂單零件需求",
+      })
+    } catch (error) {
+      console.error("同步製程到訂單零件需求失敗:", error)
+      toast({
+        title: "同步失敗",
+        description: "無法同步製程資料到訂單零件需求",
+        variant: "destructive",
+      })
     }
-    setIsGenerateRemarksDialogOpen(false)
   }
 
-  // 如果產品數據尚未加載，顯示加載狀態
-  if (!product) {
-    return <div>加載中...</div>
+  // 同步製程到採購零件需求
+  const syncProcessToPurchase = async () => {
+    try {
+      let processes: string[] = []
+
+      if (updateFormData) {
+        processes = (safeFormData.processes || [])
+          .map((p: any) => `${p.process}: ${p.requirements || ""}`)
+          .filter((p: string) => p.trim() !== "")
+      } else if (safeProduct.processData) {
+        processes = safeProduct.processData
+          .map((p: any) => `${p.process}: ${p.requirements || ""}`)
+          .filter((p: string) => p.trim() !== "")
+      }
+
+      if (processes.length === 0) {
+        toast({
+          title: "警告",
+          description: "沒有可同步的製程資料",
+          variant: "warning",
+        })
+        return
+      }
+
+      const formattedText = processes.map((p) => `- ${p}`).join("\n")
+      const purchaseRequirements = `製程要求:\n${formattedText}`
+
+      if (handleInputChange) {
+        handleInputChange("purchaseRequirements", purchaseRequirements)
+      } else if (updateFormData) {
+        updateFormData({ ...safeFormData, purchaseComponentRequirements: purchaseRequirements })
+      }
+
+      toast({
+        title: "同步成功",
+        description: "製程資料已同步到採購零件需求",
+      })
+    } catch (error) {
+      console.error("同步製程到採購零件需求失敗:", error)
+      toast({
+        title: "同步失敗",
+        description: "無法同步製程資料到採購零件需求",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // 翻譯製程資料
+  const translateProcess = async () => {
+    try {
+      setIsTranslating(true)
+      let processes: string[] = []
+
+      if (updateFormData) {
+        processes = (safeFormData.processes || [])
+          .map((p: any) => `${p.process}: ${p.requirements || ""}`)
+          .filter((p: string) => p.trim() !== "")
+      } else if (safeProduct.processData) {
+        processes = safeProduct.processData
+          .map((p: any) => `${p.process}: ${p.requirements || ""}`)
+          .filter((p: string) => p.trim() !== "")
+      }
+
+      if (processes.length === 0) {
+        toast({
+          title: "警告",
+          description: "沒有可翻譯的製程資料",
+          variant: "warning",
+        })
+        return
+      }
+
+      const translatedText = await formatProcessesForOrderRemarks(processes, true)
+
+      if (handleInputChange) {
+        handleInputChange("orderRequirements", translatedText)
+      } else if (updateFormData) {
+        updateFormData({ ...safeFormData, orderComponentRequirements: translatedText })
+      }
+
+      toast({
+        title: "翻譯成功",
+        description: "製程資料已成功翻譯並同步到訂單零件需求",
+      })
+    } catch (error) {
+      console.error("翻譯製程資料失敗:", error)
+      toast({
+        title: "翻譯失敗",
+        description: "無法翻譯製程資料",
+        variant: "destructive",
+      })
+    } finally {
+      setIsTranslating(false)
+    }
+  }
+
+  // Debug function to check current processes
+  const debugProcesses = () => {
+    console.log("Current processes:", getProcesses())
+    console.log("Product:", safeProduct)
+    if (safeProduct.processData) {
+      console.log("Process data length:", safeProduct.processData.length)
+    }
   }
 
   return (
-    <Card className="mt-4">
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">製程資料</h3>
-            <Button type="button" size="sm" variant="outline" onClick={() => setIsProcessDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              新增製程
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div className="grid grid-cols-6 gap-4">
-              <div>
-                <Label>製程</Label>
-              </div>
-              <div>
-                <Label>廠商</Label>
-              </div>
-              <div>
-                <Label>產能(SH)</Label>
-              </div>
-              <div>
-                <Label>要求</Label>
-              </div>
-              <div>
-                <Label>報告</Label>
-              </div>
-              <div>
-                <Label>操作</Label>
-              </div>
+    <div className="space-y-6">
+      {/* 製程資料 */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">製程資料</h3>
+          {!readOnly && (
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm" onClick={syncProcessToOrder}>
+                <FolderSync className="h-4 w-4 mr-2" />
+                同步到訂單需求
+              </Button>
+              <Button variant="outline" size="sm" onClick={syncProcessToPurchase}>
+                <FolderSync className="h-4 w-4 mr-2" />
+                同步到採購需求
+              </Button>
+              <Button variant="outline" size="sm" onClick={translateProcess} disabled={isTranslating}>
+                <Languages className="h-4 w-4 mr-2" />
+                翻譯製程
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault()
+                  setNewProcess({
+                    id: "",
+                    process: "",
+                    vendor: "",
+                    capacity: "",
+                    requirements: "",
+                    report: "",
+                  })
+                  setEditingProcessIndex(null)
+                  setIsAddProcessDialogOpen(true)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                新增製程
+              </Button>
             </div>
-
-            {product.processData &&
-              product.processData.map((process: any, index: number) => (
-                <div key={process.id} className="grid grid-cols-6 gap-4 items-center border-b pb-2">
-                  <div>
-                    <Input
-                      value={process.process}
-                      onChange={(e) => handleProcessFieldChange(process.id, "process", e.target.value)}
-                      placeholder="製程名稱"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      value={process.vendor}
-                      onChange={(e) => handleProcessFieldChange(process.id, "vendor", e.target.value)}
-                      placeholder="廠商名稱"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      value={process.capacity}
-                      onChange={(e) => handleProcessFieldChange(process.id, "capacity", e.target.value)}
-                      placeholder="產能數值"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      value={process.requirements}
-                      onChange={(e) => handleProcessFieldChange(process.id, "requirements", e.target.value)}
-                      placeholder="製程要求"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      value={process.report}
-                      onChange={(e) => handleProcessFieldChange(process.id, "report", e.target.value)}
-                      placeholder="報告名稱"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => handleMoveProcess(process.id, "up")}>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="lucide lucide-arrow-up"
-                      >
-                        <path d="m5 12 7-7 7 7" />
-                      </svg>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleMoveProcess(process.id, "down")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="lucide lucide-arrow-down"
-                      >
-                        <path d="m19 12-7 7-7-7" />
-                      </svg>
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveProcess(process.id)}>
-                      <X className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="orderRequirements">訂單零件要求</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={copyAllProcessesToOrderRequirements}
-                  className="ml-2"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  複製所有製程
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openGenerateRemarksDialog("order")}
-                  className="ml-2"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  生成訂單要求
-                </Button>
-              </div>
-            </div>
-            {/* 使用標準 Textarea 替代 AutoResizeTextarea */}
-            <Textarea
-              id="orderRequirements"
-              value={product.orderRequirements || ""}
-              onChange={(e) => handleInputChange("orderRequirements", e.target.value)}
-              rows={5}
-              placeholder="輸入訂單零件要求"
-              className="w-full min-h-[120px]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="purchaseRequirements">採購單零件要求</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={copyAllProcessesToPurchaseRequirements}
-                  className="ml-2"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  複製所有製程
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openGenerateRemarksDialog("purchase")}
-                  className="ml-2"
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  生成採購單要求
-                </Button>
-              </div>
-            </div>
-            {/* 使用標準 Textarea 替代 AutoResizeTextarea */}
-            <Textarea
-              id="purchaseRequirements"
-              value={product.purchaseRequirements || ""}
-              onChange={(e) => handleInputChange("purchaseRequirements", e.target.value)}
-              rows={5}
-              placeholder="輸入採購單零件要求"
-              className="w-full min-h-[120px]"
-            />
-          </div>
-
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">特殊要求</h3>
-            <Button type="button" size="sm" variant="outline" onClick={() => setIsSpecialReqDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              添加特殊要求
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>要求內容</Label>
-            </div>
-            <div>
-              <Label>使用者</Label>
-            </div>
-            <div>
-              <Label>日期</Label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            {product.specialRequirements &&
-              product.specialRequirements.map((req: any, index: number) => (
-                <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                  <div>{req.content}</div>
-                  <div>{req.user}</div>
-                  <div>{req.date}</div>
-                </div>
-              ))}
-          </div>
-
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">製程備註</h3>
-            <Button type="button" size="sm" variant="outline" onClick={() => setIsProcessNoteDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              添加製程備註
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>備註內容</Label>
-            </div>
-            <div>
-              <Label>使用者</Label>
-            </div>
-            <div>
-              <Label>日期</Label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            {product.processNotes &&
-              product.processNotes.map((note: any, index: number) => (
-                <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                  <div>{note.content}</div>
-                  <div>{note.user}</div>
-                  <div>{note.date}</div>
-                </div>
-              ))}
-          </div>
+          )}
         </div>
-      </CardContent>
 
-      {/* 生成備註對話框 */}
-      <Dialog open={isGenerateRemarksDialogOpen} onOpenChange={setIsGenerateRemarksDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{currentRemarksType === "order" ? "生成訂單零件要求" : "生成採購單零件要求"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="useTranslation"
-                checked={useTranslation}
-                onCheckedChange={(checked) => handleToggleTranslation(checked === true)}
-                disabled={isTranslating}
-              />
-              <Label htmlFor="useTranslation" className="flex items-center">
-                使用英文翻譯
-                {isTranslating && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-              </Label>
-            </div>
-            <Textarea value={generatedRemarks} onChange={(e) => setGeneratedRemarks(e.target.value)} rows={10} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsGenerateRemarksDialogOpen(false)}>
-              取消
+        <div className="border rounded-md">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">製程</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">廠商</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">產能(8H)</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">要求</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">報告</th>
+                {!readOnly && <th className="px-4 py-2 text-center text-sm font-medium text-gray-500">操作</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {getProcesses().map((process: any, index: number) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 text-sm">{process.process || process.name}</td>
+                  <td className="px-4 py-2 text-sm">{process.vendor || process.factory}</td>
+                  <td className="px-4 py-2 text-sm">{process.capacity}</td>
+                  <td className="px-4 py-2 text-sm">{process.requirements || process.description}</td>
+                  <td className="px-4 py-2 text-sm">{process.report}</td>
+                  {!readOnly && (
+                    <td className="px-4 py-2">
+                      <div className="flex justify-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMoveProcessItem(index, "up")}
+                          disabled={index === 0}
+                          className="h-7 w-7"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMoveProcessItem(index, "down")}
+                          disabled={index === getProcesses().length - 1}
+                          className="h-7 w-7"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditProcess(index)}
+                          className="h-7 w-7"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                            <path d="m15 5 4 4" />
+                          </svg>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteProcess(index)}
+                          className="h-7 w-7 text-red-500 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {getProcesses().length === 0 && (
+                <tr>
+                  <td colSpan={readOnly ? 5 : 6} className="px-4 py-4 text-center text-sm text-gray-500">
+                    尚未添加製程資料
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* 訂單零件需求和採購零件需求 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">訂單零件需求</h3>
+          <Textarea
+            value={getOrderRequirements()}
+            onChange={(e) =>
+              handleFieldChange(updateFormData ? "orderComponentRequirements" : "orderRequirements", e.target.value)
+            }
+            placeholder="請輸入訂單零件需求"
+            rows={10}
+            className="resize-none"
+            disabled={readOnly}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">採購零件需求</h3>
+          <Textarea
+            value={getPurchaseRequirements()}
+            onChange={(e) =>
+              handleFieldChange(
+                updateFormData ? "purchaseComponentRequirements" : "purchaseRequirements",
+                e.target.value,
+              )
+            }
+            placeholder="請輸入採購零件需求"
+            rows={10}
+            className="resize-none"
+            disabled={readOnly}
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* 特殊要求/測試 */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">特殊要求/測試</h3>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault()
+                // 這裡保留原有的特殊要求對話框開啟邏輯
+                if (setProduct) {
+                  setProduct({
+                    ...safeProduct,
+                    showSpecialReqDialog: true,
+                  })
+                }
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              添加特殊要求/測試
             </Button>
-            <Button onClick={applyGeneratedRemarks} disabled={isTranslating}>
-              {currentRemarksType === "order" ? "應用到訂單要求" : "應用到採購單要求"}
+          )}
+        </div>
+
+        <div className="border rounded-md">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">要求內容</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                {!readOnly && (
+                  <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 w-[100px]">操作</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {getSpecialRequirements().map((req: any, index: number) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 text-sm">{req.content}</td>
+                  <td className="px-4 py-2 text-sm">{req.user}</td>
+                  <td className="px-4 py-2 text-sm">{req.date}</td>
+                  {!readOnly && (
+                    <td className="px-4 py-2">
+                      <div className="flex justify-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // 這裡保留原有的特殊要求編輯邏輯
+                            if (setProduct) {
+                              setProduct({
+                                ...safeProduct,
+                                showSpecialReqDialog: true,
+                                editingSpecialReqIndex: index,
+                              })
+                            }
+                          }}
+                          className="h-7 w-7"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                            <path d="m15 5 4 4" />
+                          </svg>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // 這裡保留原有的特殊要求刪除邏輯
+                            if (setProduct) {
+                              const updatedReqs = [...(safeProduct.specialRequirements || [])]
+                              updatedReqs.splice(index, 1)
+                              setProduct({
+                                ...safeProduct,
+                                specialRequirements: updatedReqs,
+                              })
+                            }
+                          }}
+                          className="h-7 w-7 text-red-500 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {getSpecialRequirements().length === 0 && (
+                <tr>
+                  <td colSpan={readOnly ? 3 : 4} className="px-4 py-4 text-center text-sm text-gray-500">
+                    尚未添加特殊要求/測試
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* 製程備註 */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">製程備註</h3>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault()
+                // 這裡保留原有的製程備註對話框開啟邏輯
+                if (setProduct) {
+                  setProduct({
+                    ...safeProduct,
+                    showProcessNoteDialog: true,
+                  })
+                }
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              添加備註
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+          )}
+        </div>
+
+        <div className="border rounded-md">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">備註類型</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                {!readOnly && (
+                  <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 w-[100px]">操作</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {getProcessNotes().map((note: any, index: number) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 text-sm">{note.type}</td>
+                  <td className="px-4 py-2 text-sm">{note.content}</td>
+                  <td className="px-4 py-2 text-sm">{note.date}</td>
+                  {!readOnly && (
+                    <td className="px-4 py-2">
+                      <div className="flex justify-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // 這裡保留原有的製程備註編輯邏輯
+                            if (setProduct) {
+                              setProduct({
+                                ...safeProduct,
+                                showProcessNoteDialog: true,
+                                editingProcessNoteIndex: index,
+                              })
+                            }
+                          }}
+                          className="h-7 w-7"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                            <path d="m15 5 4 4" />
+                          </svg>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // 這裡保留原有的製程備註刪除邏輯
+                            if (setProduct) {
+                              const updatedNotes = [...(safeProduct.processNotes || [])]
+                              updatedNotes.splice(index, 1)
+                              setProduct({
+                                ...safeProduct,
+                                processNotes: updatedNotes,
+                              })
+                            }
+                          }}
+                          className="h-7 w-7 text-red-500 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {getProcessNotes().length === 0 && (
+                <tr>
+                  <td colSpan={readOnly ? 3 : 4} className="px-4 py-4 text-center text-sm text-gray-500">
+                    尚未添加製程備註
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 使用 ProcessDialog 組件 */}
+      <ProcessDialog
+        isOpen={isAddProcessDialogOpen}
+        onClose={() => setIsAddProcessDialogOpen(false)}
+        onSave={handleAddProcessData}
+        initialData={editingProcessIndex !== null ? newProcess : undefined}
+      />
+    </div>
   )
-})
+}
 
-// 預設製程資料
+// 預設製程資料 - 根據提供的圖片更新
 export const defaultProcesses = [
   {
     id: "proc_1",
     process: "材料",
     vendor: "中鋼",
-    capacity: "",
+    capacity: "產能數值",
     requirements: "SAE 10B21",
     report: "材證",
   },
@@ -486,7 +840,7 @@ export const defaultProcesses = [
     id: "proc_2",
     process: "成型",
     vendor: "岡岩",
-    capacity: "",
+    capacity: "產能數值",
     requirements: "",
     report: "",
   },
@@ -494,7 +848,7 @@ export const defaultProcesses = [
     id: "proc_3",
     process: "搓牙",
     vendor: "岡岩",
-    capacity: "",
+    capacity: "產能數值",
     requirements: "",
     report: "",
   },
@@ -502,15 +856,15 @@ export const defaultProcesses = [
     id: "proc_4",
     process: "熱處理",
     vendor: "力大",
-    capacity: "",
-    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640",
+    capacity: "產能數值",
+    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640Mpa",
     report: "硬度，拉力",
   },
   {
     id: "proc_5",
     process: "電鍍",
     vendor: "頂上興",
-    capacity: "",
+    capacity: "產能數值",
     requirements: "三價鉻鋅SUM MIN，鹽測12/48",
     report: "膜厚，鹽測，除氫",
   },
@@ -518,10 +872,8 @@ export const defaultProcesses = [
     id: "proc_6",
     process: "篩選",
     vendor: "聖鼎",
-    capacity: "",
+    capacity: "產能數值",
     requirements: "50 PPM：混料、總長",
     report: "篩選報告",
   },
 ]
-
-export { ProcessTab }
