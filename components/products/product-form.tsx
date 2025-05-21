@@ -970,7 +970,7 @@ export function ProductForm({
         // Resume data
         has_mold: product.hasMold,
         mold_cost: product.moldCost,
-        refundableMoldQuantity: product.refundableMoldQuantity,
+        refundable_mold_quantity: product.refundableMoldQuantity,
         mold_returned: product.moldReturned,
         accounting_note: product.accountingNote,
         quality_notes: product.qualityNotes,

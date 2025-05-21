@@ -473,7 +473,6 @@ export function ProcessTab({
           const updatedNotes = [...currentNotes];
           updatedNotes[editingNoteIndex] = {
             content: newProcessNote.content,
-            type: "一般備註",
             date,
             user,
           };
@@ -496,7 +495,6 @@ export function ProcessTab({
               ...currentNotes,
               {
                 content: newProcessNote.content,
-                type: "一般備註",
                 date,
                 user,
               },

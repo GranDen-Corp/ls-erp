@@ -160,7 +160,7 @@ export interface Product {
   // 履歷資料
   hasMold: boolean
   moldCost: string | number
-  refundableMoldQuantity: string | number
+  refundableMoldQuantity: string
   moldReturned: boolean
   accountingNote: string
   qualityNotes: QualityNote[]
