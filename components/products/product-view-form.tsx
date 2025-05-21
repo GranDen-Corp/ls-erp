@@ -10,6 +10,7 @@ import { ProductComplaintHistory } from "@/components/products/product-complaint
 import { ProductPriceHistoryChart } from "@/components/products/product-price-history-chart"
 import { ProductSpecifications } from "@/components/products/product-specifications"
 import { useState } from "react"
+import { ProcessTab } from "./tabs/process-tab"
 
 interface ProductViewFormProps {
   productId: string
@@ -263,13 +264,8 @@ export function ProductViewForm({
               <CardTitle>工藝資料</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4">
-                {renderMultilineField("訂單零件要求", initialValues.orderRequirements)}
-                {renderMultilineField("採購單零件要求", initialValues.purchaseRequirements)}
-                {renderField("工藝要求", initialValues.processData?.join(", ") || "-")}
-                {renderField("工藝備註", initialValues.processNotes?.join(", ") || "-")}
-                {renderField("特殊要求", initialValues.specialRequirements?.join(", ") || "-")}
-              </div>
+              {/* 使用 ProcessTab 組件來顯示製程資料 */}
+              <ProcessTab product={initialValues} readOnly={true} />
             </CardContent>
           </Card>
 

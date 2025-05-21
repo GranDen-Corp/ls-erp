@@ -7,10 +7,6 @@ import { Plus, X, ChevronUp, ChevronDown, FolderSync, Languages } from "lucide-r
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
 import { getTranslationsByCategory, formatProcessesForOrderRemarks } from "@/lib/translation-service"
-import { ProcessDialog } from "../dialogs/process-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 
 // 預設製程資料 - 根據提供的圖片更新
 export const defaultProcesses = [
@@ -537,6 +533,136 @@ export function ProcessTab({
     }
   }
 
+  // 如果是唯讀模式，則顯示簡化版的製程資料
+  if (readOnly) {
+    return (
+      <div className="space-y-6">
+        {/* 製程資料 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">製程資料</h3>
+          <div className="border rounded-md">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">製程</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">廠商</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">產能(8H)</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">要求</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">報告</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {getProcesses().map((process: any, index: number) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm">{process.process || process.name}</td>
+                    <td className="px-4 py-2 text-sm">{process.vendor || process.factory}</td>
+                    <td className="px-4 py-2 text-sm">{process.capacity}</td>
+                    <td className="px-4 py-2 text-sm">{process.requirements || process.description}</td>
+                    <td className="px-4 py-2 text-sm">{process.report}</td>
+                  </tr>
+                ))}
+                {getProcesses().length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-4 text-center text-sm text-gray-500">
+                      尚未添加製程資料
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* 訂單零件需求和採購零件需求 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">訂單零件需求</h3>
+            <div className="p-4 bg-gray-50 rounded-md min-h-[100px] whitespace-pre-wrap">
+              {getOrderRequirements() || "無訂單零件需求"}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">採購零件需求</h3>
+            <div className="p-4 bg-gray-50 rounded-md min-h-[100px] whitespace-pre-wrap">
+              {getPurchaseRequirements() || "無採購零件需求"}
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* 特殊要求/測試 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">特殊要求/測試</h3>
+          <div className="border rounded-md">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">要求內容</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {getSpecialRequirements().map((req: any, index: number) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm">{req.content}</td>
+                    <td className="px-4 py-2 text-sm">{req.user}</td>
+                    <td className="px-4 py-2 text-sm">{req.date}</td>
+                  </tr>
+                ))}
+                {getSpecialRequirements().length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">
+                      尚未添加特殊要求/測試
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* 製程備註 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">製程備註</h3>
+          <div className="border rounded-md">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">備註類型</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {getProcessNotes().map((note: any, index: number) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm">{note.type || "一般備註"}</td>
+                    <td className="px-4 py-2 text-sm">{note.content}</td>
+                    <td className="px-4 py-2 text-sm">{note.date}</td>
+                  </tr>
+                ))}
+                {getProcessNotes().length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">
+                      尚未添加製程備註
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* 製程資料 */}
@@ -933,114 +1059,6 @@ export function ProcessTab({
           </table>
         </div>
       </div>
-
-      {/* 使用 ProcessDialog 組件 */}
-      <ProcessDialog
-        isOpen={isAddProcessDialogOpen}
-        onClose={() => setIsAddProcessDialogOpen(false)}
-        onSave={handleAddProcessData}
-        initialData={editingProcessIndex !== null ? newProcess : undefined}
-      />
-
-      {/* 特殊要求對話框 */}
-      <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>添加特殊要求</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="content">特殊要求內容</Label>
-              <Textarea
-                id="content"
-                value={newSpecialReq.content}
-                onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
-                placeholder="輸入特殊要求內容"
-                rows={4}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">日期</Label>
-                <Input
-                  id="date"
-                  type="text"
-                  value={newSpecialReq.date}
-                  onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
-                  placeholder="YYYY/MM/DD"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="user">使用者</Label>
-                <Input
-                  id="user"
-                  value={newSpecialReq.user}
-                  onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
-                  placeholder="輸入使用者名稱"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsSpecialReqDialogOpen(false)}>
-              取消
-            </Button>
-            <Button type="button" onClick={handleAddSpecialReq}>
-              添加
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 製程備註對話框 */}
-      <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>添加製程備註</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="processNoteContent">備註內容</Label>
-              <Textarea
-                id="processNoteContent"
-                value={newProcessNote.content}
-                onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
-                placeholder="輸入備註內容"
-                rows={4}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="processNoteDate">日期</Label>
-                <Input
-                  id="processNoteDate"
-                  type="text"
-                  value={newProcessNote.date}
-                  onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
-                  placeholder="YYYY/MM/DD"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="processNoteUser">使用者</Label>
-                <Input
-                  id="processNoteUser"
-                  value={newProcessNote.user}
-                  onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
-                  placeholder="輸入使用者名稱"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsProcessNoteDialogOpen(false)}>
-              取消
-            </Button>
-            <Button type="button" onClick={handleAddProcessNote}>
-              添加
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
