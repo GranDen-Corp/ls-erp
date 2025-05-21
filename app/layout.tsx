@@ -6,13 +6,14 @@ import { ThemeProvider } from "@/components/theme-provider"
 import Sidebar from "@/components/sidebar"
 import Header from "@/components/header"
 import { SidebarProvider } from "@/contexts/sidebar-context"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "今湛貿易 ERP 系統",
   description: "今湛貿易ERP系統",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -21,9 +22,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-TW">
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <html lang="zh-TW" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          storageKey="theme"
+        >
           <SidebarProvider>
             <div className="flex h-screen overflow-hidden">
               <Sidebar />
@@ -33,6 +40,7 @@ export default function RootLayout({
               </div>
             </div>
           </SidebarProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
