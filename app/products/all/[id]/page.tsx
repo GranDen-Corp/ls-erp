@@ -22,6 +22,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   // 將資料庫資料轉換為表單所需的格式
   const formattedProduct = {
     componentName: product.component_name || "",
+    componentNameEn: product.component_name_en || "",
     specification: product.specification || "",
     customsCode: product.customs_code || "",
     endCustomer: product.end_customer || "",

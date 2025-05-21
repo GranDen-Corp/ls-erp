@@ -1,6 +1,7 @@
 export interface Product {
   id: string
   componentName: string
+  componentNameEn: string
   specification: string
   customsCode: string
   endCustomer: string
