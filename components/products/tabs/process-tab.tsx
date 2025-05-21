@@ -110,9 +110,12 @@ export function ProcessTab({
 
   // 初始化製程列表
   useEffect(() => {
+    console.log("product:",product);
     if (updateFormData && (!safeFormData.processes || safeFormData.processes.length === 0)) {
+      //console.log("updateFormData:",safeFormData);
       updateFormData({ ...safeFormData, processes: defaultProcesses })
     } else if (setProduct && (!safeProduct.processData || safeProduct.processData.length === 0)) {
+      //console.log("設置默認製程數據:",safeProduct);
       // 設置默認製程數據
       setProduct((prev) => {
         if (!prev.processData || prev.processData.length === 0) {
@@ -151,52 +154,69 @@ export function ProcessTab({
 
   // 獲取製程資料
   const getProcesses = () => {
-    if (updateFormData) {
-      return safeFormData.processes || []
+    if (readOnly && safeProduct.processData) {
+      return safeProduct.processData
+    } else if (updateFormData && safeFormData.processes) {
+      return safeFormData.processes
     } else if (safeProduct.processData) {
-      return safeProduct.processData || []
+      return safeProduct.processData
     }
     return []
   }
 
   // 獲取製程備註
   const getProcessNotes = () => {
-    if (updateFormData) {
-      return safeFormData.processNotes || []
+    //console.log("safeFormData:", safeFormData);
+    //console.log("safeProduct:", safeProduct);
+    if (readOnly && safeProduct.processNotes) {
+      return safeProduct.processNotes
+    } else if (updateFormData && safeFormData.processNotes) {
+      return safeFormData.processNotes
     } else if (safeProduct.processNotes) {
-      return safeProduct.processNotes || []
+      return safeProduct.processNotes
     }
     return []
   }
 
   // 獲取特殊要求
-  const getSpecialRequirements = () => {
-    if (updateFormData) {
-      return safeFormData.specialRequirements || []
+  const getSpecialRequirements = () => {    
+    if (readOnly && safeProduct.specialRequirements) {
+      return safeProduct.specialRequirements
+    } else if (updateFormData && safeFormData.specialRequirements) {
+      return safeFormData.specialRequirements
     } else if (safeProduct.specialRequirements) {
-      return safeProduct.specialRequirements || []
+      return safeProduct.specialRequirements
     }
     return []
   }
 
   // 獲取訂單零件需求
-  const getOrderRequirements = () => {
-    if (updateFormData) {
-      return safeFormData.orderComponentRequirements || ""
+  const getOrderRequirements = () => {    
+    let requirements = "";
+    if (readOnly && safeProduct.orderRequirements) {
+      requirements = safeProduct.orderRequirements;
+    } else if (updateFormData && safeFormData.orderRequirements) {
+      requirements = safeFormData.orderRequirements;
     } else if (safeProduct.orderRequirements) {
-      return safeProduct.orderRequirements || ""
+      requirements = safeProduct.orderRequirements;
     }
-    return ""
+    // 將字串中的 \n 轉換為實際的換行符號
+    return requirements.replace(/\\n/g, '\n');
   }
 
   // 獲取採購零件需求
   const getPurchaseRequirements = () => {
-    if (updateFormData) {
-      return safeFormData.purchaseComponentRequirements || ""
+    let requirements = "";
+    
+    if (readOnly && safeProduct.purchaseRequirements) {
+      requirements = safeProduct.purchaseRequirements;
+    } else if (updateFormData && safeFormData.purchaseRequirements) {
+      return safeFormData.purchaseRequirements
     } else if (safeProduct.purchaseRequirements) {
-      return safeProduct.purchaseRequirements || ""
+      return safeProduct.purchaseRequirements
     }
-    return ""
+    // 將字串中的 \n 轉換為實際的換行符號
+    return requirements.replace(/\\n/g, '\n');
   }
 
   // 處理製程資料更新
@@ -632,30 +652,30 @@ export function ProcessTab({
 
         <Separator />
 
-        {/* 製程備註 */}
+        {/* 編輯備註 */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">製程備註</h3>
+          <h3 className="text-lg font-medium">編輯備註</h3>
           <div className="border rounded-md">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">備註類型</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {getProcessNotes().map((note: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm">{note.type || "一般備註"}</td>
                     <td className="px-4 py-2 text-sm">{note.content}</td>
+                    <td className="px-4 py-2 text-sm">{note.user}</td>
                     <td className="px-4 py-2 text-sm">{note.date}</td>
                   </tr>
                 ))}
                 {getProcessNotes().length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">
-                      尚未添加製程備註
+                      尚未添加編輯備註
                     </td>
                   </tr>
                 )}
@@ -726,10 +746,10 @@ export function ProcessTab({
             <tbody className="divide-y">
               {getProcesses().map((process: any, index: number) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm">{process.process || process.name}</td>
-                  <td className="px-4 py-2 text-sm">{process.vendor || process.factory}</td>
+                  <td className="px-4 py-2 text-sm">{process.process}</td>
+                  <td className="px-4 py-2 text-sm">{process.vendor}</td>
                   <td className="px-4 py-2 text-sm">{process.capacity}</td>
-                  <td className="px-4 py-2 text-sm">{process.requirements || process.description}</td>
+                  <td className="px-4 py-2 text-sm">{process.requirements}</td>
                   <td className="px-4 py-2 text-sm">{process.report}</td>
                   {!readOnly && (
                     <td className="px-4 py-2">
