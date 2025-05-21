@@ -102,6 +102,8 @@ export function ProcessTab({
   })
   const [newSpecialReq, setNewSpecialReq] = useState({ content: "", date: "", user: "" })
   const [newProcessNote, setNewProcessNote] = useState({ content: "", date: "", user: "" })
+  const [isEditingNote, setIsEditingNote] = useState(false)
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null)
   const [editingProcessIndex, setEditingProcessIndex] = useState<number | null>(null)
 
   // 確保 formData 有初始值
@@ -166,14 +168,12 @@ export function ProcessTab({
 
   // 獲取製程備註
   const getProcessNotes = () => {
-    //console.log("safeFormData:", safeFormData);
-    //console.log("safeProduct:", safeProduct);
     if (readOnly && safeProduct.processNotes) {
       return safeProduct.processNotes
-    } else if (updateFormData && safeFormData.processNotes) {
-      return safeFormData.processNotes
     } else if (safeProduct.processNotes) {
       return safeProduct.processNotes
+    } else if (safeFormData.processNotes) {
+      return safeFormData.processNotes
     }
     return []
   }
@@ -349,70 +349,173 @@ export function ProcessTab({
     }
   }
 
+  // 處理編輯特殊要求
+  const handleEditSpecialReq = (e: React.MouseEvent, req: any, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("編輯特殊要求:", req, index);
+    setNewSpecialReq({
+      content: req.content || "",
+      user: req.user || "",
+      date: req.date || "",
+    });
+    setIsEditingNote(true);
+    setEditingNoteIndex(index);
+    setIsSpecialReqDialogOpen(true);
+  };
+
+  // 處理特殊要求對話框關閉
+  const handleSpecialReqDialogClose = (open: boolean) => {
+    if (!open) {
+      // 當對話框關閉時，重置所有狀態
+      setNewSpecialReq({ content: "", date: "", user: "" });
+      setIsEditingNote(false);
+      setEditingNoteIndex(null);
+    }
+    setIsSpecialReqDialogOpen(open);
+  };
+
   // 處理添加特殊要求
   const handleAddSpecialReq = () => {
-    if (!newSpecialReq.content) return
+    if (!newSpecialReq.content) return;
 
-    const date = newSpecialReq.date || new Date().toLocaleDateString("zh-TW")
-    const user = newSpecialReq.user || "系統使用者"
+    const date = newSpecialReq.date || new Date().toLocaleDateString("zh-TW");
+    const user = newSpecialReq.user || "系統使用者";
 
     if (setProduct) {
-      setProduct((prev: any) => ({
-        ...prev,
-        specialRequirements: [
-          ...(prev.specialRequirements || []),
-          {
+      if (isEditingNote && editingNoteIndex !== null) {
+        // 更新現有特殊要求
+        setProduct((prev) => {
+          const currentReqs = prev.specialRequirements || [];
+          const updatedReqs = [...currentReqs];
+          updatedReqs[editingNoteIndex] = {
             content: newSpecialReq.content,
             date,
             user,
-          },
-        ],
-      }))
+          };
+          return {
+            ...prev,
+            specialRequirements: updatedReqs,
+          };
+        });
+        toast({
+          title: "特殊要求已更新",
+          description: "特殊要求已成功更新",
+        });
+      } else {
+        // 添加新特殊要求
+        setProduct((prev) => {
+          const currentReqs = prev.specialRequirements || [];
+          return {
+            ...prev,
+            specialRequirements: [
+              ...currentReqs,
+              {
+                content: newSpecialReq.content,
+                date,
+                user,
+              },
+            ],
+          };
+        });
+        toast({
+          title: "特殊要求已新增",
+          description: "特殊要求已成功新增",
+        });
+      }
     }
 
-    // 重置表單
-    setNewSpecialReq({ content: "", date: "", user: "" })
-    setIsSpecialReqDialogOpen(false)
+    // 重置表單和狀態
+    setNewSpecialReq({ content: "", date: "", user: "" });
+    setIsSpecialReqDialogOpen(false);
+    setIsEditingNote(false);
+    setEditingNoteIndex(null);
+  };
 
-    // 顯示成功提示
-    toast({
-      title: "特殊要求已新增",
-      description: "特殊要求已成功新增",
-    })
-  }
+  // 處理編輯備註
+  const handleEditNote = (e: React.MouseEvent, note: any, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("編輯備註:", note, index);
+    setNewProcessNote({
+      content: note.content || "",
+      user: note.user || "",
+      date: note.date || "",
+    });
+    setIsEditingNote(true);
+    setEditingNoteIndex(index);
+    setIsProcessNoteDialogOpen(true);
+  };
+
+  // 處理對話框關閉
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      // 當對話框關閉時，重置所有狀態
+      setNewProcessNote({ content: "", date: "", user: "" });
+      setIsEditingNote(false);
+      setEditingNoteIndex(null);
+    }
+    setIsProcessNoteDialogOpen(open);
+  };
 
   // 處理添加製程備註
   const handleAddProcessNote = () => {
-    if (!newProcessNote.content) return
+    if (!newProcessNote.content) return;
 
-    const date = newProcessNote.date || new Date().toLocaleDateString("zh-TW")
-    const user = newProcessNote.user || "系統使用者"
+    const date = newProcessNote.date || new Date().toLocaleDateString("zh-TW");
+    const user = newProcessNote.user || "系統使用者";
 
     if (setProduct) {
-      setProduct((prev: any) => ({
-        ...prev,
-        processNotes: [
-          ...(prev.processNotes || []),
-          {
+      if (isEditingNote && editingNoteIndex !== null) {
+        // 更新現有備註
+        setProduct((prev) => {
+          const currentNotes = prev.processNotes || [];
+          const updatedNotes = [...currentNotes];
+          updatedNotes[editingNoteIndex] = {
             content: newProcessNote.content,
             type: "一般備註",
             date,
             user,
-          },
-        ],
-      }))
+          };
+          return {
+            ...prev,
+            processNotes: updatedNotes,
+          };
+        });
+        toast({
+          title: "製程備註已更新",
+          description: "製程備註已成功更新",
+        });
+      } else {
+        // 添加新備註
+        setProduct((prev) => {
+          const currentNotes = prev.processNotes || [];
+          return {
+            ...prev,
+            processNotes: [
+              ...currentNotes,
+              {
+                content: newProcessNote.content,
+                type: "一般備註",
+                date,
+                user,
+              },
+            ],
+          };
+        });
+        toast({
+          title: "製程備註已新增",
+          description: "製程備註已成功新增",
+        });
+      }
     }
 
-    // 重置表單
-    setNewProcessNote({ content: "", date: "", user: "" })
-    setIsProcessNoteDialogOpen(false)
-
-    // 顯示成功提示
-    toast({
-      title: "製程備註已新增",
-      description: "製程備註已成功新增",
-    })
-  }
+    // 重置表單和狀態
+    setNewProcessNote({ content: "", date: "", user: "" });
+    setIsProcessNoteDialogOpen(false);
+    setIsEditingNote(false);
+    setEditingNoteIndex(null);
+  };
 
   // 同步製程到訂單零件需求
   const syncProcessToOrder = async () => {
@@ -626,16 +729,16 @@ export function ProcessTab({
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">要求內容</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {getSpecialRequirements().map((req: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-sm">{req.content}</td>
-                    <td className="px-4 py-2 text-sm">{req.user}</td>
                     <td className="px-4 py-2 text-sm">{req.date}</td>
+                    <td className="px-4 py-2 text-sm">{req.user}</td>
                   </tr>
                 ))}
                 {getSpecialRequirements().length === 0 && (
@@ -660,16 +763,16 @@ export function ProcessTab({
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {getProcessNotes().map((note: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-sm">{note.content}</td>
-                    <td className="px-4 py-2 text-sm">{note.user}</td>
                     <td className="px-4 py-2 text-sm">{note.date}</td>
+                    <td className="px-4 py-2 text-sm">{note.user}</td>
                   </tr>
                 ))}
                 {getProcessNotes().length === 0 && (
@@ -880,8 +983,8 @@ export function ProcessTab({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">要求內容</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                 {!readOnly && (
                   <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 w-[100px]">操作</th>
                 )}
@@ -891,33 +994,17 @@ export function ProcessTab({
               {getSpecialRequirements().map((req: any, index: number) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-2 text-sm">{req.content}</td>
-                  <td className="px-4 py-2 text-sm">{req.user}</td>
                   <td className="px-4 py-2 text-sm">{req.date}</td>
+                  <td className="px-4 py-2 text-sm">{req.user}</td>
                   {!readOnly && (
                     <td className="px-4 py-2">
                       <div className="flex justify-center space-x-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            // 這裡保留原有的特殊要求編輯邏輯
-                            if (setProduct) {
-                              setNewSpecialReq({
-                                content: req.content,
-                                user: req.user,
-                                date: req.date,
-                              })
-                              setIsSpecialReqDialogOpen(true)
-                              // 刪除原有的特殊要求
-                              const updatedReqs = [...(safeProduct.specialRequirements || [])]
-                              updatedReqs.splice(index, 1)
-                              setProduct({
-                                ...safeProduct,
-                                specialRequirements: updatedReqs,
-                              })
-                            }
-                          }}
+                          onClick={(e) => handleEditSpecialReq(e, req, index)}
                           className="h-7 w-7"
+                          type="button"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -938,7 +1025,6 @@ export function ProcessTab({
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            // 這裡保留原有的特殊要求刪除邏輯
                             if (setProduct) {
                               const updatedReqs = [...(safeProduct.specialRequirements || [])]
                               updatedReqs.splice(index, 1)
@@ -971,10 +1057,10 @@ export function ProcessTab({
 
       <Separator />
 
-      {/* 製程備註 */}
+      {/* 編輯備註 */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">製程備註</h3>
+          <h3 className="text-lg font-medium">編輯備註</h3>
           {!readOnly && (
             <Button
               variant="outline"
@@ -994,9 +1080,9 @@ export function ProcessTab({
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">備註類型</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
                 {!readOnly && (
                   <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 w-[100px]">操作</th>
                 )}
@@ -1005,34 +1091,18 @@ export function ProcessTab({
             <tbody className="divide-y">
               {getProcessNotes().map((note: any, index: number) => (
                 <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm">{note.type || "一般備註"}</td>
                   <td className="px-4 py-2 text-sm">{note.content}</td>
                   <td className="px-4 py-2 text-sm">{note.date}</td>
+                  <td className="px-4 py-2 text-sm">{note.user}</td>
                   {!readOnly && (
                     <td className="px-4 py-2">
                       <div className="flex justify-center space-x-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            // 這裡保留原有的製程備註編輯邏輯
-                            if (setProduct) {
-                              setNewProcessNote({
-                                content: note.content,
-                                user: note.user,
-                                date: note.date,
-                              })
-                              setIsProcessNoteDialogOpen(true)
-                              // 刪除原有的製程備註
-                              const updatedNotes = [...(safeProduct.processNotes || [])]
-                              updatedNotes.splice(index, 1)
-                              setProduct({
-                                ...safeProduct,
-                                processNotes: updatedNotes,
-                              })
-                            }
-                          }}
+                          onClick={(e) => handleEditNote(e, note, index)}
                           className="h-7 w-7"
+                          type="button"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1053,7 +1123,6 @@ export function ProcessTab({
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            // 這裡保留原有的製程備註刪除邏輯
                             if (setProduct) {
                               const updatedNotes = [...(safeProduct.processNotes || [])]
                               updatedNotes.splice(index, 1)
@@ -1093,10 +1162,13 @@ export function ProcessTab({
       />
 
       {/* 特殊要求對話框 */}
-      <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
+      <Dialog 
+        open={isSpecialReqDialogOpen} 
+        onOpenChange={handleSpecialReqDialogClose}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>添加特殊要求</DialogTitle>
+            <DialogTitle>{isEditingNote ? "編輯特殊要求" : "添加特殊要求"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -1132,21 +1204,31 @@ export function ProcessTab({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsSpecialReqDialogOpen(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => handleSpecialReqDialogClose(false)}
+            >
               取消
             </Button>
-            <Button type="button" onClick={handleAddSpecialReq}>
-              添加
+            <Button 
+              type="button" 
+              onClick={handleAddSpecialReq}
+            >
+              {isEditingNote ? "更新" : "添加"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* 製程備註對話框 */}
-      <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
+      <Dialog 
+        open={isProcessNoteDialogOpen} 
+        onOpenChange={handleDialogClose}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>添加製程備註</DialogTitle>
+            <DialogTitle>{isEditingNote ? "編輯製程備註" : "添加製程備註"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -1182,11 +1264,18 @@ export function ProcessTab({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsProcessNoteDialogOpen(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => handleDialogClose(false)}
+            >
               取消
             </Button>
-            <Button type="button" onClick={handleAddProcessNote}>
-              添加
+            <Button 
+              type="button" 
+              onClick={handleAddProcessNote}
+            >
+              {isEditingNote ? "更新" : "添加"}
             </Button>
           </DialogFooter>
         </DialogContent>
