@@ -7,6 +7,10 @@ import { Plus, X, ChevronUp, ChevronDown, FolderSync, Languages } from "lucide-r
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
 import { getTranslationsByCategory, formatProcessesForOrderRemarks } from "@/lib/translation-service"
+import { ProcessDialog } from "../dialogs/process-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 // 預設製程資料 - 根據提供的圖片更新
 export const defaultProcesses = [
@@ -1059,6 +1063,114 @@ export function ProcessTab({
           </table>
         </div>
       </div>
+
+      {/* 使用 ProcessDialog 組件 */}
+      <ProcessDialog
+        isOpen={isAddProcessDialogOpen}
+        onClose={() => setIsAddProcessDialogOpen(false)}
+        onSave={handleAddProcessData}
+        initialData={editingProcessIndex !== null ? newProcess : undefined}
+      />
+
+      {/* 特殊要求對話框 */}
+      <Dialog open={isSpecialReqDialogOpen} onOpenChange={setIsSpecialReqDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>添加特殊要求</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="content">特殊要求內容</Label>
+              <Textarea
+                id="content"
+                value={newSpecialReq.content}
+                onChange={(e) => setNewSpecialReq({ ...newSpecialReq, content: e.target.value })}
+                placeholder="輸入特殊要求內容"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">日期</Label>
+                <Input
+                  id="date"
+                  type="text"
+                  value={newSpecialReq.date}
+                  onChange={(e) => setNewSpecialReq({ ...newSpecialReq, date: e.target.value })}
+                  placeholder="YYYY/MM/DD"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user">使用者</Label>
+                <Input
+                  id="user"
+                  value={newSpecialReq.user}
+                  onChange={(e) => setNewSpecialReq({ ...newSpecialReq, user: e.target.value })}
+                  placeholder="輸入使用者名稱"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsSpecialReqDialogOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" onClick={handleAddSpecialReq}>
+              添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 製程備註對話框 */}
+      <Dialog open={isProcessNoteDialogOpen} onOpenChange={setIsProcessNoteDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>添加製程備註</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="processNoteContent">備註內容</Label>
+              <Textarea
+                id="processNoteContent"
+                value={newProcessNote.content}
+                onChange={(e) => setNewProcessNote({ ...newProcessNote, content: e.target.value })}
+                placeholder="輸入備註內容"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="processNoteDate">日期</Label>
+                <Input
+                  id="processNoteDate"
+                  type="text"
+                  value={newProcessNote.date}
+                  onChange={(e) => setNewProcessNote({ ...newProcessNote, date: e.target.value })}
+                  placeholder="YYYY/MM/DD"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="processNoteUser">使用者</Label>
+                <Input
+                  id="processNoteUser"
+                  value={newProcessNote.user}
+                  onChange={(e) => setNewProcessNote({ ...newProcessNote, user: e.target.value })}
+                  placeholder="輸入使用者名稱"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsProcessNoteDialogOpen(false)}>
+              取消
+            </Button>
+            <Button type="button" onClick={handleAddProcessNote}>
+              添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
