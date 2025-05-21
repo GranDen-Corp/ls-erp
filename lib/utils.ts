@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from "clsx"
+import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -6,54 +6,42 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Formats a date into a localized string representation
- * @param date - The date to format
- * @param locale - The locale to use for formatting (defaults to 'en-US')
- * @param options - DateTimeFormatOptions for customizing the format
+ * Formats a date into a localized string
+ * @param date The date to format
+ * @param options Optional Intl.DateTimeFormatOptions
  * @returns Formatted date string
  */
 export function formatDate(
   date: Date | string | number | null | undefined,
-  locale = "en-US",
   options: Intl.DateTimeFormatOptions = {
     year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    month: "short",
+    day: "numeric",
   },
 ): string {
-  if (!date) return ""
+  if (!date) return "N/A"
 
   const dateObj = typeof date === "string" || typeof date === "number" ? new Date(date) : date
 
-  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
-    return ""
-  }
+  if (isNaN(dateObj.getTime())) return "Invalid Date"
 
-  return new Intl.DateTimeFormat(locale, options).format(dateObj)
+  return new Intl.DateTimeFormat("en-US", options).format(dateObj)
 }
 
 /**
  * Formats a number as currency
- * @param amount - The amount to format
- * @param currency - The currency code (defaults to 'USD')
- * @param locale - The locale to use for formatting (defaults to 'en-US')
+ * @param amount The amount to format
+ * @param currency The currency code (default: USD)
+ * @param locale The locale (default: en-US)
  * @returns Formatted currency string
  */
-export function formatCurrency(amount: number | string | null | undefined, currency = "USD", locale = "en-US"): string {
-  if (amount === null || amount === undefined || amount === "") {
-    return ""
-  }
-
-  const numericAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount
-
-  if (isNaN(numericAmount)) {
-    return ""
-  }
+export function formatCurrency(amount: number | null | undefined, currency = "USD", locale = "en-US"): string {
+  if (amount === null || amount === undefined) return "N/A"
 
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency,
+    currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(numericAmount)
+  }).format(amount)
 }

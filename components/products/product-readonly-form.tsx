@@ -446,12 +446,7 @@ export function ProductReadOnlyForm({
     {
       id: "process",
       label: "製程資料",
-      content: <ProcessTab 
-        product={product} 
-        readOnly={true}
-        formData={{}}
-        updateFormData={() => {}}
-      />,
+      content: <ProcessTab product={product} readOnly={true} formData={{}} updateFormData={() => {}} />,
     },
     {
       id: "resume",
@@ -845,12 +840,7 @@ export function ProductReadOnlyForm({
 
         {/* 製程資料頁籤 */}
         <TabsContent value="process" className="space-y-4 pt-4">
-          <ProcessTab 
-            product={product} 
-            readOnly={true}
-            formData={{}}
-            updateFormData={() => {}}
-          />
+          <ProcessTab product={product} readOnly={true} formData={{}} updateFormData={() => {}} />
         </TabsContent>
 
         {/* 履歷資料頁籤 */}

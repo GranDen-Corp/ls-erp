@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -112,7 +114,7 @@ export function ProcessTab({
 
   // 初始化製程列表
   useEffect(() => {
-    console.log("product:",product);
+    console.log("product:", product)
     if (updateFormData && (!safeFormData.processes || safeFormData.processes.length === 0)) {
       //console.log("updateFormData:",safeFormData);
       updateFormData({ ...safeFormData, processes: defaultProcesses })
@@ -179,7 +181,7 @@ export function ProcessTab({
   }
 
   // 獲取特殊要求
-  const getSpecialRequirements = () => {    
+  const getSpecialRequirements = () => {
     if (readOnly && safeProduct.specialRequirements) {
       return safeProduct.specialRequirements
     } else if (updateFormData && safeFormData.specialRequirements) {
@@ -191,32 +193,32 @@ export function ProcessTab({
   }
 
   // 獲取訂單零件需求
-  const getOrderRequirements = () => {    
-    let requirements = "";
+  const getOrderRequirements = () => {
+    let requirements = ""
     if (readOnly && safeProduct.orderRequirements) {
-      requirements = safeProduct.orderRequirements;
+      requirements = safeProduct.orderRequirements
     } else if (updateFormData && safeFormData.orderRequirements) {
-      requirements = safeFormData.orderRequirements;
+      requirements = safeFormData.orderRequirements
     } else if (safeProduct.orderRequirements) {
-      requirements = safeProduct.orderRequirements;
+      requirements = safeProduct.orderRequirements
     }
     // 將字串中的 \n 轉換為實際的換行符號
-    return requirements.replace(/\\n/g, '\n');
+    return requirements.replace(/\\n/g, "\n")
   }
 
   // 獲取採購零件需求
   const getPurchaseRequirements = () => {
-    let requirements = "";
-    
+    let requirements = ""
+
     if (readOnly && safeProduct.purchaseRequirements) {
-      requirements = safeProduct.purchaseRequirements;
+      requirements = safeProduct.purchaseRequirements
     } else if (updateFormData && safeFormData.purchaseRequirements) {
       return safeFormData.purchaseRequirements
     } else if (safeProduct.purchaseRequirements) {
       return safeProduct.purchaseRequirements
     }
     // 將字串中的 \n 轉換為實際的換行符號
-    return requirements.replace(/\\n/g, '\n');
+    return requirements.replace(/\\n/g, "\n")
   }
 
   // 處理製程資料更新
@@ -351,61 +353,61 @@ export function ProcessTab({
 
   // 處理編輯特殊要求
   const handleEditSpecialReq = (e: React.MouseEvent, req: any, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log("編輯特殊要求:", req, index);
+    e.preventDefault()
+    e.stopPropagation()
+    console.log("編輯特殊要求:", req, index)
     setNewSpecialReq({
       content: req.content || "",
       user: req.user || "",
       date: req.date || "",
-    });
-    setIsEditingNote(true);
-    setEditingNoteIndex(index);
-    setIsSpecialReqDialogOpen(true);
-  };
+    })
+    setIsEditingNote(true)
+    setEditingNoteIndex(index)
+    setIsSpecialReqDialogOpen(true)
+  }
 
   // 處理特殊要求對話框關閉
   const handleSpecialReqDialogClose = (open: boolean) => {
     if (!open) {
       // 當對話框關閉時，重置所有狀態
-      setNewSpecialReq({ content: "", date: "", user: "" });
-      setIsEditingNote(false);
-      setEditingNoteIndex(null);
+      setNewSpecialReq({ content: "", date: "", user: "" })
+      setIsEditingNote(false)
+      setEditingNoteIndex(null)
     }
-    setIsSpecialReqDialogOpen(open);
-  };
+    setIsSpecialReqDialogOpen(open)
+  }
 
   // 處理添加特殊要求
   const handleAddSpecialReq = () => {
-    if (!newSpecialReq.content) return;
+    if (!newSpecialReq.content) return
 
-    const date = newSpecialReq.date || new Date().toLocaleDateString("zh-TW");
-    const user = newSpecialReq.user || "系統使用者";
+    const date = newSpecialReq.date || new Date().toLocaleDateString("zh-TW")
+    const user = newSpecialReq.user || "系統使用者"
 
     if (setProduct) {
       if (isEditingNote && editingNoteIndex !== null) {
         // 更新現有特殊要求
         setProduct((prev) => {
-          const currentReqs = prev.specialRequirements || [];
-          const updatedReqs = [...currentReqs];
+          const currentReqs = prev.specialRequirements || []
+          const updatedReqs = [...currentReqs]
           updatedReqs[editingNoteIndex] = {
             content: newSpecialReq.content,
             date,
             user,
-          };
+          }
           return {
             ...prev,
             specialRequirements: updatedReqs,
-          };
-        });
+          }
+        })
         toast({
           title: "特殊要求已更新",
           description: "特殊要求已成功更新",
-        });
+        })
       } else {
         // 添加新特殊要求
         setProduct((prev) => {
-          const currentReqs = prev.specialRequirements || [];
+          const currentReqs = prev.specialRequirements || []
           return {
             ...prev,
             specialRequirements: [
@@ -416,79 +418,79 @@ export function ProcessTab({
                 user,
               },
             ],
-          };
-        });
+          }
+        })
         toast({
           title: "特殊要求已新增",
           description: "特殊要求已成功新增",
-        });
+        })
       }
     }
 
     // 重置表單和狀態
-    setNewSpecialReq({ content: "", date: "", user: "" });
-    setIsSpecialReqDialogOpen(false);
-    setIsEditingNote(false);
-    setEditingNoteIndex(null);
-  };
+    setNewSpecialReq({ content: "", date: "", user: "" })
+    setIsSpecialReqDialogOpen(false)
+    setIsEditingNote(false)
+    setEditingNoteIndex(null)
+  }
 
   // 處理編輯備註
   const handleEditNote = (e: React.MouseEvent, note: any, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log("編輯備註:", note, index);
+    e.preventDefault()
+    e.stopPropagation()
+    console.log("編輯備註:", note, index)
     setNewProcessNote({
       content: note.content || "",
       user: note.user || "",
       date: note.date || "",
-    });
-    setIsEditingNote(true);
-    setEditingNoteIndex(index);
-    setIsProcessNoteDialogOpen(true);
-  };
+    })
+    setIsEditingNote(true)
+    setEditingNoteIndex(index)
+    setIsProcessNoteDialogOpen(true)
+  }
 
   // 處理對話框關閉
   const handleDialogClose = (open: boolean) => {
     if (!open) {
       // 當對話框關閉時，重置所有狀態
-      setNewProcessNote({ content: "", date: "", user: "" });
-      setIsEditingNote(false);
-      setEditingNoteIndex(null);
+      setNewProcessNote({ content: "", date: "", user: "" })
+      setIsEditingNote(false)
+      setEditingNoteIndex(null)
     }
-    setIsProcessNoteDialogOpen(open);
-  };
+    setIsProcessNoteDialogOpen(open)
+  }
 
   // 處理添加製程備註
   const handleAddProcessNote = () => {
-    if (!newProcessNote.content) return;
+    if (!newProcessNote.content) return
 
-    const date = newProcessNote.date || new Date().toLocaleDateString("zh-TW");
-    const user = newProcessNote.user || "系統使用者";
+    const date = newProcessNote.date || new Date().toLocaleDateString("zh-TW")
+    const user = newProcessNote.user || "系統使用者"
 
     if (setProduct) {
       if (isEditingNote && editingNoteIndex !== null) {
         // 更新現有備註
         setProduct((prev) => {
-          const currentNotes = prev.processNotes || [];
-          const updatedNotes = [...currentNotes];
+          const currentNotes = prev.processNotes || []
+          const updatedNotes = [...currentNotes]
           updatedNotes[editingNoteIndex] = {
             content: newProcessNote.content,
             date,
             user,
-          };
+          }
           return {
             ...prev,
             processNotes: updatedNotes,
-          };
-        });
+          }
+        })
         toast({
           title: "製程備註已更新",
           description: "製程備註已成功更新",
-        });
+        })
       } else {
         // 添加新備註
         setProduct((prev) => {
-          const currentNotes = prev.processNotes || [];
+          const currentNotes = prev.processNotes || []
           return {
             ...prev,
             processNotes: [
@@ -499,21 +501,21 @@ export function ProcessTab({
                 user,
               },
             ],
-          };
-        });
+          }
+        })
         toast({
           title: "製程備註已新增",
           description: "製程備註已成功新增",
-        });
+        })
       }
     }
 
     // 重置表單和狀態
-    setNewProcessNote({ content: "", date: "", user: "" });
-    setIsProcessNoteDialogOpen(false);
-    setIsEditingNote(false);
-    setEditingNoteIndex(null);
-  };
+    setNewProcessNote({ content: "", date: "", user: "" })
+    setIsProcessNoteDialogOpen(false)
+    setIsEditingNote(false)
+    setEditingNoteIndex(null)
+  }
 
   // 同步製程到訂單零件需求
   const syncProcessToOrder = async () => {
@@ -1160,10 +1162,7 @@ export function ProcessTab({
       />
 
       {/* 特殊要求對話框 */}
-      <Dialog 
-        open={isSpecialReqDialogOpen} 
-        onOpenChange={handleSpecialReqDialogClose}
-      >
+      <Dialog open={isSpecialReqDialogOpen} onOpenChange={handleSpecialReqDialogClose}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{isEditingNote ? "編輯特殊要求" : "添加特殊要求"}</DialogTitle>
@@ -1202,17 +1201,10 @@ export function ProcessTab({
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => handleSpecialReqDialogClose(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => handleSpecialReqDialogClose(false)}>
               取消
             </Button>
-            <Button 
-              type="button" 
-              onClick={handleAddSpecialReq}
-            >
+            <Button type="button" onClick={handleAddSpecialReq}>
               {isEditingNote ? "更新" : "添加"}
             </Button>
           </DialogFooter>
@@ -1220,10 +1212,7 @@ export function ProcessTab({
       </Dialog>
 
       {/* 製程備註對話框 */}
-      <Dialog 
-        open={isProcessNoteDialogOpen} 
-        onOpenChange={handleDialogClose}
-      >
+      <Dialog open={isProcessNoteDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{isEditingNote ? "編輯製程備註" : "添加製程備註"}</DialogTitle>
@@ -1262,17 +1251,10 @@ export function ProcessTab({
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => handleDialogClose(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
               取消
             </Button>
-            <Button 
-              type="button" 
-              onClick={handleAddProcessNote}
-            >
+            <Button type="button" onClick={handleAddProcessNote}>
               {isEditingNote ? "更新" : "添加"}
             </Button>
           </DialogFooter>
