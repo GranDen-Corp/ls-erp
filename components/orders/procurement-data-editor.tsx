@@ -334,12 +334,7 @@ export function ProcurementDataEditor({
 
     setProcurementItems(newProcurementItems)
     onProcurementDataChange(newProcurementItems)
-  }, [orderItems, factories, loading, procurementItems])
-
-  // 當採購項目變更時，通知父組件
-  useEffect(() => {
-    onProcurementDataChange(procurementItems)
-  }, [procurementItems, onProcurementDataChange])
+  }, [orderItems, factories, loading])
 
   // 更新採購項目
   const updateProcurementItem = (id: string, field: keyof ProcurementItem, value: any) => {

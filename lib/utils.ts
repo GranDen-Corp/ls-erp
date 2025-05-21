@@ -5,22 +5,55 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat("zh-TW", {
+/**
+ * Formats a date into a localized string representation
+ * @param date - The date to format
+ * @param locale - The locale to use for formatting (defaults to 'en-US')
+ * @param options - DateTimeFormatOptions for customizing the format
+ * @returns Formatted date string
+ */
+export function formatDate(
+  date: Date | string | number | null | undefined,
+  locale = "en-US",
+  options: Intl.DateTimeFormatOptions = {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
+  },
+): string {
+  if (!date) return ""
+
+  const dateObj = typeof date === "string" || typeof date === "number" ? new Date(date) : date
+
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+    return ""
+  }
+
+  return new Intl.DateTimeFormat(locale, options).format(dateObj)
 }
 
-export function formatCurrency(amount: number, currency = "TWD"): string {
-  return new Intl.NumberFormat("zh-TW", {
+/**
+ * Formats a number as currency
+ * @param amount - The amount to format
+ * @param currency - The currency code (defaults to 'USD')
+ * @param locale - The locale to use for formatting (defaults to 'en-US')
+ * @returns Formatted currency string
+ */
+export function formatCurrency(amount: number | string | null | undefined, currency = "USD", locale = "en-US"): string {
+  if (amount === null || amount === undefined || amount === "") {
+    return ""
+  }
+
+  const numericAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount
+
+  if (isNaN(numericAmount)) {
+    return ""
+  }
+
+  return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: currency,
-    minimumFractionDigits: 0,
+    currency,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  }).format(numericAmount)
 }

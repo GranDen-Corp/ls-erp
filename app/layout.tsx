@@ -13,7 +13,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "今湛貿易 ERP 系統",
   description: "今湛貿易ERP系統",
-  generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({

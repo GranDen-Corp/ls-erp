@@ -157,11 +157,14 @@ export function BasicInfoTab({
   }
 
   useEffect(() => {
-    console.log('Product Types:', productTypes.map(type => ({
-      type_id: type.type_id,
-      type_name: type.type_name
-    })));
-  }, [productTypes]);
+    console.log(
+      "Product Types:",
+      productTypes.map((type) => ({
+        type_id: type.type_id,
+        type_name: type.type_name,
+      })),
+    )
+  }, [productTypes])
 
   return (
     <div className="space-y-6">
@@ -240,18 +243,13 @@ export function BasicInfoTab({
             <SelectContent>
               {productTypes.map((type, index) => {
                 // 使用 type_name 作為備用 key
-                const uniqueKey = type.type_id 
-                  ? `type-${type.type_id}` 
-                  : `type-${type.type_name}-${index}`;
-                
+                const uniqueKey = type.type_id ? `type-${type.type_id}` : `type-${type.type_name}-${index}`
+
                 return (
-                  <SelectItem 
-                    key={uniqueKey}
-                    value={type.type_name}
-                  >
+                  <SelectItem key={uniqueKey} value={type.type_name}>
                     {type.type_name}
                   </SelectItem>
-                );
+                )
               })}
             </SelectContent>
           </Select>
