@@ -156,11 +156,18 @@ export function BasicInfoTab({
     }
   }
 
+  useEffect(() => {
+    console.log('Product Types:', productTypes.map(type => ({
+      type_id: type.type_id,
+      type_name: type.type_name
+    })));
+  }, [productTypes]);
+
   return (
     <div className="space-y-6">
       {/* 基本信息 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
+        <div key="componentName" className="space-y-2">
           <Label htmlFor="componentName">零件名稱</Label>
           <Input
             id="componentName"
@@ -172,7 +179,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="componentNameEn" className="space-y-2">
           <Label htmlFor="componentNameEn">零件名稱 (英文)</Label>
           <Input
             id="componentNameEn"
@@ -184,7 +191,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="partNo" className="space-y-2">
           <Label htmlFor="partNo">Part No.</Label>
           <Input
             id="partNo"
@@ -196,7 +203,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="customsCode" className="space-y-2">
           <Label htmlFor="customsCode">海關碼</Label>
           <Input
             id="customsCode"
@@ -208,7 +215,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="endCustomer" className="space-y-2">
           <Label htmlFor="endCustomer">終端客戶</Label>
           <Input
             id="endCustomer"
@@ -220,7 +227,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="productType" className="space-y-2">
           <Label htmlFor="productType">產品類別</Label>
           <Select
             value={product.productType || ""}
@@ -231,16 +238,26 @@ export function BasicInfoTab({
               <SelectValue placeholder="選擇產品類別" />
             </SelectTrigger>
             <SelectContent>
-              {productTypes.map((type) => (
-                <SelectItem key={type.type_id} value={type.type_name}>
-                  {type.type_name}
-                </SelectItem>
-              ))}
+              {productTypes.map((type, index) => {
+                // 使用 type_name 作為備用 key
+                const uniqueKey = type.type_id 
+                  ? `type-${type.type_id}` 
+                  : `type-${type.type_name}-${index}`;
+                
+                return (
+                  <SelectItem 
+                    key={uniqueKey}
+                    value={type.type_name}
+                  >
+                    {type.type_name}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div key="classificationCode" className="space-y-2">
           <Label htmlFor="classificationCode">今湛分類碼</Label>
           <Input
             id="classificationCode"
@@ -252,7 +269,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="vehicleDrawingNo" className="space-y-2">
           <Label htmlFor="vehicleDrawingNo">車廠圖號</Label>
           <Input
             id="vehicleDrawingNo"
@@ -264,7 +281,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="customerDrawingNo" className="space-y-2">
           <Label htmlFor="customerDrawingNo">客戶圖號</Label>
           <Input
             id="customerDrawingNo"
@@ -276,7 +293,7 @@ export function BasicInfoTab({
           />
         </div>
 
-        <div className="space-y-2">
+        <div key="status" className="space-y-2">
           <Label htmlFor="status">狀態</Label>
           <Select
             value={product.status || ""}
@@ -329,7 +346,7 @@ export function BasicInfoTab({
                     <CommandGroup className="max-h-[300px] overflow-y-auto">
                       {customersData.map((customer) => (
                         <CommandItem
-                          key={customer.customer_id}
+                          key={`customer-${customer.customer_id}`}
                           value={customer.customer_id}
                           onSelect={() => handleCustomerSelect(customer.customer_id)}
                         >
@@ -395,7 +412,7 @@ export function BasicInfoTab({
                     <CommandGroup className="max-h-[300px] overflow-y-auto">
                       {factories.map((factory) => (
                         <CommandItem
-                          key={factory.factory_id}
+                          key={`factory-${factory.factory_id}`}
                           value={factory.factory_id}
                           onSelect={() => handleFactorySelect(factory.factory_id)}
                         >
