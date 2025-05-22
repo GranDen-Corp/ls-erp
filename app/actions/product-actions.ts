@@ -68,7 +68,7 @@ export async function saveProduct(formData: any) {
       moq: formData.moq,
       lead_time: formData.leadTime,
       packaging_requirements: formData.packagingRequirements,
-      sub_part_no: formData.isCompositeProduct ? formData.selectedComponents : null,
+      sub_part_no: formData.subPartNo ? formData.selectedComponents : null,
     }
 
     // 在保存產品之前

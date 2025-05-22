@@ -429,7 +429,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                           <DropdownMenuLabel>操作</DropdownMenuLabel>
                           <DropdownMenuItem>
                             <Link
-                              href={`/products/all/${encodeURIComponent(product.part_no)}`}
+                              href={`/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}`}
                               className="flex items-center"
                             >
                               <Eye className="mr-2 h-4 w-4" />
@@ -438,7 +438,7 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Link
-                              href={`/products/all/${encodeURIComponent(product.part_no)}/edit`}
+                              href={`/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}/edit`}
                               className="flex items-center"
                             >
                               <Pencil className="mr-2 h-4 w-4" />
@@ -459,8 +459,8 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                             <Link
                               href={
                                 product.is_assembly
-                                  ? `/products/all/${encodeURIComponent(product.part_no)}/assembly-inquiry`
-                                  : `/products/all/${encodeURIComponent(product.part_no)}/inquiry`
+                                  ? `/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}/assembly-inquiry`
+                                  : `/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}/inquiry`
                               }
                               className="flex items-center"
                             >

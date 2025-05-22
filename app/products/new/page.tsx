@@ -25,7 +25,7 @@ export default function NewProductPage() {
       // 成功提示
       toast({
         title: "產品創建成功",
-        description: `產品 ${data.part_no} 已成功創建`,
+        description: `產品 ${data.partNo} 已成功創建`,
       })
 
       // 導航到產品列表

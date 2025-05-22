@@ -532,28 +532,28 @@ export function ProductForm({
 
   // Handle input change with deep equality check
   const handleInputChange = useCallback((field: string, value: any) => {
-    console.log("prev:",product.customer_id,"field:",field,"value:",value);
+    //console.log("prev:",product.customer_id,"field:",field,"value:",value);
     setProduct((prev) => {
       // 如果字段不存在於先前的狀態中，直接更新
       if (!(field in prev)) {
-        console.log(`如果字段不存在於先前的狀態中，直接更新:${field}:${value}`);
+        //console.log(`如果字段不存在於先前的狀態中，直接更新:${field}:${value}`);
         return { ...prev, [field]: value }
       }
 
       // 對於字符串、數字和布爾值，直接比較
       if (typeof prev[field] === "string" || typeof prev[field] === "number" || typeof prev[field] === "boolean") {
         if (prev[field] === value) {
-          console.log(`值沒有變化，不更新 ${field}:${value}`);
+          //console.log(`值沒有變化，不更新 ${field}:${value}`);
           return prev // 值沒有變化，不更新
         }
-        console.log(`值有變化，更新:${field}:${value}`);
+        //console.log(`值有變化，更新:${field}:${value}`);
         return { ...prev, [field]: value }
       }
 
       // 對於對象和數組，使用 JSON.stringify 進行深度比較
       try {
         if (JSON.stringify(prev[field]) === JSON.stringify(value)) {
-          console.log(`值沒有變化，不更新2 ${field}:${value}`);
+          //console.log(`值沒有變化，不更新2 ${field}:${value}`);
           return prev // 值沒有變化，不更新
         }
       } catch (e) {
@@ -561,7 +561,7 @@ export function ProductForm({
         console.warn(`JSON.stringify failed for field ${field}:`, e)
       }
 
-      console.log(`返回更新後的對象: ${field}:${value}`);
+      //console.log(`返回更新後的對象: ${field}:${value}`);
       // 返回更新後的對象
       return { ...prev, [field]: value }
     })
@@ -869,80 +869,82 @@ export function ProductForm({
       const productData = {
         // Composite key fields
         customer_id: product.customer_id,
-        part_no: product.partNo,
+        partNo: product.partNo,
         factory_id: product.factory_id,
 
         // Basic information
-        component_name: product.componentName,
-        component_name_en: product.componentNameEn,
+        componentName: product.componentName,
+        componentNameEn: product.componentNameEn,
         specification: product.specification,
-        customs_code: product.customsCode,
-        end_customer: product.endCustomer,
-        product_type: product.productType,
-        classification_code: product.classificationCode,
-        vehicle_drawing_no: product.vehicleDrawingNo,
-        customer_drawing_no: product.customerDrawingNo,
-        product_period: product.productPeriod,
+        customsCode: product.customsCode,
+        endCustomer: product.endCustomer,
+        productType: product.productType,
+        classificationCode: product.classificationCode,
+        vehicleDrawingNo: product.vehicleDrawingNo,
+        customerDrawingNo: product.customerDrawingNo,
+        productPeriod: product.productPeriod,
         description: product.description,
         status: product.status,
-        created_date: product.createdDate || new Date().toISOString().split("T")[0],
-        last_order_date: product.lastOrderDate,
-        last_price: product.lastPrice,
+        createdDate: product.createdDate || new Date().toISOString().split("T")[0],
+        lastOrderDate: product.lastOrderDate,
+        lastPrice: product.lastPrice,
         currency: product.currency,
 
         // Product specifications
         specifications: product.specifications,
-        sample_status: product.sampleStatus,
-        sample_date: product.sampleDate,
+        sampleStatus: product.sampleStatus,
+        sampleDate: product.sampleDate,
 
         // Drawing information
-        original_drawing_version: product.originalDrawingVersion,
-        customer_original_drawing: product.customerOriginalDrawing,
-        customer_drawing: product.customerDrawing,
-        factory_drawing: product.factoryDrawing,
-        customer_drawing_version: product.customerDrawingVersion,
-        factory_drawing_version: product.factoryDrawingVersion,
+        originalDrawingVersion: product.originalDrawingVersion,
+        drawingVersion: product.drawingVersion,
+        jinzhanDrawing: product.jinzhanDrawing,
+        customerOriginalDrawing: product.customerOriginalDrawing,
+        customerDrawing: product.customerDrawing,
+        factoryDrawing: product.factoryDrawing,
+        customerDrawingVersion: product.customerDrawingVersion,
+        factoryDrawingVersion: product.factoryDrawingVersion,
 
         // Product images
         images: product.images,
 
         // Assembly information
-        is_assembly: isCompositeProduct,
+        isAssembly: isCompositeProduct,
         components: product.components,
-        assembly_time: product.assemblyTime,
-        assembly_cost_per_hour: product.assemblyCostPerHour,
-        additional_costs: product.additionalCosts,
+        assemblyTime: product.assemblyTime,
+        assemblyCostPerHour: product.assemblyCostPerHour,
+        additionalCosts: product.additionalCosts,
 
         // Documents and certifications
-        important_documents: product.importantDocuments,
-        part_management: product.partManagement,
-        compliance_status: product.complianceStatus,
-        edit_notes: product.edit_notes,
+        importantDocuments: product.importantDocuments,
+        partManagement: product.partManagement,
+        complianceStatus: product.complianceStatus,
+        editNotes: product.editNotes,
 
         // Process data
-        process_data: product.processData,
-        order_requirements: product.orderRequirements,
-        purchase_requirements: product.purchaseRequirements,
-        special_requirements: product.specialRequirements,
-        process_notes: product.processNotes,
+        processData: product.processData,
+        orderRequirements: product.orderRequirements,
+        purchaseRequirements: product.purchaseRequirements,
+        specialRequirements: product.specialRequirements,
+        processNotes: product.processNotes,
 
         // Resume data
-        has_mold: product.hasMold,
-        mold_cost: product.moldCost,
-        refundable_mold_quantity: product.refundableMoldQuantity,
-        mold_returned: product.moldReturned,
-        accounting_note: product.accountingNote,
-        quality_notes: product.qualityNotes,
-        order_history: product.orderHistory,
-        resume_notes: product.resumeNotes,
+        hasMold: product.hasMold,
+        moldCost: product.moldCost,
+        refundableMoldQuantity: product.refundableMoldQuantity,
+        moldReturned: product.moldReturned,
+        accountingNote: product.accountingNote,
+        qualityNotes: product.qualityNotes,
+        orderHistory: product.orderHistory,
+        resumeNotes: product.resumeNotes,
 
         // Commercial terms
         moq: product.moq,
-        lead_time: product.leadTime,
-        packaging_requirements: product.packagingRequirements,
+        leadTime: product.leadTime,
+        packagingRequirements: product.packagingRequirements,
 
         // Composite product related fields
-        sub_part_no: isCompositeProduct ? selectedComponents : null,
+        subPartNo: isCompositeProduct ? selectedComponents : null,
       }
 
       console.log('Saving product with data:', productData);
