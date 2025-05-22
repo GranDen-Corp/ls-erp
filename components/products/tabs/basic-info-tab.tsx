@@ -344,17 +344,17 @@ export function BasicInfoTab({
                     <CommandGroup className="max-h-[300px] overflow-y-auto">
                       {customersData.map((customer) => (
                         <CommandItem
-                          key={`customer-${customer.customer_id}`}
-                          value={customer.customer_id}
-                          onSelect={() => handleCustomerSelect(customer.customer_id)}
+                          key={`customer-${customer.customer_id || customer.id || Math.random()}`}
+                          value={customer.customer_id || customer.id}
+                          onSelect={() => handleCustomerSelect(customer.customer_id || customer.id)}
                         >
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              product.customer_id === customer.customer_id ? "opacity-100" : "opacity-0",
+                              product.customer_id === (customer.customer_id || customer.id) ? "opacity-100" : "opacity-0",
                             )}
                           />
-                          {customer.customer_id} - {customer.customer_short_name}
+                          {customer.customer_id || customer.id} - {customer.customer_short_name || customer.name}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -410,17 +410,17 @@ export function BasicInfoTab({
                     <CommandGroup className="max-h-[300px] overflow-y-auto">
                       {factories.map((factory) => (
                         <CommandItem
-                          key={`factory-${factory.factory_id}`}
-                          value={factory.factory_id}
-                          onSelect={() => handleFactorySelect(factory.factory_id)}
+                          key={`factory-${factory.factory_id || factory.id || Math.random()}`}
+                          value={factory.factory_id || factory.id}
+                          onSelect={() => handleFactorySelect(factory.factory_id || factory.id)}
                         >
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              product.factory_id === factory.factory_id ? "opacity-100" : "opacity-0",
+                              product.factory_id === (factory.factory_id || factory.id) ? "opacity-100" : "opacity-0",
                             )}
                           />
-                          {factory.factory_id} - {factory.factory_name}
+                          {factory.factory_id || factory.id} - {factory.factory_name || factory.name}
                         </CommandItem>
                       ))}
                     </CommandGroup>
