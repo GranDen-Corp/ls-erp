@@ -70,9 +70,6 @@ interface ProcessTabProps {
   product?: any
   setProduct?: (product: any) => void
   handleInputChange?: (field: string, value: any) => void
-  handleProcessFieldChange?: (id: string, field: string, value: string) => void
-  handleRemoveProcess?: (id: string) => void
-  handleMoveProcess?: (id: string, direction: "up" | "down") => void
   formData?: any
   updateFormData?: (data: any) => void
   readOnly?: boolean
@@ -82,9 +79,6 @@ export function ProcessTab({
   product,
   setProduct,
   handleInputChange,
-  handleProcessFieldChange,
-  handleRemoveProcess,
-  handleMoveProcess,
   formData = {},
   updateFormData = () => {},
   readOnly = false,
@@ -282,21 +276,27 @@ export function ProcessTab({
 
   // 處理刪除製程
   const handleDeleteProcess = (index: number) => {
+    const currentProcesses = getProcesses()
+    if (!currentProcesses[index]) return
+
+    const updatedProcesses = [...currentProcesses]
+    updatedProcesses.splice(index, 1)
+
     if (updateFormData) {
-      const updatedProcesses = [...(safeFormData.processes || [])]
-      updatedProcesses.splice(index, 1)
-      updateFormData({ ...safeFormData, processes: updatedProcesses })
-    } else if (handleRemoveProcess && safeProduct.processData) {
-      handleRemoveProcess(safeProduct.processData[index].id)
-    } else if (setProduct) {
-      setProduct((prev: any) => {
-        const updatedProcessData = [...(prev.processData || [])]
-        updatedProcessData.splice(index, 1)
-        return {
+      const newFormData = { ...safeFormData, processes: updatedProcesses }
+      updateFormData(newFormData)
+      
+      if (setProduct) {
+        setProduct((prev: any) => ({
           ...prev,
-          processData: updatedProcessData,
-        }
-      })
+          processData: updatedProcesses
+        }))
+      }
+    } else if (setProduct) {
+      setProduct((prev: any) => ({
+        ...prev,
+        processData: updatedProcesses
+      }))
     }
   }
 
@@ -883,8 +883,13 @@ export function ProcessTab({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleEditProcess(index)}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleEditProcess(index)
+                          }}
                           className="h-7 w-7"
+                          type="button"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -904,8 +909,13 @@ export function ProcessTab({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteProcess(index)}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDeleteProcess(index)
+                          }}
                           className="h-7 w-7 text-red-500 hover:text-red-700"
+                          type="button"
                         >
                           <X className="h-4 w-4" />
                         </Button>
