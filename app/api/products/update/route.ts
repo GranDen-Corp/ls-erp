@@ -9,9 +9,9 @@ export async function POST(request: Request) {
     // 準備要更新的資料
     const productData = {
       // 組合主鍵欄位 - 已修改，移除 factory_id 作為主鍵的一部分
-      customer_id: data.customerName?.id || data.customer_id,
+      customer_id: data.customer_id,
       part_no: data.partNo,
-      factory_id: data.factoryName?.id || data.factory_id, // 仍然保留，但不再是主鍵的一部分
+      factory_id: data.factory_id, // 仍然保留，但不再是主鍵的一部分
 
       // 基本資訊
       component_name: data.componentName,

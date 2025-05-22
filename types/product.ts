@@ -98,16 +98,8 @@ export interface Product {
   specification: string
   customsCode: string
   endCustomer: string
-  customerName: {
-    id: string
-    name: string
-    code: string
-  }
-  factoryName: {
-    id: string
-    name: string
-    code: string
-  }
+  customer_id: string
+  factory_id: string
   productType: string
   partNo: string
   classificationCode: string

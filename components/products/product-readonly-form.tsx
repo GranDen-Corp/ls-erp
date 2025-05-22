@@ -136,41 +136,31 @@ export function ProductReadOnlyForm({
 
   // 客戶和供應商數據加載完成後，設置名稱
   useEffect(() => {
-    if (customersData.length > 0 && (product.customerName?.id || product.customer_id) && !product.customerName?.name) {
-      const customerId = product.customerName?.id || product.customer_id
+    if (customersData.length > 0 && product.customer_id) {
+      const customerId = product.customer_id
       const selectedCustomer = customersData.find((c) => c.id === customerId)
       if (selectedCustomer) {
         setProduct((prev) => ({
           ...prev,
-          customerName: {
-            id: selectedCustomer.id,
-            name: selectedCustomer.name,
-            code: selectedCustomer.code,
-          },
+          customer_id: selectedCustomer.id
         }))
       }
     }
 
-    if (factories.length > 0 && (product.factoryName?.id || product.factory_id) && !product.factoryName?.name) {
-      const factoryId = product.factoryName?.id || product.factory_id
+    if (factories.length > 0 && product.factory_id) {
+      const factoryId = product.factory_id
       const selectedFactory = factories.find((f) => f.id === factoryId)
       if (selectedFactory) {
         setProduct((prev) => ({
           ...prev,
-          factoryName: {
-            id: selectedFactory.id,
-            name: selectedFactory.name,
-            code: selectedFactory.code,
-          },
+          factory_id: selectedFactory.id
         }))
       }
     }
   }, [
     customersData,
     factories,
-    product.customerName?.id,
     product.customer_id,
-    product.factoryName?.id,
     product.factory_id,
   ])
 
@@ -301,7 +291,7 @@ export function ProductReadOnlyForm({
             setSelectedComponents(formattedComponents)
 
             // 獲取部件詳情
-            const customerId = initialValues.customerName?.id || initialValues.customer_id
+            const customerId = initialValues.customer_id
             if (customerId && formattedComponents.length > 0) {
               fetchComponentDetails(formattedComponents, customerId)
             }

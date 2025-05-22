@@ -26,16 +26,8 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     specification: product.specification || "",
     customsCode: product.customs_code || "",
     endCustomer: product.end_customer || "",
-    customerName: {
-      id: product.customer_id || "",
-      name: product.customer_name || "",
-      code: product.customer_id || "",
-    },
-    factoryName: {
-      id: product.factory_id || "",
-      name: product.factory_name || "",
-      code: product.factory_id || "",
-    },
+    customer_id: product.customer_id || "",
+    factory_id: product.factory_id || "",
     productType: product.product_type || "",
     partNo: product.part_no || "",
     classificationCode: product.classification_code || "",

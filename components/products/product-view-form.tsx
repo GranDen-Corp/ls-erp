@@ -176,8 +176,8 @@ export function ProductViewForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {renderField("產品編號", initialValues.partNo)}
                 {renderField("產品名稱", initialValues.componentName)}
-                {renderField("客戶", initialValues.customerName?.name || initialValues.customerName?.id)}
-                {renderField("工廠", initialValues.factoryName?.name || initialValues.factoryName?.id)}
+                {renderField("客戶", initialValues.customer_id)}
+                {renderField("工廠", initialValues.factory_id)}
                 {renderField("產品類型", initialValues.productType)}
                 {renderField("狀態", initialValues.status)}
                 {renderField("規格", initialValues.specification)}

@@ -10,9 +10,9 @@ export async function saveProduct(formData: any) {
     // 準備要插入的資料
     const productData = {
       // 組合主鍵欄位 - 已修改，移除 factory_id 作為主鍵的一部分
-      customer_id: formData.customerName.id,
+      customer_id: formData.customer_id,
       part_no: formData.partNo,
-      factory_id: formData.factoryName.id, // 仍然保留，但不再是主鍵的一部分
+      factory_id: formData.factory_id, // 仍然保留，但不再是主鍵的一部分
 
       // 其他欄位保持不變
       component_name: formData.componentName,
@@ -71,12 +71,18 @@ export async function saveProduct(formData: any) {
       sub_part_no: formData.isCompositeProduct ? formData.selectedComponents : null,
     }
 
+    // 在保存產品之前
+    console.log('Saving product with data:', productData);
+
     // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
     // 修改 onConflict 參數，移除 factory_id
     const { data, error } = await supabase.from("products").upsert(productData, {
       onConflict: "customer_id,part_no",
       returning: "minimal",
     })
+
+    // 在 API 調用之後
+    console.log('Save product response:', { data, error });
 
     if (error) {
       console.error("保存產品時出錯:", error)
@@ -86,6 +92,9 @@ export async function saveProduct(formData: any) {
     // 重新驗證路徑以更新資料
     revalidatePath("/products/all")
     revalidatePath("/products")
+
+    // 在更新本地狀態之前
+    console.log('Updating local state with:', data);
 
     return { success: true, data }
   } catch (error) {

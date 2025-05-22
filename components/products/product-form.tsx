@@ -44,6 +44,8 @@ import { DocumentsTab } from "./tabs/documents-tab"
 import { ProcessTab, defaultProcesses } from "./tabs/process-tab"
 import { ResumeTab } from "./tabs/resume-tab"
 
+import { saveProduct } from "@/app/actions/product-actions"
+
 export function ProductForm({
   productId,
   isClone = false,
@@ -154,47 +156,6 @@ export function ProductForm({
   const prevCustomerId = useRef<string | null>(null)
   const prevFactoryId = useRef<string | null>(null)
 
-  // When initialValues changes, update product
-  /* Cause "Maximum update depth exceeded"
-  useEffect(() => {
-    if (initialValues && JSON.stringify(initialValues) !== JSON.stringify(product)) {
-      // 處理製程資料
-      const processData =
-        initialValues.processData && initialValues.processData.length > 0
-          ? initialValues.processData
-          : [...defaultProcesses]
-
-      const updatedProduct = {
-        ...defaultProduct,
-        ...initialValues,
-        customerOriginalDrawing: initialValues.customerOriginalDrawing || emptyFileObject,
-        jinzhanDrawing: initialValues.jinzhanDrawing || emptyFileObject,
-        customerDrawing: initialValues.customerDrawing || emptyFileObject,
-        factoryDrawing: initialValues.factoryDrawing || emptyFileObject,
-        complianceStatus: {
-          ...defaultProduct.complianceStatus,
-          ...(initialValues.complianceStatus || {}),
-        },
-        importantDocuments: {
-          ...defaultProduct.importantDocuments,
-          ...(initialValues.importantDocuments || {}),
-        },
-        partManagement: {
-          ...defaultProduct.partManagement,
-          ...(initialValues.partManagement || {}),
-        },
-        processData: processData,
-      }
-      setProduct(updatedProduct)
-      setIsCompositeProduct(initialValues.is_assembly || false)
-
-      // 初始化客戶和供應商ID的參考值
-      prevCustomerId.current = initialValues.customerName?.id || initialValues.customer_id || null
-      prevFactoryId.current = initialValues.factoryName?.id || initialValues.factory_id || null
-    }
-  }, [initialValues, defaultProduct, product])
-  */
-
   // fixed by ChatGPT
   const hasInitialized = useRef(false)
 
@@ -231,30 +192,22 @@ export function ProductForm({
       if (initialValues.customer_id) {
         const customer = customersData.find((c) => c.id === initialValues.customer_id)
         if (customer) {
-          updatedProduct.customerName = {
-            id: customer.id,
-            name: customer.name,
-            code: customer.code,
-          }
+          updatedProduct.customer_id = customer.id
         }
       }
 
       if (initialValues.factory_id) {
         const factory = factories.find((f) => f.id === initialValues.factory_id)
         if (factory) {
-          updatedProduct.factoryName = {
-            id: factory.id,
-            name: factory.name,
-            code: factory.code,
-          }
+          updatedProduct.factory_id = factory.id
         }
       }
 
       setProduct(updatedProduct)
       setIsCompositeProduct(initialValues.is_assembly || false)
 
-      prevCustomerId.current = initialValues.customerName?.id || initialValues.customer_id || null
-      prevFactoryId.current = initialValues.factoryName?.id || initialValues.factory_id || null
+      prevCustomerId.current = initialValues.customer_id || null
+      prevFactoryId.current = initialValues.factory_id || null
 
       hasInitialized.current = true
     }
@@ -278,8 +231,8 @@ export function ProductForm({
 
   // 監控客戶ID和供應商ID的變更
   useEffect(() => {
-    const currentCustomerId = product.customerName?.id
-    const currentFactoryId = product.factoryName?.id
+    const currentCustomerId = product.customer_id
+    const currentFactoryId = product.factory_id
 
     // 如果客戶ID變更，清除組合產品選擇
     if (currentCustomerId && currentCustomerId !== prevCustomerId.current) {
@@ -294,7 +247,7 @@ export function ProductForm({
       setComponentDetails({})
       prevFactoryId.current = currentFactoryId
     }
-  }, [product.customerName?.id, product.factoryName?.id])
+  }, [product.customer_id, product.factory_id])
 
   // Load customer and supplier data
   useEffect(() => {
@@ -421,7 +374,7 @@ export function ProductForm({
             setSelectedComponents(formattedComponents)
 
             // Get component details
-            const customerId = initialValues.customerName?.id || initialValues.customer_id
+            const customerId = initialValues.customer_id
             if (customerId && formattedComponents.length > 0) {
               fetchComponentDetails(formattedComponents, customerId)
             }
@@ -482,7 +435,7 @@ export function ProductForm({
 
   // Load available component products
   const loadAvailableComponents = useCallback(async () => {
-    if (!product.customerName?.id) {
+    if (!product.customer_id) {
       toast({
         title: "Please select a customer first",
         description: "You need to select a customer before querying available components",
@@ -496,7 +449,7 @@ export function ProductForm({
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("customer_id", product.customerName.id)
+        .eq("customer_id", product.customer_id)
         .eq("is_assembly", false)
         .ilike("part_no", `%${componentSearchTerm}%`)
         .order("part_no")
@@ -514,7 +467,7 @@ export function ProductForm({
     } finally {
       setLoadingComponents(false)
     }
-  }, [componentSearchTerm, product.customerName?.id, supabase, toast])
+  }, [componentSearchTerm, product.customer_id, supabase, toast])
 
   // When search term changes, load components
   useEffect(() => {
@@ -579,23 +532,28 @@ export function ProductForm({
 
   // Handle input change with deep equality check
   const handleInputChange = useCallback((field: string, value: any) => {
+    console.log("prev:",product.customer_id,"field:",field,"value:",value);
     setProduct((prev) => {
       // 如果字段不存在於先前的狀態中，直接更新
       if (!(field in prev)) {
+        console.log(`如果字段不存在於先前的狀態中，直接更新:${field}:${value}`);
         return { ...prev, [field]: value }
       }
 
       // 對於字符串、數字和布爾值，直接比較
       if (typeof prev[field] === "string" || typeof prev[field] === "number" || typeof prev[field] === "boolean") {
         if (prev[field] === value) {
+          console.log(`值沒有變化，不更新 ${field}:${value}`);
           return prev // 值沒有變化，不更新
         }
+        console.log(`值有變化，更新:${field}:${value}`);
         return { ...prev, [field]: value }
       }
 
       // 對於對象和數組，使用 JSON.stringify 進行深度比較
       try {
         if (JSON.stringify(prev[field]) === JSON.stringify(value)) {
+          console.log(`值沒有變化，不更新2 ${field}:${value}`);
           return prev // 值沒有變化，不更新
         }
       } catch (e) {
@@ -603,6 +561,7 @@ export function ProductForm({
         console.warn(`JSON.stringify failed for field ${field}:`, e)
       }
 
+      console.log(`返回更新後的對象: ${field}:${value}`);
       // 返回更新後的對象
       return { ...prev, [field]: value }
     })
@@ -893,7 +852,7 @@ export function ProductForm({
       return
     }
 
-    if (!product.customerName.id) {
+    if (!product.customer_id) {
       toast({
         title: "Error",
         description: "Please select a customer",
@@ -906,12 +865,12 @@ export function ProductForm({
     setIsLoading(true)
 
     try {
-      // Prepare data to insert
+      // 準備要插入的資料
       const productData = {
         // Composite key fields
-        customer_id: product.customerName.id,
+        customer_id: product.customer_id,
         part_no: product.partNo,
-        factory_id: product.factoryName.id,
+        factory_id: product.factory_id,
 
         // Basic information
         component_name: product.componentName,
@@ -986,17 +945,17 @@ export function ProductForm({
         sub_part_no: isCompositeProduct ? selectedComponents : null,
       }
 
-      // Use upsert method, if record exists then update, otherwise insert new record
-      const { data, error } = await supabase.from("products").upsert(productData, {
-        onConflict: "customer_id,part_no",
-        returning: "minimal",
-      })
+      console.log('Saving product with data:', productData);
 
-      if (error) {
-        console.error("Error saving product:", error)
+      // 使用 Server Action
+      const result = await saveProduct(productData)
+      
+      console.log('Save product response:', result);
+
+      if (!result.success) {
         toast({
           title: "Error",
-          description: `Failed to save product: ${error.message}`,
+          description: result.error || "Error saving product",
           variant: "destructive",
         })
         return
@@ -1007,11 +966,9 @@ export function ProductForm({
         description: "Product saved successfully",
       })
 
-      // If onSubmit callback is provided, call it
       if (onSubmit) {
         onSubmit(productData)
       } else {
-        // Otherwise navigate to product list page
         router.push("/products/all")
       }
     } catch (error) {
@@ -1076,14 +1033,6 @@ export function ProductForm({
             factories={factories}
             productTypes={productTypes}
             setProduct={setProduct}
-            onCustomerChange={(customer) => {
-              handleInputChange("customerName", customer)
-              handleInputChange("customer_id", customer.id)
-            }}
-            onFactoryChange={(factory) => {
-              handleInputChange("factoryName", factory)
-              handleInputChange("factory_id", factory.id)
-            }}
           />
         </TabsContent>
 

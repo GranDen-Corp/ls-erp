@@ -19,8 +19,6 @@ interface BasicInfoTabProps {
   factories: any[]
   productTypes: any[]
   setProduct: (product: any) => void
-  onCustomerChange?: (customer: any) => void
-  onFactoryChange?: (factory: any) => void
   isReadOnly?: boolean
 }
 
@@ -31,8 +29,6 @@ export function BasicInfoTab({
   factories,
   productTypes,
   setProduct,
-  onCustomerChange,
-  onFactoryChange,
   isReadOnly = false,
 }: BasicInfoTabProps) {
   const [open, setOpen] = useState(false)
@@ -45,11 +41,11 @@ export function BasicInfoTab({
   useEffect(() => {
     async function fetchNames() {
       try {
-        console.log("Fetching names for product:", product)
+        //console.log("Fetching names for product:", product)
 
         // 獲取客戶名稱
         if (product.customer_id) {
-          console.log("Fetching customer name for ID:", product.customer_id)
+          //console.log("Fetching customer name for ID:", product.customer_id)
           const { data: customerData, error: customerError } = await supabase
             .from("customers")
             .select("customer_short_name")
@@ -57,7 +53,7 @@ export function BasicInfoTab({
             .single()
 
           if (!customerError && customerData) {
-            console.log("Found customer data:", customerData)
+            //console.log("Found customer data:", customerData)
             setCustomerName(customerData.customer_short_name)
           } else {
             console.error("Error fetching customer name:", customerError)
@@ -66,7 +62,7 @@ export function BasicInfoTab({
 
         // 獲取供應商名稱
         if (product.factory_id) {
-          console.log("Fetching factory name for ID:", product.factory_id)
+          //console.log("Fetching factory name for ID:", product.factory_id)
           const { data: factoryData, error: factoryError } = await supabase
             .from("suppliers")
             .select("factory_name")
@@ -74,14 +70,14 @@ export function BasicInfoTab({
             .single()
 
           if (!factoryError && factoryData) {
-            console.log("Found factory data:", factoryData)
+            //console.log("Found factory data:", factoryData)
             setFactoryName(factoryData.factory_name)
           } else {
             console.error("Error fetching factory name:", factoryError)
           }
         }
       } catch (error) {
-        console.error("Error in fetchNames:", error)
+        //console.error("Error in fetchNames:", error)
       }
     }
 
@@ -91,7 +87,7 @@ export function BasicInfoTab({
   // 處理客戶選擇
   const handleCustomerSelect = async (customerId: string) => {
     try {
-      console.log("Selected customer ID:", customerId)
+      //console.log("Selected customer ID:", customerId)
 
       // 從資料庫獲取客戶名稱
       const { data: customerData, error: customerError } = await supabase
@@ -107,11 +103,11 @@ export function BasicInfoTab({
 
       if (customerData) {
         const customerShortName = customerData.customer_short_name
-        console.log("Found customer name:", customerShortName)
+        //console.log("Found customer name:", customerShortName)
 
         // 更新客戶名稱狀態
         setCustomerName(customerShortName)
-
+  
         // 更新產品資料
         handleInputChange("customer_id", customerId)
       }
@@ -125,7 +121,7 @@ export function BasicInfoTab({
   // 處理供應商選擇
   const handleFactorySelect = async (factoryId: string) => {
     try {
-      console.log("Selected factory ID:", factoryId)
+      //console.log("Selected factory ID:", factoryId)
 
       // 從資料庫獲取供應商名稱
       const { data: factoryData, error: factoryError } = await supabase
@@ -141,7 +137,7 @@ export function BasicInfoTab({
 
       if (factoryData) {
         const factoryName = factoryData.factory_name
-        console.log("Found factory name:", factoryName)
+        //console.log("Found factory name:", factoryName)
 
         // 更新供應商名稱狀態
         setFactoryName(factoryName)
@@ -155,17 +151,7 @@ export function BasicInfoTab({
       console.error("Error in handleFactorySelect:", error)
     }
   }
-
-  useEffect(() => {
-    console.log(
-      "Product Types:",
-      productTypes.map((type) => ({
-        type_id: type.type_id,
-        type_name: type.type_name,
-      })),
-    )
-  }, [productTypes])
-
+ 
   return (
     <div className="space-y-6">
       {/* 基本信息 */}
