@@ -160,7 +160,7 @@ export function ProcessTab({
   const getProcesses = () => {
     if (readOnly && safeProduct.processData) {
       return safeProduct.processData
-    } else if (updateFormData && safeFormData.processes) {
+    } else if (safeFormData.processes) {
       return safeFormData.processes
     } else if (safeProduct.processData) {
       return safeProduct.processData
@@ -319,35 +319,30 @@ export function ProcessTab({
 
   // 處理移動製程
   const handleMoveProcessItem = (index: number, direction: "up" | "down") => {
+    const currentProcesses = getProcesses()
+    const updatedProcesses = [...currentProcesses]
+    
+    if (direction === "up" && index > 0) {
+      [updatedProcesses[index], updatedProcesses[index - 1]] = [updatedProcesses[index - 1], updatedProcesses[index]]
+    } else if (direction === "down" && index < updatedProcesses.length - 1) {
+      [updatedProcesses[index], updatedProcesses[index + 1]] = [updatedProcesses[index + 1], updatedProcesses[index]]
+    }
+
     if (updateFormData) {
-      const updatedProcesses = [...(safeFormData.processes || [])]
-      if (direction === "up" && index > 0) {
-        ;[updatedProcesses[index], updatedProcesses[index - 1]] = [updatedProcesses[index - 1], updatedProcesses[index]]
-      } else if (direction === "down" && index < updatedProcesses.length - 1) {
-        ;[updatedProcesses[index], updatedProcesses[index + 1]] = [updatedProcesses[index + 1], updatedProcesses[index]]
-      }
-      updateFormData({ ...safeFormData, processes: updatedProcesses })
-    } else if (handleMoveProcess && safeProduct.processData) {
-      handleMoveProcess(safeProduct.processData[index].id, direction)
-    } else if (setProduct) {
-      setProduct((prev: any) => {
-        const updatedProcessData = [...(prev.processData || [])]
-        if (direction === "up" && index > 0) {
-          ;[updatedProcessData[index], updatedProcessData[index - 1]] = [
-            updatedProcessData[index - 1],
-            updatedProcessData[index],
-          ]
-        } else if (direction === "down" && index < updatedProcessData.length - 1) {
-          ;[updatedProcessData[index], updatedProcessData[index + 1]] = [
-            updatedProcessData[index + 1],
-            updatedProcessData[index],
-          ]
-        }
-        return {
+      const newFormData = { ...safeFormData, processes: updatedProcesses }
+      updateFormData(newFormData)
+      
+      if (setProduct) {
+        setProduct((prev: any) => ({
           ...prev,
-          processData: updatedProcessData,
-        }
-      })
+          processData: updatedProcesses
+        }))
+      }
+    } else if (setProduct) {
+      setProduct((prev: any) => ({
+        ...prev,
+        processData: updatedProcesses
+      }))
     }
   }
 
@@ -860,18 +855,28 @@ export function ProcessTab({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleMoveProcessItem(index, "up")}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleMoveProcessItem(index, "up")
+                          }}
                           disabled={index === 0}
                           className="h-7 w-7"
+                          type="button"
                         >
                           <ChevronUp className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleMoveProcessItem(index, "down")}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleMoveProcessItem(index, "down")
+                          }}
                           disabled={index === getProcesses().length - 1}
                           className="h-7 w-7"
+                          type="button"
                         >
                           <ChevronDown className="h-4 w-4" />
                         </Button>
