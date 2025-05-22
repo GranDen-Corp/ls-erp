@@ -7,16 +7,25 @@ import { ProductForm } from "@/components/products/product-form"
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
-export default async function EditProductPage({ params }: { params: { 
-  customer_id: string;
-  id: string; } 
+export default async function EditProductPage({
+  params,
+}: {
+  params: {
+    customer_id: string
+    id: string
+  }
 }) {
   const productId = decodeURIComponent(params.id)
   const customerId = decodeURIComponent(params.customer_id)
 
   // 使用服務器端 Supabase 客戶端獲取產品詳情
   const supabase = createServerComponentClient({ cookies })
-  const { data: product, error } = await supabase.from("products").select("*").eq("part_no", productId).eq("customer_id", customerId).single()
+  const { data: product, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("part_no", productId)
+    .eq("customer_id", customerId)
+    .single()
 
   if (error || !product) {
     console.error("獲取產品詳情時出錯:", error)

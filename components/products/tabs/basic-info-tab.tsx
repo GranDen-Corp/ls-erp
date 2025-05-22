@@ -107,7 +107,7 @@ export function BasicInfoTab({
 
         // 更新客戶名稱狀態
         setCustomerName(customerShortName)
-  
+
         // 更新產品資料
         handleInputChange("customer_id", customerId)
       }
@@ -151,7 +151,7 @@ export function BasicInfoTab({
       console.error("Error in handleFactorySelect:", error)
     }
   }
- 
+
   return (
     <div className="space-y-6">
       {/* 基本信息 */}
@@ -337,7 +337,9 @@ export function BasicInfoTab({
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              product.customer_id === (customer.customer_id || customer.id) ? "opacity-100" : "opacity-0",
+                              product.customer_id === (customer.customer_id || customer.id)
+                                ? "opacity-100"
+                                : "opacity-0",
                             )}
                           />
                           {customer.customer_id || customer.id} - {customer.customer_short_name || customer.name}

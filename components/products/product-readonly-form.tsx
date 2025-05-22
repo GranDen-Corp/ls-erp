@@ -142,7 +142,7 @@ export function ProductReadOnlyForm({
       if (selectedCustomer) {
         setProduct((prev) => ({
           ...prev,
-          customer_id: selectedCustomer.id
+          customer_id: selectedCustomer.id,
         }))
       }
     }
@@ -153,16 +153,11 @@ export function ProductReadOnlyForm({
       if (selectedFactory) {
         setProduct((prev) => ({
           ...prev,
-          factory_id: selectedFactory.id
+          factory_id: selectedFactory.id,
         }))
       }
     }
-  }, [
-    customersData,
-    factories,
-    product.customer_id,
-    product.factory_id,
-  ])
+  }, [customersData, factories, product.customer_id, product.factory_id])
 
   // 載入客戶和供應商資料
   useEffect(() => {

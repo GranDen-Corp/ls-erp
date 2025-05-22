@@ -6,41 +6,37 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Formats a date into a localized string
+ * Format a date to a string
  * @param date The date to format
- * @param options Optional Intl.DateTimeFormatOptions
- * @returns Formatted date string
+ * @param options The Intl.DateTimeFormat options
+ * @returns The formatted date string
  */
 export function formatDate(
-  date: Date | string | number | null | undefined,
+  date: Date | string | number,
   options: Intl.DateTimeFormatOptions = {
     year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
   },
 ): string {
-  if (!date) return "N/A"
+  if (!date) return ""
 
   const dateObj = typeof date === "string" || typeof date === "number" ? new Date(date) : date
-
-  if (isNaN(dateObj.getTime())) return "Invalid Date"
 
   return new Intl.DateTimeFormat("en-US", options).format(dateObj)
 }
 
 /**
- * Formats a number as currency
+ * Format a number as currency
  * @param amount The amount to format
  * @param currency The currency code (default: USD)
  * @param locale The locale (default: en-US)
- * @returns Formatted currency string
+ * @returns The formatted currency string
  */
-export function formatCurrency(amount: number | null | undefined, currency = "USD", locale = "en-US"): string {
-  if (amount === null || amount === undefined) return "N/A"
-
+export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: currency,
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)

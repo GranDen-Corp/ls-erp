@@ -285,17 +285,17 @@ export function ProcessTab({
     if (updateFormData) {
       const newFormData = { ...safeFormData, processes: updatedProcesses }
       updateFormData(newFormData)
-      
+
       if (setProduct) {
         setProduct((prev: any) => ({
           ...prev,
-          processData: updatedProcesses
+          processData: updatedProcesses,
         }))
       }
     } else if (setProduct) {
       setProduct((prev: any) => ({
         ...prev,
-        processData: updatedProcesses
+        processData: updatedProcesses,
       }))
     }
   }
@@ -321,27 +321,27 @@ export function ProcessTab({
   const handleMoveProcessItem = (index: number, direction: "up" | "down") => {
     const currentProcesses = getProcesses()
     const updatedProcesses = [...currentProcesses]
-    
+
     if (direction === "up" && index > 0) {
-      [updatedProcesses[index], updatedProcesses[index - 1]] = [updatedProcesses[index - 1], updatedProcesses[index]]
+      ;[updatedProcesses[index], updatedProcesses[index - 1]] = [updatedProcesses[index - 1], updatedProcesses[index]]
     } else if (direction === "down" && index < updatedProcesses.length - 1) {
-      [updatedProcesses[index], updatedProcesses[index + 1]] = [updatedProcesses[index + 1], updatedProcesses[index]]
+      ;[updatedProcesses[index], updatedProcesses[index + 1]] = [updatedProcesses[index + 1], updatedProcesses[index]]
     }
 
     if (updateFormData) {
       const newFormData = { ...safeFormData, processes: updatedProcesses }
       updateFormData(newFormData)
-      
+
       if (setProduct) {
         setProduct((prev: any) => ({
           ...prev,
-          processData: updatedProcesses
+          processData: updatedProcesses,
         }))
       }
     } else if (setProduct) {
       setProduct((prev: any) => ({
         ...prev,
-        processData: updatedProcesses
+        processData: updatedProcesses,
       }))
     }
   }
