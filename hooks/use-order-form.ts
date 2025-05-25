@@ -325,8 +325,10 @@ export const useOrderForm = () => {
   }
 
   const calculateItemTotal = (item: OrderItem) => {
-    const actualUnitPrice = calculateActualUnitPrice(item.unitPrice, item.unit)
-    return item.quantity * actualUnitPrice
+    // 計算實際件數（考慮單位換算）
+    const actualQuantityInPcs = item.quantity * getUnitMultiplier(item.unit)
+    // 總價 = 實際件數 × 單價
+    return actualQuantityInPcs * item.unitPrice
   }
 
   const openBatchManagement = (item: OrderItem) => {
@@ -421,26 +423,32 @@ export const useOrderForm = () => {
       const newItems: OrderItem[] = []
 
       selectedProducts.forEach((partNo) => {
-        // 使用 part_no 來查找產品，而不是 id
         const product = [...regularProducts, ...assemblyProducts].find((p) => p.part_no === partNo)
         if (product && !checkIsProductAdded(partNo)) {
           const defaultUnit = productUnits.length > 0 ? productUnits[0].value : "PCS"
+          const defaultQuantity = 1
+          const actualQuantityInPcs = defaultQuantity * getUnitMultiplier(defaultUnit)
+
           const newItem: OrderItem = {
             id: `${Date.now()}-${Math.random()}`,
             productKey: `${product.customer_id}-${product.part_no}`,
             productName: product.component_name || product.part_no,
             productPartNo: product.part_no,
-            quantity: 1,
+            quantity: defaultQuantity,
             unit: defaultUnit,
             unitPrice: product.unit_price || product.last_price || 0,
             isAssembly: product.is_assembly || false,
             shipmentBatches: [
               {
                 id: `batch-${Date.now()}`,
+                productPartNo: product.part_no,
                 batchNumber: 1,
-                quantity: 1,
-                plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30天後
+                quantity: actualQuantityInPcs, // 使用實際PCS數量
+                unit: "PCS", // 批次統一使用PCS
+                unitMultiplier: 1,
+                plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
                 status: "pending",
+                notes: "",
               },
             ],
             specifications: product.specification || "",

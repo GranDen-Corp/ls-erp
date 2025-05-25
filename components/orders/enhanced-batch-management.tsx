@@ -11,16 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { DatePicker } from "@/components/ui/date-picker"
-import { Plus, Trash2, Package } from "lucide-react"
-import { createClient } from "@/lib/supabase-client"
+import { Plus, Trash2, Package, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface ProductUnit {
-  code: string
-  name: string
-  value: string
-  multiplier: number
-}
 
 interface ShipmentBatch {
   id: string
@@ -52,76 +44,89 @@ interface EnhancedBatchManagementProps {
   onClose: () => void
   orderItem: OrderItem | null
   onUpdateBatches: (productPartNo: string, batches: ShipmentBatch[]) => void
+  getUnitMultiplier: (unit: string) => number
 }
 
-export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBatches }: EnhancedBatchManagementProps) {
+export function EnhancedBatchManagement({
+  isOpen,
+  onClose,
+  orderItem,
+  onUpdateBatches,
+  getUnitMultiplier,
+}: EnhancedBatchManagementProps) {
   const [batches, setBatches] = useState<ShipmentBatch[]>([])
-  const [productUnits, setProductUnits] = useState<ProductUnit[]>([])
-  const [selectedUnit, setSelectedUnit] = useState<string>("MPCS")
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
-    if (isOpen) {
-      fetchProductUnits()
-      if (orderItem) {
-        setBatches(orderItem.shipmentBatches || [])
-        setSelectedUnit(orderItem.unit || "MPCS")
+    if (isOpen && orderItem) {
+      // 計算訂單的實際PCS總數量
+      const orderTotalPcs = orderItem.quantity * getUnitMultiplier(orderItem.unit)
+
+      if (orderItem.shipmentBatches && orderItem.shipmentBatches.length > 0) {
+        // 使用現有批次，但確保數量正確
+        setBatches(
+          orderItem.shipmentBatches.map((batch) => ({
+            ...batch,
+            plannedShipDate: batch.plannedShipDate ? new Date(batch.plannedShipDate) : undefined,
+            actualShipDate: batch.actualShipDate ? new Date(batch.actualShipDate) : undefined,
+            estimatedArrivalDate: batch.estimatedArrivalDate ? new Date(batch.estimatedArrivalDate) : undefined,
+          })),
+        )
+      } else {
+        // 創建默認批次，包含全部數量
+        const defaultBatch: ShipmentBatch = {
+          id: `batch-${Date.now()}`,
+          productPartNo: orderItem.productPartNo,
+          batchNumber: 1,
+          plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天後
+          quantity: orderTotalPcs, // 使用實際PCS數量
+          unit: "PCS",
+          unitMultiplier: 1,
+          notes: "",
+          status: "pending",
+        }
+        setBatches([defaultBatch])
       }
     }
-  }, [isOpen, orderItem])
+  }, [isOpen, orderItem, getUnitMultiplier])
 
-  const fetchProductUnits = async () => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("static_parameters")
-        .select("*")
-        .eq("category", "product_unit")
-        .eq("is_active", true)
-        .order("sort_order")
-
-      if (error) throw error
-
-      const units = (data || []).map((param) => ({
-        code: param.code,
-        name: param.name,
-        value: param.value || "1",
-        multiplier: Number.parseInt(param.value || "1"),
-      }))
-
-      setProductUnits(units)
-    } catch (error: any) {
-      console.error("獲取產品單位失敗:", error)
-      toast({
-        title: "載入失敗",
-        description: "無法載入產品單位設定",
-        variant: "destructive",
-      })
-    }
+  const calculateOrderTotalPcs = () => {
+    if (!orderItem) return 0
+    return orderItem.quantity * getUnitMultiplier(orderItem.unit)
   }
 
-  const getUnitMultiplier = (unitCode: string) => {
-    const unit = productUnits.find((u) => u.code === unitCode)
-    return unit ? unit.multiplier : 1
+  const calculateTotalAllocated = () => {
+    return batches.reduce((total, batch) => total + batch.quantity, 0)
   }
 
-  const getUnitName = (unitCode: string) => {
-    const unit = productUnits.find((u) => u.code === unitCode)
-    return unit ? unit.name : unitCode
+  const getRemainingQuantity = () => {
+    const orderTotalPcs = calculateOrderTotalPcs()
+    const allocatedTotal = calculateTotalAllocated()
+    return orderTotalPcs - allocatedTotal
   }
 
   const addBatch = () => {
     if (!orderItem) return
+
+    const remainingQty = getRemainingQuantity()
+    if (remainingQty <= 0) {
+      toast({
+        title: "無法新增批次",
+        description: "所有數量已分配完成",
+        variant: "destructive",
+      })
+      return
+    }
 
     const newBatch: ShipmentBatch = {
       id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       productPartNo: orderItem.productPartNo,
       batchNumber: batches.length + 1,
       plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天後
-      quantity: 0,
-      unit: selectedUnit,
-      unitMultiplier: getUnitMultiplier(selectedUnit),
+      quantity: remainingQty, // 自動分配剩餘數量
+      unit: "PCS",
+      unitMultiplier: 1,
       notes: "",
       status: "pending",
     }
@@ -130,6 +135,14 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
   }
 
   const removeBatch = (batchId: string) => {
+    if (batches.length <= 1) {
+      toast({
+        title: "無法刪除",
+        description: "至少需要保留一個批次",
+        variant: "destructive",
+      })
+      return
+    }
     setBatches(batches.filter((batch) => batch.id !== batchId))
   }
 
@@ -137,37 +150,42 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
     setBatches(
       batches.map((batch) => {
         if (batch.id === batchId) {
-          const updatedBatch = { ...batch, [field]: value }
-
-          // 如果更新單位，同時更新單位倍數
-          if (field === "unit") {
-            updatedBatch.unitMultiplier = getUnitMultiplier(value)
-          }
-
-          return updatedBatch
+          return { ...batch, [field]: value }
         }
         return batch
       }),
     )
   }
 
-  const calculateTotalQuantity = () => {
-    return batches.reduce((total, batch) => {
-      // 將批次數量轉換為基本單位（PCS）
-      return total + batch.quantity * batch.unitMultiplier
-    }, 0)
-  }
+  const autoDistributeBatches = () => {
+    if (!orderItem || batches.length === 0) return
 
-  const calculateOrderQuantityInPcs = () => {
-    if (!orderItem) return 0
-    const orderUnitMultiplier = getUnitMultiplier(orderItem.unit)
-    return orderItem.quantity * orderUnitMultiplier
-  }
+    const orderTotalPcs = calculateOrderTotalPcs()
+    const batchCount = batches.length
+    const avgQuantityPerBatch = Math.floor(orderTotalPcs / batchCount)
+    const remainder = orderTotalPcs % batchCount
 
-  const getRemainingQuantity = () => {
-    const orderTotalPcs = calculateOrderQuantityInPcs()
-    const batchTotalPcs = calculateTotalQuantity()
-    return orderTotalPcs - batchTotalPcs
+    const updatedBatches = batches.map((batch, index) => {
+      let batchQuantity = avgQuantityPerBatch
+
+      // 將餘數分配給前幾個批次
+      if (index < remainder) {
+        batchQuantity += 1
+      }
+
+      return {
+        ...batch,
+        quantity: Math.max(1, batchQuantity), // 確保至少為1
+        unit: "PCS",
+        unitMultiplier: 1,
+      }
+    })
+
+    setBatches(updatedBatches)
+    toast({
+      title: "自動分配完成",
+      description: `已將 ${orderTotalPcs} 件平均分配到 ${batchCount} 個批次`,
+    })
   }
 
   const handleSave = () => {
@@ -177,8 +195,8 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
     const remainingQty = getRemainingQuantity()
     if (remainingQty !== 0) {
       toast({
-        title: "數量不符",
-        description: `批次總數量與訂單數量不符，差異: ${remainingQty} PCS`,
+        title: "批次數量未分配完成",
+        description: `還有 ${remainingQty} 件未分配，請調整批次數量後再儲存`,
         variant: "destructive",
       })
       return
@@ -204,33 +222,16 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
     onClose()
   }
 
-  const autoDistributeBatches = () => {
-    if (!orderItem || batches.length === 0) return
-
-    const orderTotalPcs = calculateOrderQuantityInPcs()
-    const batchCount = batches.length
-    const avgQuantityPerBatch = Math.floor(orderTotalPcs / batchCount)
-    const remainder = orderTotalPcs % batchCount
-
-    const updatedBatches = batches.map((batch, index) => {
-      // 將平均數量轉換為當前批次的單位
-      let batchQuantity = Math.floor(avgQuantityPerBatch / batch.unitMultiplier)
-
-      // 將餘數分配給前幾個批次
-      if (index < remainder) {
-        batchQuantity += Math.ceil(1 / batch.unitMultiplier)
-      }
-
-      return {
-        ...batch,
-        quantity: Math.max(1, batchQuantity), // 確保至少為1
-      }
-    })
-
-    setBatches(updatedBatches)
+  const getUnitDisplayName = (unit: string) => {
+    if (unit === "PCS") return "件"
+    return unit
   }
 
   if (!orderItem) return null
+
+  const orderTotalPcs = calculateOrderTotalPcs()
+  const allocatedTotal = calculateTotalAllocated()
+  const remainingQty = getRemainingQuantity()
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -261,8 +262,8 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
                 <div>
                   <Label className="text-sm text-muted-foreground">訂單數量</Label>
                   <p className="font-medium">
-                    {orderItem.quantity} {getUnitName(orderItem.unit)}
-                    <span className="text-sm text-muted-foreground ml-2">({calculateOrderQuantityInPcs()} PCS)</span>
+                    {orderItem.quantity} × {orderItem.unit}
+                    <span className="text-sm text-muted-foreground ml-2">= {orderTotalPcs} 件</span>
                   </p>
                 </div>
                 <div>
@@ -278,20 +279,24 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
             <CardContent className="pt-6">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
+                  <Label className="text-sm text-muted-foreground">訂單總數量</Label>
+                  <p className="text-2xl font-bold text-blue-600">{orderTotalPcs} 件</p>
+                </div>
+                <div>
                   <Label className="text-sm text-muted-foreground">已分配數量</Label>
-                  <p className="text-2xl font-bold text-blue-600">{calculateTotalQuantity()} PCS</p>
+                  <p className="text-2xl font-bold text-green-600">{allocatedTotal} 件</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">剩餘數量</Label>
-                  <p
-                    className={`text-2xl font-bold ${getRemainingQuantity() === 0 ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {getRemainingQuantity()} PCS
+                  <p className={`text-2xl font-bold ${remainingQty === 0 ? "text-green-600" : "text-red-600"}`}>
+                    {remainingQty} 件
                   </p>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">批次數量</Label>
-                  <p className="text-2xl font-bold text-purple-600">{batches.length}</p>
+                  {remainingQty !== 0 && (
+                    <div className="flex items-center justify-center mt-1">
+                      <AlertCircle className="h-4 w-4 text-red-500 mr-1" />
+                      <span className="text-xs text-red-500">需要完成分配</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -299,27 +304,12 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
 
           {/* 批次操作按鈕 */}
           <div className="flex gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="unit-select">新批次單位:</Label>
-              <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {productUnits.map((unit) => (
-                    <SelectItem key={unit.code} value={unit.code}>
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={addBatch} variant="outline">
+            <Button onClick={addBatch} variant="outline" disabled={remainingQty <= 0}>
               <Plus className="mr-2 h-4 w-4" />
               新增批次
             </Button>
             <Button onClick={autoDistributeBatches} variant="outline" disabled={batches.length === 0}>
-              自動分配數量
+              自動平均分配
             </Button>
           </div>
 
@@ -336,8 +326,7 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-16">批次</TableHead>
-                      <TableHead className="w-24">數量</TableHead>
-                      <TableHead className="w-24">單位</TableHead>
+                      <TableHead className="w-24">數量(件)</TableHead>
                       <TableHead className="w-32">計劃出貨日</TableHead>
                       <TableHead className="w-32">實際出貨日</TableHead>
                       <TableHead className="w-24">狀態</TableHead>
@@ -354,28 +343,12 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
                         <TableCell>
                           <Input
                             type="number"
-                            min="0"
+                            min="1"
+                            max={batch.quantity + remainingQty}
                             value={batch.quantity}
                             onChange={(e) => updateBatch(batch.id, "quantity", Number.parseInt(e.target.value) || 0)}
                             className="w-20"
                           />
-                          <div className="text-xs text-muted-foreground mt-1">
-                            = {batch.quantity * batch.unitMultiplier} PCS
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Select value={batch.unit} onValueChange={(value) => updateBatch(batch.id, "unit", value)}>
-                            <SelectTrigger className="w-20">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {productUnits.map((unit) => (
-                                <SelectItem key={unit.code} value={unit.code}>
-                                  {unit.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </TableCell>
                         <TableCell>
                           <DatePicker
@@ -414,7 +387,12 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
                           />
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => removeBatch(batch.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBatch(batch.id)}
+                            disabled={batches.length <= 1}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -431,7 +409,14 @@ export function EnhancedBatchManagement({ isOpen, onClose, orderItem, onUpdateBa
             <Button variant="outline" onClick={onClose}>
               取消
             </Button>
-            <Button onClick={handleSave}>儲存批次設定</Button>
+            <Button
+              onClick={handleSave}
+              disabled={remainingQty !== 0}
+              className={remainingQty !== 0 ? "opacity-50" : ""}
+            >
+              儲存批次設定
+              {remainingQty !== 0 && <span className="ml-2 text-xs">({remainingQty}件未分配)</span>}
+            </Button>
           </div>
         </div>
       </DialogContent>

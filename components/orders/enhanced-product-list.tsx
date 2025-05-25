@@ -86,13 +86,14 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
     }
     handleItemChange(itemId, "quantity", quantity)
 
-    // 智慧化更新批次數量
+    // 智慧化更新批次數量 - 使用實際PCS數量
     const item = orderItems.find((i) => i.id === itemId)
     if (item && item.shipmentBatches.length > 0) {
+      const actualQuantityInPcs = quantity * getUnitMultiplier(item.unit)
       const updatedBatches = item.shipmentBatches.map((batch, index) => {
         if (index === 0) {
-          // 第一個批次設為總數量
-          return { ...batch, quantity: quantity }
+          // 第一個批次設為總實際數量（PCS）
+          return { ...batch, quantity: actualQuantityInPcs, unit: "PCS", unitMultiplier: 1 }
         }
         return batch
       })
@@ -280,9 +281,9 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
                         <span className="ml-2 font-medium">{actualQuantity.toLocaleString()} 件</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">實際單價:</span>
+                        <span className="text-muted-foreground">單價:</span>
                         <span className="ml-2 font-medium">
-                          {actualUnitPrice.toFixed(4)} {item.currency}/件
+                          {item.unitPrice.toFixed(4)} {item.currency}/{getUnitDisplayName(item.unit)}
                         </span>
                       </div>
                       <div>
@@ -291,6 +292,10 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
                           {calculateItemTotal(item).toFixed(2)} {item.currency}
                         </span>
                       </div>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      計算方式: {item.quantity} × {getUnitDisplayName(item.unit)} × {item.unitPrice} = {actualQuantity}{" "}
+                      件 × {item.unitPrice} = {calculateItemTotal(item).toFixed(2)} {item.currency}
                     </div>
                   </div>
 
