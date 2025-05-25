@@ -57,6 +57,15 @@ interface OrderItem {
   product?: Product
 }
 
+interface ExchangeRate {
+  id: number
+  currency_code: string
+  currency_name: string
+  rate_to_usd: number
+  is_base_currency: boolean
+  is_active: boolean
+}
+
 export const useOrderForm = () => {
   const [productUnits, setProductUnits] = useState<
     Array<{
@@ -66,6 +75,8 @@ export const useOrderForm = () => {
       value: string
     }>
   >([])
+
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
 
   // 基本狀態
   const [loading, setLoading] = useState(true)
@@ -122,7 +133,7 @@ export const useOrderForm = () => {
     const initializeData = async () => {
       setLoading(true)
       try {
-        await Promise.all([loadCustomers(), loadProductUnits(), generateNewOrderNumber()])
+        await Promise.all([loadCustomers(), loadProductUnits(), loadExchangeRates(), generateNewOrderNumber()])
       } catch (error) {
         console.error("初始化數據失敗:", error)
         setError("載入數據失敗，請重新整理頁面")
@@ -170,6 +181,27 @@ export const useOrderForm = () => {
       setProductUnits(data || [])
     } catch (error) {
       console.error("載入產品單位失敗:", error)
+    }
+  }
+
+  // 載入匯率數據
+  const loadExchangeRates = async () => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("exchange_rates")
+        .select("*")
+        .eq("is_active", true)
+        .order("currency_code")
+
+      if (error) {
+        console.error("載入匯率失敗:", error)
+        return
+      }
+
+      setExchangeRates(data || [])
+    } catch (error) {
+      console.error("載入匯率失敗:", error)
     }
   }
 
@@ -247,6 +279,32 @@ export const useOrderForm = () => {
     return unit ? unit.code : `${unitValue}PCS`
   }
 
+  // 計算單位換算係數
+  const getUnitMultiplier = (unit: string) => {
+    const unitLower = unit.toLowerCase()
+    if (unitLower.includes("mpcs") || unitLower.includes("1000pcs")) {
+      return 1000
+    }
+    if (unitLower.includes("100pcs")) {
+      return 100
+    }
+    if (unitLower.includes("10pcs")) {
+      return 10
+    }
+    // 默認為1 (pcs, set等)
+    return 1
+  }
+
+  // 計算實際數量（考慮單位換算）
+  const calculateActualQuantity = (quantity: number, unit: string) => {
+    return quantity * getUnitMultiplier(unit)
+  }
+
+  // 計算實際單價（考慮單位換算）
+  const calculateActualUnitPrice = (unitPrice: number, unit: string) => {
+    return unitPrice * getUnitMultiplier(unit)
+  }
+
   const getCurrentItem = () => {
     return currentItemForBatch
   }
@@ -267,7 +325,8 @@ export const useOrderForm = () => {
   }
 
   const calculateItemTotal = (item: OrderItem) => {
-    return item.quantity * item.unitPrice
+    const actualUnitPrice = calculateActualUnitPrice(item.unitPrice, item.unit)
+    return item.quantity * actualUnitPrice
   }
 
   const openBatchManagement = (item: OrderItem) => {
@@ -365,18 +424,27 @@ export const useOrderForm = () => {
         // 使用 part_no 來查找產品，而不是 id
         const product = [...regularProducts, ...assemblyProducts].find((p) => p.part_no === partNo)
         if (product && !checkIsProductAdded(partNo)) {
+          const defaultUnit = productUnits.length > 0 ? productUnits[0].value : "PCS"
           const newItem: OrderItem = {
             id: `${Date.now()}-${Math.random()}`,
             productKey: `${product.customer_id}-${product.part_no}`,
             productName: product.component_name || product.part_no,
             productPartNo: product.part_no,
             quantity: 1,
-            unit: productUnits.length > 0 ? productUnits[0].value : "PCS",
+            unit: defaultUnit,
             unitPrice: product.unit_price || product.last_price || 0,
             isAssembly: product.is_assembly || false,
-            shipmentBatches: [],
+            shipmentBatches: [
+              {
+                id: `batch-${Date.now()}`,
+                batchNumber: 1,
+                quantity: 1,
+                plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30天後
+                status: "pending",
+              },
+            ],
             specifications: product.specification || "",
-            currency: product.currency || "USD",
+            currency: product.currency || customerCurrency || "USD",
             product: product,
           }
           newItems.push(newItem)
@@ -400,18 +468,27 @@ export const useOrderForm = () => {
 
     const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
     if (product && !checkIsProductAdded(selectedProductPartNo)) {
+      const defaultUnit = productUnits.length > 0 ? productUnits[0].value : "PCS"
       const newItem: OrderItem = {
         id: `${Date.now()}-${Math.random()}`,
         productKey: `${product.customer_id}-${product.part_no}`,
         productName: product.component_name || product.part_no,
         productPartNo: product.part_no,
         quantity: 1,
-        unit: productUnits.length > 0 ? productUnits[0].value : "PCS",
+        unit: defaultUnit,
         unitPrice: product.unit_price || product.last_price || 0,
         isAssembly: true,
-        shipmentBatches: [],
+        shipmentBatches: [
+          {
+            id: `batch-${Date.now()}`,
+            batchNumber: 1,
+            quantity: 1,
+            plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30天後
+            status: "pending",
+          },
+        ],
         specifications: product.specification || "",
-        currency: product.currency || "USD",
+        currency: product.currency || customerCurrency || "USD",
         product: product,
       }
 
@@ -462,7 +539,11 @@ export const useOrderForm = () => {
 
   return {
     productUnits,
+    exchangeRates,
     getUnitDisplayName,
+    getUnitMultiplier,
+    calculateActualQuantity,
+    calculateActualUnitPrice,
     loading,
     error,
     customers,

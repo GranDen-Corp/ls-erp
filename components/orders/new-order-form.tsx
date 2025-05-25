@@ -13,10 +13,12 @@ import {
   LucideArrowRight,
   LucideArrowLeft,
   LucideSave,
+  LucidePackage,
+  LucideClipboardList,
 } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProcurementDataEditor } from "@/components/orders/procurement-data-editor"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
 import { OrderValidation } from "@/components/orders/order-validation"
@@ -90,13 +92,19 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       // 採購資料確認步驟
       return (
         <div className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
-            <h3 className="text-lg font-medium text-blue-800 mb-2">訂單已成功建立</h3>
-            <p className="text-blue-700">
-              訂單編號: <span className="font-semibold">{createdOrderId || orderData?.order_id}</span>
-            </p>
-            <p className="text-blue-700 mt-1">請確認以下採購資料，並點擊「創建採購單」按鈕完成採購單創建。</p>
-          </div>
+          <Card className="bg-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-blue-800 flex items-center gap-2">
+                <LucideCheckCircle className="h-5 w-5" />
+                訂單建立成功
+              </CardTitle>
+              <CardDescription className="text-blue-700">
+                訂單編號: <span className="font-semibold">{createdOrderId || orderData?.order_id}</span>
+                <br />
+                請確認以下採購資料，並點擊「創建採購單」按鈕完成採購單創建。
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
           <ProcurementDataEditor
             orderItems={orderForm.orderItems}
@@ -111,10 +119,12 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     if (orderForm.loading) {
       return (
-        <div className="flex flex-col items-center justify-center p-8 space-y-4">
-          <LucideLoader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-center text-muted-foreground">正在載入客戶和產品資料...</p>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-8 space-y-4">
+            <LucideLoader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-center text-muted-foreground">正在載入客戶和產品資料...</p>
+          </CardContent>
+        </Card>
       )
     }
 
@@ -122,7 +132,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       return (
         <Alert variant="destructive">
           <LucideAlertCircle className="h-4 w-4" />
-          <AlertTitle>錯誤</AlertTitle>
+          <AlertTitle>載入錯誤</AlertTitle>
           <AlertDescription>{orderForm.error}</AlertDescription>
         </Alert>
       )
@@ -140,40 +150,62 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     return (
       <div className="space-y-6">
-        {/* 工作流程控制按鈕 */}
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">
-            {orderForm.activeTab === "products" ? "產品選擇與設定" : "採購資料設定"}
-          </h3>
-          <div className="flex gap-2">
-            {orderForm.activeTab === "procurement" && (
-              <Button variant="outline" size="sm" onClick={handleGoToProducts} className="flex items-center">
-                <LucideArrowLeft className="h-4 w-4 mr-2" />
-                返回產品設定
-              </Button>
-            )}
-            {orderForm.isProductSettingsConfirmed && orderForm.isProcurementSettingsConfirmed && (
-              <>
-                <Button
-                  onClick={() => onSubmit(false)}
-                  disabled={orderForm.isSubmitting || orderForm.isCreatingPurchaseOrder}
-                  variant="outline"
+        {/* 進度指示器 */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div
+                  className={`flex items-center space-x-2 ${orderForm.activeTab === "products" ? "text-blue-600" : "text-gray-400"}`}
                 >
-                  <LucideSave className="h-4 w-4 mr-2" />
-                  僅建立訂單
-                </Button>
-                <Button
-                  onClick={() => onSubmit(true)}
-                  disabled={orderForm.isSubmitting || orderForm.isCreatingPurchaseOrder}
-                  className="bg-green-600 hover:bg-green-700"
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${orderForm.activeTab === "products" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+                  >
+                    <LucidePackage className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">產品選擇與設定</span>
+                </div>
+                <div className="w-8 h-0.5 bg-gray-300"></div>
+                <div
+                  className={`flex items-center space-x-2 ${orderForm.activeTab === "procurement" ? "text-blue-600" : "text-gray-400"}`}
                 >
-                  <LucideShoppingCart className="h-4 w-4 mr-2" />
-                  儲存並同時建立訂單與採購單
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${orderForm.activeTab === "procurement" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+                  >
+                    <LucideClipboardList className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">採購資料設定</span>
+                </div>
+              </div>
+
+              {/* 快速操作按鈕 */}
+              <div className="flex gap-2">
+                {orderForm.isProductSettingsConfirmed && orderForm.isProcurementSettingsConfirmed && (
+                  <>
+                    <Button
+                      onClick={() => onSubmit(false)}
+                      disabled={orderForm.isSubmitting || orderForm.isCreatingPurchaseOrder}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <LucideSave className="h-4 w-4 mr-2" />
+                      僅建立訂單
+                    </Button>
+                    <Button
+                      onClick={() => onSubmit(true)}
+                      disabled={orderForm.isSubmitting || orderForm.isCreatingPurchaseOrder}
+                      className="bg-green-600 hover:bg-green-700"
+                      size="sm"
+                    >
+                      <LucideShoppingCart className="h-4 w-4 mr-2" />
+                      建立訂單與採購單
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 基本訂單資訊區域 */}
         <MemoizedCustomerSelection
@@ -200,11 +232,9 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           generateNewOrderNumber={orderForm.generateNewOrderNumber}
         />
 
-        <Separator />
-
         {/* 產品設定區域 */}
         {orderForm.activeTab === "products" && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <MemoizedProductSelection
               regularProducts={orderForm.regularProducts}
               assemblyProducts={orderForm.assemblyProducts}
@@ -240,55 +270,61 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               customerCurrency={orderForm.customerCurrency}
               isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
               handleClearAllProducts={orderForm.handleClearAllProducts}
+              productUnits={orderForm.productUnits}
+              exchangeRates={orderForm.exchangeRates}
+              getUnitMultiplier={orderForm.getUnitMultiplier}
+              calculateActualQuantity={orderForm.calculateActualQuantity}
+              calculateActualUnitPrice={orderForm.calculateActualUnitPrice}
             />
 
-            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-md border">
-              <div className="space-y-2">
-                <div className="flex justify-between gap-8">
-                  <span className="text-muted-foreground">小計:</span>
-                  <span className="font-medium">
-                    {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-8">
-                  <span className="font-medium">總計:</span>
-                  <span className="font-bold text-lg">
-                    {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
-                  </span>
-                </div>
-              </div>
+            {/* 產品設定總結和操作區 */}
+            <Card className="bg-gradient-to-r from-blue-50 to-green-50 border-blue-200">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                        {orderForm.orderItems.length} 項產品
+                      </Badge>
+                      <span className="text-2xl font-bold text-green-700">
+                        總計: {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      請確認所有產品的數量、單位、價格設定無誤後，點擊確認按鈕進入下一步。
+                    </p>
+                  </div>
 
-              <div className="flex gap-2">
-                {orderForm.orderItems.length > 0 && (
-                  <Button
-                    onClick={orderForm.confirmProductsReady}
-                    variant={orderForm.isProductSettingsConfirmed ? "outline" : "default"}
-                  >
-                    {orderForm.isProductSettingsConfirmed ? (
-                      <>
-                        <LucideSettings className="h-4 w-4 mr-2" />
-                        修改產品設定
-                      </>
-                    ) : (
-                      <>
-                        <LucideCheckCircle className="h-4 w-4 mr-2" />
-                        確認產品設定完成
-                      </>
+                  <div className="flex gap-3">
+                    {orderForm.orderItems.length > 0 && (
+                      <Button
+                        onClick={orderForm.confirmProductsReady}
+                        variant={orderForm.isProductSettingsConfirmed ? "outline" : "default"}
+                        size="lg"
+                      >
+                        {orderForm.isProductSettingsConfirmed ? (
+                          <>
+                            <LucideSettings className="h-5 w-5 mr-2" />
+                            修改產品設定
+                          </>
+                        ) : (
+                          <>
+                            <LucideCheckCircle className="h-5 w-5 mr-2" />
+                            確認產品設定完成
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                )}
-                {orderForm.orderItems.length > 0 && orderForm.isProductSettingsConfirmed && (
-                  <Button
-                    onClick={handleGoToProcurement}
-                    disabled={!orderForm.isProductSettingsConfirmed}
-                    className="gap-2"
-                  >
-                    <LucideArrowRight className="h-4 w-4" />
-                    前往設定採購資料
-                  </Button>
-                )}
-              </div>
-            </div>
+                    {orderForm.orderItems.length > 0 && orderForm.isProductSettingsConfirmed && (
+                      <Button onClick={handleGoToProcurement} className="gap-2" size="lg">
+                        <LucideArrowRight className="h-5 w-5" />
+                        前往設定採購資料
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -296,13 +332,16 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         {orderForm.activeTab === "procurement" && orderForm.isProcurementReady && (
           <div className="space-y-6">
             {/* 訂單摘要卡片 */}
-            <div className="bg-white border rounded-md p-4">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-lg">訂單產品摘要</h4>
-                  <p className="text-muted-foreground text-sm">請確認以下產品資料，再進行採購設定</p>
+                  <CardTitle className="flex items-center gap-2">
+                    <LucidePackage className="h-5 w-5" />
+                    訂單產品摘要
+                  </CardTitle>
+                  <CardDescription>請確認以下產品資料，再進行採購設定</CardDescription>
                 </div>
-                <div className="flex items-center gap-2 mt-2 md:mt-0">
+                <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700">
                     {orderForm.orderItems.length} 項產品
                   </Badge>
@@ -310,58 +349,66 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                     總金額: {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
                   </Badge>
                 </div>
-              </div>
-
-              {/* 產品資料表格 - 響應式設計 */}
-              <div className="overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[120px]">產品編號</TableHead>
-                      <TableHead>產品名稱</TableHead>
-                      <TableHead className="text-center w-[80px]">數量</TableHead>
-                      <TableHead className="text-right w-[100px]">單價</TableHead>
-                      <TableHead className="text-right w-[100px]">金額 (USD)</TableHead>
-                      <TableHead className="text-center w-[80px]">批次</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orderForm.orderItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          {item.productPartNo}
-                          {item.isAssembly && (
-                            <Badge className="ml-2 bg-purple-500 text-white">
-                              <LucideLayers className="h-3 w-3 mr-1" />
-                              組件
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{item.productName}</TableCell>
-                        <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">
-                          {item.unitPrice.toFixed(2)} {item.currency}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrencyAmount(orderForm.calculateItemTotal(item), orderForm.customerCurrency)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline">{item.shipmentBatches.length}</Badge>
-                        </TableCell>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[120px]">產品編號</TableHead>
+                        <TableHead>產品名稱</TableHead>
+                        <TableHead className="text-center w-[80px]">數量</TableHead>
+                        <TableHead className="text-right w-[100px]">單價</TableHead>
+                        <TableHead className="text-right w-[100px]">金額</TableHead>
+                        <TableHead className="text-center w-[80px]">批次</TableHead>
                       </TableRow>
-                    ))}
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-right font-bold">
-                        訂單總金額:
-                      </TableCell>
-                      <TableCell className="text-right font-bold">
-                        {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
-                      </TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {orderForm.orderItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {item.productPartNo}
+                            {item.isAssembly && (
+                              <Badge className="ml-2 bg-purple-500 text-white">
+                                <LucideLayers className="h-3 w-3 mr-1" />
+                                組件
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{item.productName}</TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-right">
+                            {item.unitPrice.toFixed(2)} {item.currency}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {orderForm.calculateItemTotal(item).toFixed(2)} {item.currency}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline">{item.shipmentBatches.length}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-right font-bold">
+                          訂單總金額:
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
+                        </TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 返回產品設定按鈕 */}
+            <div className="flex justify-center">
+              <Button variant="outline" onClick={handleGoToProducts} className="flex items-center gap-2">
+                <LucideArrowLeft className="h-4 w-4" />
+                返回產品設定
+              </Button>
             </div>
 
             {/* 採購資料設定 */}
@@ -374,7 +421,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               onConfirmSettings={orderForm.confirmProcurementSettings}
               isSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
             />
-            {orderForm.activeTab === "procurement" && orderForm.isProcurementSettingsConfirmed && (
+
+            {orderForm.isProcurementSettingsConfirmed && (
               <OrderValidation
                 orderItems={orderForm.orderItems}
                 procurementItems={orderForm.procurementItems}
@@ -383,8 +431,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             )}
           </div>
         )}
-
-        <Separator />
 
         {/* 訂單資訊和備註 - 始終顯示在頁面底部 */}
         <MemoizedOrderInfo
