@@ -2,7 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import StaticParametersManager from "@/components/static-parameters-manager"
 import ExchangeRatesManager from "@/components/exchange-rates-manager"
-import { ProductUnitsSettings } from "@/components/settings/product-units-settings"
 import { getStaticParameters, getExchangeRates } from "./actions"
 
 export default async function SettingsPage() {
@@ -16,20 +15,19 @@ export default async function SettingsPage() {
         <p className="text-gray-600 mt-2">管理系統的各項設定參數</p>
       </div>
 
-      <Tabs defaultValue="order-status" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="order-status">訂單狀態設定</TabsTrigger>
+      <Tabs defaultValue="system-parameters" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="system-parameters">系統參數設定</TabsTrigger>
           <TabsTrigger value="exchange-rates">匯率設定</TabsTrigger>
           <TabsTrigger value="material-price">料價設定</TabsTrigger>
           <TabsTrigger value="team-matrix">團隊矩陣管理</TabsTrigger>
-          <TabsTrigger value="product-units">產品單位設定</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="order-status">
+        <TabsContent value="system-parameters">
           <Card>
             <CardHeader>
-              <CardTitle>訂單狀態設定</CardTitle>
-              <CardDescription>設定系統中使用的訂單狀態及其流程</CardDescription>
+              <CardTitle>系統參數設定</CardTitle>
+              <CardDescription>設定系統中使用的各種參數，包括訂單狀態、產品單位、系統翻譯等</CardDescription>
             </CardHeader>
             <CardContent>
               <StaticParametersManager parameters={staticParameters} />
@@ -69,18 +67,6 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-gray-500">此功能尚未實現</div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="product-units">
-          <Card>
-            <CardHeader>
-              <CardTitle>產品單位設定</CardTitle>
-              <CardDescription>管理產品的計量單位，設置單位代碼、名稱和換算倍數</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProductUnitsSettings parameters={staticParameters.filter((p) => p.category === "product_unit")} />
             </CardContent>
           </Card>
         </TabsContent>

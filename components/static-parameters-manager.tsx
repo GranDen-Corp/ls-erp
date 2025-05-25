@@ -20,6 +20,7 @@ import {
   deleteStaticParameter,
   toggleStaticParameterStatus,
 } from "@/app/settings/actions"
+import { TranslationsManager } from "@/components/settings/translations-manager"
 
 interface StaticParametersManagerProps {
   parameters: StaticParameter[]
@@ -30,6 +31,7 @@ const CATEGORIES = [
   { value: "order_status", label: "訂單狀態" },
   { value: "payment_terms", label: "付款條件" },
   { value: "delivery_terms", label: "交貨條件" },
+  { value: "translations", label: "系統翻譯表" },
 ]
 
 export default function StaticParametersManager({ parameters }: StaticParametersManagerProps) {
@@ -45,6 +47,32 @@ export default function StaticParametersManager({ parameters }: StaticParameters
     is_active: true,
     sort_order: 1,
   })
+
+  // 如果選擇的是系統翻譯表，顯示翻譯管理組件
+  if (selectedCategory === "translations") {
+    return (
+      <div className="space-y-6">
+        {/* 類別選擇 */}
+        <div className="flex items-center gap-4">
+          <Label htmlFor="category">參數類別：</Label>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <TranslationsManager />
+      </div>
+    )
+  }
 
   const filteredParameters = parameters.filter((p) => p.category === selectedCategory)
 
@@ -146,7 +174,7 @@ export default function StaticParametersManager({ parameters }: StaticParameters
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((category) => (
+                    {CATEGORIES.filter((cat) => cat.value !== "translations").map((category) => (
                       <SelectItem key={category.value} value={category.value}>
                         {category.label}
                       </SelectItem>
