@@ -21,11 +21,13 @@ import { ProcurementDataEditor } from "@/components/orders/procurement-data-edit
 import { formatCurrencyAmount } from "@/lib/currency-utils"
 import { OrderValidation } from "@/components/orders/order-validation"
 import { useOrderForm } from "@/hooks/use-order-form"
-import { CustomerSelection } from "./customer-selection"
+import CustomerSelection from "./customer-selection"
 import { ProductSelection } from "./product-selection"
+import { EnhancedProductList } from "./enhanced-product-list"
 import { ProductList } from "./product-list"
 import { BatchManagement } from "./batch-management"
 import { OrderInfo } from "./order-info"
+import { EnhancedBatchManagement } from "./enhanced-batch-management"
 
 interface Customer {
   id: string
@@ -74,6 +76,8 @@ interface ShipmentBatch {
   batchNumber: number
   plannedShipDate: Date | undefined
   quantity: number // 批次數量
+  unit: string // 新增
+  unitMultiplier: number // 新增
   notes?: string
   status?: string // 批次狀態
   trackingNumber?: string // 追蹤號碼
@@ -92,6 +96,7 @@ interface OrderItem {
   productName: string
   productPartNo: string
   quantity: number
+  unit: string // 新增
   unitPrice: number
   isAssembly: boolean
   shipmentBatches: ShipmentBatch[] // 每個產品的批次列表
@@ -113,6 +118,7 @@ interface NewOrderFormProps {
 // Memoize child components to prevent unnecessary re-renders
 const MemoizedCustomerSelection = memo(CustomerSelection)
 const MemoizedProductSelection = memo(ProductSelection)
+const MemoizedEnhancedProductList = memo(EnhancedProductList)
 const MemoizedProductList = memo(ProductList)
 const MemoizedOrderInfo = memo(OrderInfo)
 const MemoizedBatchManagement = memo(BatchManagement)
@@ -287,6 +293,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           getCustomerName={orderForm.getCustomerName}
           setOrderNumberStatus={orderForm.setOrderNumberStatus}
           setOrderNumberMessage={orderForm.setOrderNumberMessage}
+          orderItems={orderForm.orderItems}
         />
 
         <Separator />
@@ -320,7 +327,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               parseSubPartNo={orderForm.parseSubPartNo}
             />
 
-            <MemoizedProductList
+            <MemoizedEnhancedProductList
               orderItems={orderForm.orderItems}
               handleItemChange={orderForm.handleItemChange}
               handleRemoveProduct={orderForm.handleRemoveProduct}
@@ -328,6 +335,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               openBatchManagement={orderForm.openBatchManagement}
               customerCurrency={orderForm.customerCurrency}
               isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
+              handleClearAllProducts={orderForm.handleClearAllProducts}
             />
 
             <div className="flex justify-between items-center bg-gray-50 p-4 rounded-md border">
@@ -485,19 +493,18 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         />
 
         {/* 批次管理對話框 */}
-        <MemoizedBatchManagement
-          isManagingBatches={orderForm.isManagingBatches}
-          setIsManagingBatches={orderForm.setIsManagingBatches}
-          currentManagingProductPartNo={orderForm.currentManagingProductPartNo}
-          batchManagementTab={orderForm.batchManagementTab}
-          setBatchManagementTab={orderForm.setBatchManagementTab}
-          getCurrentItem={orderForm.getCurrentItem}
-          getCurrentBatches={orderForm.getCurrentBatches}
-          addBatch={orderForm.addBatch}
-          removeBatch={orderForm.removeBatch}
-          updateBatch={orderForm.updateBatch}
-          calculateAllocatedQuantity={orderForm.calculateAllocatedQuantity}
-          calculateRemainingQuantity={orderForm.calculateRemainingQuantity}
+        <EnhancedBatchManagement
+          isOpen={orderForm.isManagingBatches}
+          onClose={() => orderForm.setIsManagingBatches(false)}
+          orderItem={orderForm.getCurrentItem()}
+          onUpdateBatches={(productPartNo, batches) => {
+            // 更新指定產品的批次資料
+            orderForm.setOrderItems((prevItems) =>
+              prevItems.map((item) =>
+                item.productPartNo === productPartNo ? { ...item, shipmentBatches: batches } : item,
+              ),
+            )
+          }}
         />
       </div>
     )
