@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Loader2,
   AlertCircle,
@@ -22,7 +23,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
 import { CustomDatePicker } from "@/components/ui/custom-date-picker"
-import { createPurchasesFromProcurementItems } from "@/lib/services/purchase-service"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -32,6 +32,7 @@ export interface ProcurementItem {
   productPartNo: string
   productName: string
   quantity: number
+  unit: string
   factoryId: string
   factoryName: string
   factoryOptions: Array<{
@@ -62,6 +63,13 @@ interface ProcurementDataEditorProps {
   readOnly?: boolean
   onConfirmSettings?: () => void
   isSettingsConfirmed?: boolean
+  productUnits: Array<{
+    id: number
+    code: string
+    name: string
+    value: string
+  }>
+  getUnitMultiplier: (unit: string) => number
 }
 
 export function ProcurementDataEditor({
@@ -72,6 +80,8 @@ export function ProcurementDataEditor({
   readOnly = false,
   onConfirmSettings,
   isSettingsConfirmed = false,
+  productUnits = [],
+  getUnitMultiplier,
 }: ProcurementDataEditorProps) {
   const [procurementItems, setProcurementItems] = useState<ProcurementItem[]>([])
   const [factories, setFactories] = useState<any[]>([])
@@ -81,6 +91,30 @@ export function ProcurementDataEditor({
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
+  // 獲取單位顯示名稱
+  const getUnitDisplayName = (unitValue: string) => {
+    const unit = productUnits.find((u) => u.value === unitValue)
+    return unit ? unit.code : `${unitValue}PCS`
+  }
+
+  // 計算實際數量（考慮單位換算）
+  const calculateActualQuantity = (quantity: number, unit: string) => {
+    return quantity * getUnitMultiplier(unit)
+  }
+
+  // 獲取單位信息
+  const getUnitInfo = (unit: string) => {
+    const multiplier = getUnitMultiplier(unit)
+    if (multiplier === 1000) {
+      return { text: "1千件", color: "bg-red-100 text-red-800" }
+    } else if (multiplier === 100) {
+      return { text: "100件", color: "bg-orange-100 text-orange-800" }
+    } else if (multiplier === 10) {
+      return { text: "10件", color: "bg-yellow-100 text-yellow-800" }
+    }
+    return { text: "單件", color: "bg-green-100 text-green-800" }
+  }
+
   // 載入供應商資料
   useEffect(() => {
     const fetchSuppliers = async () => {
@@ -88,26 +122,6 @@ export function ProcurementDataEditor({
         setLoading(true)
         const supabase = createClient()
 
-        // 先獲取表結構以了解可用的列
-        const { data: tableInfo, error: tableError } = await supabase.from("suppliers").select("*").limit(1)
-
-        if (tableError) {
-          throw new Error(`獲取供應商表結構失敗: ${tableError.message}`)
-        }
-
-        // 檢查表是否為空
-        if (!tableInfo || tableInfo.length === 0) {
-          console.warn("供應商資料表為空")
-          setFactories([])
-          setLoading(false)
-          return
-        }
-
-        // 獲取第一行數據以了解列結構
-        const firstRow = tableInfo[0]
-        console.log("供應商表結構:", Object.keys(firstRow))
-
-        // 獲取所有供應商數據
         const { data: suppliersData, error: suppliersError } = await supabase.from("suppliers").select("*")
 
         if (suppliersError) {
@@ -118,9 +132,7 @@ export function ProcurementDataEditor({
           console.warn("供應商資料表為空")
           setFactories([])
         } else {
-          // 將suppliers資料轉換為標準格式，使用動態欄位名稱
           const convertedData = suppliersData.map((supplier) => {
-            // 嘗試找出ID和名稱欄位
             const id = supplier.id || supplier.supplier_id || supplier.factory_id || ""
             const name = supplier.name || supplier.supplier_name || supplier.factory_name || `供應商 ${id}`
 
@@ -156,74 +168,14 @@ export function ProcurementDataEditor({
   // 當訂單項目變更時，更新採購項目
   useEffect(() => {
     if (orderItems.length === 0) return
-    if (factories.length === 0 && !loading) {
-      // 如果沒有供應商資料，創建空的採購項目
-      const newProcurementItems: ProcurementItem[] = []
 
-      // 處理所有訂單項目
-      orderItems.forEach((item) => {
-        // 檢查是否為組件產品
-        if (item.isAssembly && item.product && item.product.components && Array.isArray(item.product.components)) {
-          // 處理組件產品的部件
-          item.product.components.forEach((component: any) => {
-            newProcurementItems.push({
-              id: `proc-comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              productPartNo: component.productPN || component.part_no || "",
-              productName: component.productName || component.component_name || "",
-              quantity: (component.quantity || 1) * item.quantity, // 部件數量 × 組件訂購數量
-              factoryId: component.factoryId || "",
-              factoryName: component.factoryName || "",
-              factoryOptions: [],
-              purchasePrice: component.unitPrice || 0,
-              deliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 預設為兩週後
-              notes: `組件 ${item.productPartNo} 的部件`,
-              status: "pending",
-              isSelected: true,
-              paymentTerm: "",
-              deliveryTerm: "",
-              currency: component.currency || item.currency || "USD",
-              isComponentPart: true,
-              parentAssemblyId: item.productPartNo,
-              parentAssemblyName: item.productName,
-            })
-          })
-        } else {
-          // 處理普通產品
-          newProcurementItems.push({
-            id: `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            productPartNo: item.productPartNo,
-            productName: item.productName,
-            quantity: item.quantity,
-            factoryId: "",
-            factoryName: "",
-            factoryOptions: [],
-            purchasePrice: item.unitPrice * 0.8, // 預設採購價為銷售價的80%
-            deliveryDate: new Date(), // 預設為今天
-            notes: "",
-            status: "pending",
-            isSelected: true,
-            paymentTerm: "",
-            deliveryTerm: "",
-            currency: item.currency || "USD", // 使用產品貨幣或默認USD
-          })
-        }
-      })
-
-      setProcurementItems(newProcurementItems)
-      onProcurementDataChange(newProcurementItems)
-      return
-    }
-
-    // 將訂單項目轉換為採購項目
     const newProcurementItems: ProcurementItem[] = []
 
-    // 處理所有訂單項目
     orderItems.forEach((item) => {
       // 檢查是否為組件產品
       if (item.isAssembly && item.product && item.product.components && Array.isArray(item.product.components)) {
         // 處理組件產品的部件
         item.product.components.forEach((component: any) => {
-          // 查找現有的採購項目
           const existingItem = procurementItems.find(
             (p) =>
               p.isComponentPart &&
@@ -231,23 +183,19 @@ export function ProcurementDataEditor({
               p.parentAssemblyId === item.productPartNo,
           )
 
-          // 從產品資料中獲取工廠信息
           let factoryId = component.factoryId || ""
           let factoryName = component.factoryName || ""
 
-          // 如果部件有指定工廠，則使用該工廠
           if (factoryId) {
             const factory = factories.find((f) => f.factory_id === factoryId)
             factoryName = factory ? factory.factory_name || factory.factory_full_name : "未知供應商"
           }
 
-          // 如果有現有項目且部件沒有工廠ID，則使用現有項目的工廠信息
           if (!factoryId && existingItem) {
             factoryId = existingItem.factoryId
             factoryName = existingItem.factoryName
           }
 
-          // 為部件準備工廠選項
           const factoryOptions = factories.map((factory) => ({
             id: factory.factory_id,
             name: factory.factory_name || factory.factory_full_name || `工廠 ${factory.factory_id}`,
@@ -256,16 +204,23 @@ export function ProcurementDataEditor({
             deliveryTerm: factory.delivery_term,
           }))
 
+          // 預設單位為MPCS
+          const defaultUnit = "MPCS"
+          const componentQuantity = component.quantity || 1
+          const assemblyQuantity = item.quantity
+          const totalQuantity = componentQuantity * assemblyQuantity
+
           newProcurementItems.push({
             id: existingItem?.id || `proc-comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             productPartNo: component.productPN || component.part_no || "",
             productName: component.productName || component.component_name || "",
-            quantity: existingItem?.quantity || (component.quantity || 1) * item.quantity, // 部件數量 × 組件訂購數量
+            quantity: existingItem?.quantity || Math.ceil(totalQuantity / getUnitMultiplier(defaultUnit)), // 轉換為MPCS單位
+            unit: existingItem?.unit || defaultUnit,
             factoryId: factoryId,
             factoryName: factoryName,
             factoryOptions: factoryOptions,
             purchasePrice: existingItem?.purchasePrice || component.unitPrice || 0,
-            deliveryDate: existingItem?.deliveryDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 預設為兩週後
+            deliveryDate: existingItem?.deliveryDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
             notes: existingItem?.notes || `組件 ${item.productPartNo} 的部件`,
             status: existingItem?.status || "pending",
             isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
@@ -279,14 +234,11 @@ export function ProcurementDataEditor({
         })
       } else {
         // 處理普通產品
-        // 查找現有的採購項目
         const existingItem = procurementItems.find((p) => !p.isComponentPart && p.productPartNo === item.productPartNo)
 
-        // 從產品資料中獲取工廠信息
         let factoryId = ""
         let factoryName = ""
 
-        // 優先從產品資料中獲取工廠信息
         try {
           if (item.product && item.product.factory_id) {
             factoryId = item.product.factory_id
@@ -297,13 +249,11 @@ export function ProcurementDataEditor({
           console.warn("無法從產品資料獲取工廠信息:", err)
         }
 
-        // 如果有現有項目且產品沒有工廠ID，則使用現有項目的工廠信息
         if (!factoryId && existingItem) {
           factoryId = existingItem.factoryId
           factoryName = existingItem.factoryName
         }
 
-        // 為產品準備工廠選項
         const factoryOptions = factories.map((factory) => ({
           id: factory.factory_id,
           name: factory.factory_name || factory.factory_full_name || `工廠 ${factory.factory_id}`,
@@ -312,22 +262,28 @@ export function ProcurementDataEditor({
           deliveryTerm: factory.delivery_term,
         }))
 
+        // 預設單位為MPCS
+        const defaultUnit = "MPCS"
+        const orderQuantityInPcs = calculateActualQuantity(item.quantity, item.unit)
+        const procurementQuantity = Math.ceil(orderQuantityInPcs / getUnitMultiplier(defaultUnit))
+
         newProcurementItems.push({
           id: existingItem?.id || `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           productPartNo: item.productPartNo,
           productName: item.productName,
-          quantity: existingItem?.quantity || item.quantity,
+          quantity: existingItem?.quantity || procurementQuantity,
+          unit: existingItem?.unit || defaultUnit,
           factoryId: factoryId,
           factoryName: factoryName,
           factoryOptions: factoryOptions,
-          purchasePrice: existingItem?.purchasePrice || item.unitPrice * 0.8, // 預設採購價為銷售價的80%
-          deliveryDate: existingItem?.deliveryDate || new Date(), // 預設為今天
+          purchasePrice: existingItem?.purchasePrice || item.unitPrice * 0.8,
+          deliveryDate: existingItem?.deliveryDate || new Date(),
           notes: existingItem?.notes || "",
           status: existingItem?.status || "pending",
           isSelected: existingItem?.isSelected !== undefined ? existingItem.isSelected : true,
           paymentTerm: existingItem?.paymentTerm || "",
           deliveryTerm: existingItem?.deliveryTerm || "",
-          currency: existingItem?.currency || item.currency || "USD", // 使用現有貨幣或產品貨幣或默認USD
+          currency: existingItem?.currency || item.currency || "USD",
         })
       }
     })
@@ -349,7 +305,6 @@ export function ProcurementDataEditor({
             const factory = factories.find((f) => f.factory_id === value)
             updatedItem.factoryName = factory ? factory.factory_name || factory.factory_full_name : ""
 
-            // 如果供應商有預設的付款條件和交貨條件，也一併更新
             if (factory) {
               updatedItem.paymentTerm = factory.payment_term || updatedItem.paymentTerm
               updatedItem.deliveryTerm = factory.delivery_term || updatedItem.deliveryTerm
@@ -361,6 +316,51 @@ export function ProcurementDataEditor({
         return item
       }),
     )
+  }
+
+  // 處理數量變更
+  const handleQuantityChange = (itemId: string, quantity: number) => {
+    if (quantity < 0) {
+      toast({
+        title: "錯誤",
+        description: "數量不能為負數",
+        variant: "destructive",
+      })
+      return
+    }
+    updateProcurementItem(itemId, "quantity", quantity)
+  }
+
+  // 處理單位變更
+  const handleUnitChange = (itemId: string, unit: string) => {
+    const item = procurementItems.find((i) => i.id === itemId)
+    if (item) {
+      // 計算當前實際數量（PCS）
+      const currentActualQuantity = calculateActualQuantity(item.quantity, item.unit)
+      // 計算新單位下的數量
+      const newQuantity = Math.ceil(currentActualQuantity / getUnitMultiplier(unit))
+
+      updateProcurementItem(itemId, "unit", unit)
+      updateProcurementItem(itemId, "quantity", newQuantity)
+
+      toast({
+        title: "成功",
+        description: `單位已更新為 ${getUnitDisplayName(unit)}`,
+      })
+    }
+  }
+
+  // 處理價格變更
+  const handlePriceChange = (itemId: string, price: number) => {
+    if (price < 0) {
+      toast({
+        title: "錯誤",
+        description: "價格不能為負數",
+        variant: "destructive",
+      })
+      return
+    }
+    updateProcurementItem(itemId, "purchasePrice", price)
   }
 
   // 切換全選
@@ -385,7 +385,6 @@ export function ProcurementDataEditor({
         return item
       })
 
-      // 檢查是否所有項目都被選中
       const allSelected = newItems.every((item) => item.isSelected)
       setSelectAll(allSelected)
 
@@ -393,67 +392,10 @@ export function ProcurementDataEditor({
     })
   }
 
-  // 保存採購單
-  const savePurchaseOrders = async () => {
-    // 檢查是否有選中的項目
-    const selectedItems = procurementItems.filter((item) => item.isSelected)
-    if (selectedItems.length === 0) {
-      toast({
-        title: "警告",
-        description: "請至少選擇一個採購項目",
-        variant: "warning",
-      })
-      return
-    }
-
-    // 檢查是否所有選中的項目都有供應商
-    const itemsWithoutSupplier = selectedItems.filter((item) => !item.factoryId)
-    if (itemsWithoutSupplier.length > 0) {
-      toast({
-        title: "警告",
-        description: `有 ${itemsWithoutSupplier.length} 個項目未選擇供應商`,
-        variant: "warning",
-      })
-      return
-    }
-
-    // 檢查是否有訂單ID
-    if (!orderId) {
-      toast({
-        title: "警告",
-        description: "請先保存訂單，然後再創建採購單",
-        variant: "warning",
-      })
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      console.log("正在創建採購單，使用訂單ID:", orderId)
-      const result = await createPurchasesFromProcurementItems(procurementItems, orderId)
-
-      if (result.success) {
-        toast({
-          title: "成功",
-          description: `已成功創建 ${result.results.length} 張採購單`,
-        })
-      } else {
-        toast({
-          title: "錯誤",
-          description: result.error || "創建採購單失敗",
-          variant: "destructive",
-        })
-      }
-    } catch (error: any) {
-      console.error("創建採購單時出錯:", error)
-      toast({
-        title: "錯誤",
-        description: error.message || "創建採購單時發生錯誤",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
+  // 計算採購總價
+  const calculateItemTotal = (item: ProcurementItem) => {
+    const actualQuantityInPcs = calculateActualQuantity(item.quantity, item.unit)
+    return actualQuantityInPcs * item.purchasePrice
   }
 
   if (loading) {
@@ -487,219 +429,279 @@ export function ProcurementDataEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">採購資料設定</h3>
-          <p className="text-sm text-muted-foreground">
-            為訂單中的產品設定採購資料，包括供應商、採購價格、交期等。勾選的項目將生成採購單。
-          </p>
-        </div>
-        {!readOnly && (
-          <div className="flex items-center space-x-2">
-            <Checkbox id="selectAll" checked={selectAll} onCheckedChange={toggleSelectAll} />
-            <Label htmlFor="selectAll" className="text-sm font-normal">
-              全選
-            </Label>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>採購資料設定</CardTitle>
+            <CardDescription>
+              為訂單中的產品設定採購資料，包括供應商、採購價格、交期等。勾選的項目將生成採購單。
+            </CardDescription>
           </div>
-        )}
-      </div>
+          {!readOnly && (
+            <div className="flex items-center space-x-2">
+              <Checkbox id="selectAll" checked={selectAll} onCheckedChange={toggleSelectAll} />
+              <Label htmlFor="selectAll" className="text-sm font-normal">
+                全選
+              </Label>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[600px] w-full">
+            <div className="space-y-6">
+              {procurementItems.map((item) => {
+                const unitInfo = getUnitInfo(item.unit)
+                const actualQuantity = calculateActualQuantity(item.quantity, item.unit)
 
-      <div className="border rounded-md">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {!readOnly && <TableHead className="w-12">選擇</TableHead>}
-                <TableHead className="w-[120px]">產品編號</TableHead>
-                <TableHead>產品名稱</TableHead>
-                <TableHead className="text-center w-[80px]">數量</TableHead>
-                <TableHead className="w-[180px]">供應商</TableHead>
-                <TableHead className="text-center w-[80px]">貨幣</TableHead>
-                <TableHead className="text-right w-[100px]">採購單價</TableHead>
-                <TableHead className="text-right w-[100px]">採購總價</TableHead>
-                <TableHead className="w-[120px]">交期</TableHead>
-                <TableHead>備註</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {procurementItems.map((item) => (
-                <TableRow
-                  key={item.id}
-                  className={`${isCreatingPurchaseOrder && !item.isSelected ? "opacity-50" : ""} ${!item.factoryId ? "bg-amber-50" : ""} ${item.isComponentPart ? "bg-blue-50" : ""}`}
-                >
-                  {!readOnly && (
-                    <TableCell className="sticky left-0 bg-inherit">
-                      <Checkbox
-                        checked={item.isSelected}
-                        onCheckedChange={() => toggleItemSelection(item.id)}
-                        disabled={isCreatingPurchaseOrder}
-                      />
-                    </TableCell>
-                  )}
-                  <TableCell className="sticky left-0 bg-inherit font-medium">
-                    {item.productPartNo}
-                    {item.isComponentPart && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700 border-blue-200">
-                              <Layers className="h-3 w-3 mr-1" />
-                              部件
+                return (
+                  <div
+                    key={item.id}
+                    className={`border rounded-lg p-4 space-y-4 ${
+                      item.isComponentPart ? "bg-blue-50" : "bg-gray-50"
+                    } ${!item.factoryId ? "border-amber-300" : ""}`}
+                  >
+                    {/* 產品基本信息 */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          {!readOnly && (
+                            <Checkbox
+                              checked={item.isSelected}
+                              onCheckedChange={() => toggleItemSelection(item.id)}
+                              disabled={isCreatingPurchaseOrder}
+                            />
+                          )}
+                          <h4 className="font-medium text-lg">{item.productName}</h4>
+                          {item.isComponentPart && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                    <Layers className="h-3 w-3 mr-1" />
+                                    部件
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>此項目是組件 {item.parentAssemblyName} 的部件</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {!item.factoryId && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              未選擇供應商
                             </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>此項目是組件 {item.parentAssemblyName} 的部件</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-[300px] truncate" title={item.productName}>
-                    {item.productName}
-                    {item.isComponentPart && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        組件: {item.parentAssemblyName} ({item.parentAssemblyId})
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">產品編號: {item.productPartNo}</p>
+                        {item.isComponentPart && (
+                          <p className="text-xs text-muted-foreground">
+                            組件: {item.parentAssemblyName} ({item.parentAssemblyId})
+                          </p>
+                        )}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {readOnly ? (
-                      item.quantity
-                    ) : (
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateProcurementItem(item.id, "quantity", Number(e.target.value) || 1)}
-                        className="w-20 text-center"
-                        disabled={isCreatingPurchaseOrder}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {readOnly ? (
-                      <div className="flex items-center">
-                        <Factory className="h-4 w-4 mr-2 text-gray-500" />
-                        <span>{item.factoryName || "未指定供應商"}</span>
-                      </div>
-                    ) : (
-                      <Select
-                        value={item.factoryId}
-                        onValueChange={(value) => updateProcurementItem(item.id, "factoryId", value)}
-                        disabled={isCreatingPurchaseOrder}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="選擇供應商" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {item.factoryOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {readOnly ? (
-                      item.currency
-                    ) : (
-                      <Select
-                        value={item.currency}
-                        onValueChange={(value) => updateProcurementItem(item.id, "currency", value)}
-                        disabled={isCreatingPurchaseOrder}
-                      >
-                        <SelectTrigger className="w-20">
-                          <SelectValue placeholder="貨幣" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="TWD">TWD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="JPY">JPY</SelectItem>
-                          <SelectItem value="CNY">CNY</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {readOnly ? (
-                      item.purchasePrice.toFixed(2)
-                    ) : (
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={item.purchasePrice}
-                        onChange={(e) => updateProcurementItem(item.id, "purchasePrice", Number(e.target.value) || 0)}
-                        className="w-24 text-right"
-                        disabled={isCreatingPurchaseOrder}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {(item.quantity * item.purchasePrice).toFixed(2)} {item.currency}
-                  </TableCell>
-                  <TableCell>
-                    {readOnly ? (
-                      item.deliveryDate ? (
-                        item.deliveryDate.toLocaleDateString()
-                      ) : (
-                        <span className="text-amber-600">未設定</span>
-                      )
-                    ) : (
-                      <CustomDatePicker
-                        date={item.deliveryDate}
-                        setDate={(date) => {
-                          updateProcurementItem(item.id, "deliveryDate", date)
-                        }}
-                        disabled={isCreatingPurchaseOrder}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {readOnly ? (
-                      item.notes || <span className="text-muted-foreground italic">無</span>
-                    ) : (
-                      <Input
-                        value={item.notes}
-                        onChange={(e) => updateProcurementItem(item.id, "notes", e.target.value)}
-                        placeholder="備註"
-                        disabled={isCreatingPurchaseOrder}
-                      />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {isSettingsConfirmed && (
-                <TableRow className="bg-gray-50 font-medium">
-                  <TableCell colSpan={readOnly ? 6 : 7} className="text-right">
-                    採購總金額:
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {procurementItems
-                      .filter((item) => item.isSelected)
-                      .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
-                      .toFixed(2)}{" "}
-                    USD
-                  </TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              )}
-              {procurementItems.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={readOnly ? 8 : 9} className="h-24 text-center text-muted-foreground">
-                    尚未添加採購項目
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                    </div>
 
-      <div className="flex flex-col sm:flex-row justify-between bg-muted/10 p-4 gap-4 border rounded-md mt-4">
+                    {/* 採購設定區域 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* 採購數量 */}
+                      <div>
+                        <Label htmlFor={`quantity-${item.id}`} className="text-sm font-medium">
+                          採購數量
+                        </Label>
+                        <Input
+                          type="number"
+                          id={`quantity-${item.id}`}
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.id, Number.parseInt(e.target.value) || 0)}
+                          disabled={readOnly || isCreatingPurchaseOrder}
+                          min="1"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      {/* 採購單位 */}
+                      <div>
+                        <Label htmlFor={`unit-${item.id}`} className="text-sm font-medium">
+                          採購單位
+                        </Label>
+                        <Select
+                          value={item.unit}
+                          onValueChange={(value) => handleUnitChange(item.id, value)}
+                          disabled={readOnly || isCreatingPurchaseOrder}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="選擇單位" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {productUnits.map((unit) => (
+                              <SelectItem key={unit.id} value={unit.value}>
+                                {unit.code} ({unit.name})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Badge className={`mt-1 text-xs ${unitInfo.color}`}>{unitInfo.text}</Badge>
+                      </div>
+
+                      {/* 供應商選擇 */}
+                      <div>
+                        <Label htmlFor={`supplier-${item.id}`} className="text-sm font-medium">
+                          供應商
+                        </Label>
+                        {readOnly ? (
+                          <div className="flex items-center mt-1 p-2 border rounded">
+                            <Factory className="h-4 w-4 mr-2 text-gray-500" />
+                            <span>{item.factoryName || "未指定供應商"}</span>
+                          </div>
+                        ) : (
+                          <Select
+                            value={item.factoryId}
+                            onValueChange={(value) => updateProcurementItem(item.id, "factoryId", value)}
+                            disabled={isCreatingPurchaseOrder}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="選擇供應商" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {item.factoryOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  {option.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+
+                      {/* 幣值 */}
+                      <div>
+                        <Label htmlFor={`currency-${item.id}`} className="text-sm font-medium">
+                          幣值
+                        </Label>
+                        {readOnly ? (
+                          <div className="mt-1 p-2 border rounded text-center">{item.currency}</div>
+                        ) : (
+                          <Select
+                            value={item.currency}
+                            onValueChange={(value) => updateProcurementItem(item.id, "currency", value)}
+                            disabled={isCreatingPurchaseOrder}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="貨幣" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="USD">USD</SelectItem>
+                              <SelectItem value="TWD">TWD</SelectItem>
+                              <SelectItem value="EUR">EUR</SelectItem>
+                              <SelectItem value="JPY">JPY</SelectItem>
+                              <SelectItem value="CNY">CNY</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+
+                      {/* 採購單價 */}
+                      <div>
+                        <Label htmlFor={`price-${item.id}`} className="text-sm font-medium">
+                          採購單價
+                        </Label>
+                        {readOnly ? (
+                          <div className="mt-1 p-2 border rounded text-right">{item.purchasePrice.toFixed(4)}</div>
+                        ) : (
+                          <Input
+                            type="number"
+                            id={`price-${item.id}`}
+                            value={item.purchasePrice}
+                            onChange={(e) => handlePriceChange(item.id, Number.parseFloat(e.target.value) || 0)}
+                            disabled={isCreatingPurchaseOrder}
+                            min="0"
+                            step="0.0001"
+                            className="mt-1"
+                          />
+                        )}
+                      </div>
+
+                      {/* 交期 */}
+                      <div>
+                        <Label htmlFor={`delivery-${item.id}`} className="text-sm font-medium">
+                          交期
+                        </Label>
+                        {readOnly ? (
+                          <div className="mt-1 p-2 border rounded">
+                            {item.deliveryDate ? (
+                              item.deliveryDate.toLocaleDateString()
+                            ) : (
+                              <span className="text-amber-600">未設定</span>
+                            )}
+                          </div>
+                        ) : (
+                          <CustomDatePicker
+                            date={item.deliveryDate}
+                            setDate={(date) => updateProcurementItem(item.id, "deliveryDate", date)}
+                            disabled={isCreatingPurchaseOrder}
+                          />
+                        )}
+                      </div>
+
+                      {/* 備註 */}
+                      <div className="md:col-span-2">
+                        <Label htmlFor={`notes-${item.id}`} className="text-sm font-medium">
+                          備註
+                        </Label>
+                        {readOnly ? (
+                          <div className="mt-1 p-2 border rounded min-h-[40px]">
+                            {item.notes || <span className="text-muted-foreground italic">無</span>}
+                          </div>
+                        ) : (
+                          <Input
+                            id={`notes-${item.id}`}
+                            value={item.notes}
+                            onChange={(e) => updateProcurementItem(item.id, "notes", e.target.value)}
+                            placeholder="備註"
+                            disabled={isCreatingPurchaseOrder}
+                            className="mt-1"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 計算結果顯示 */}
+                    <div className="bg-white rounded-md p-3 border">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">實際採購數量:</span>
+                          <span className="ml-2 font-medium">{actualQuantity.toLocaleString()} 件</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">採購單價:</span>
+                          <span className="ml-2 font-medium">
+                            {item.purchasePrice.toFixed(4)} {item.currency}/{getUnitDisplayName(item.unit)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">採購小計:</span>
+                          <span className="ml-2 font-bold text-lg">
+                            {calculateItemTotal(item).toFixed(2)} {item.currency}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        計算方式: {item.quantity} × {getUnitDisplayName(item.unit)} × {item.purchasePrice} ={" "}
+                        {actualQuantity} 件 × {item.purchasePrice} = {calculateItemTotal(item).toFixed(2)}{" "}
+                        {item.currency}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      {/* 統計信息 */}
+      <div className="flex flex-col sm:flex-row justify-between bg-muted/10 p-4 gap-4 border rounded-md">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:items-center gap-2">
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1.5">
             <Factory className="h-4 w-4 mr-2" />
@@ -718,7 +720,7 @@ export function ProcurementDataEditor({
               <span className="font-bold">
                 {procurementItems
                   .filter((item) => item.isSelected)
-                  .reduce((sum, item) => sum + item.quantity * item.purchasePrice, 0)
+                  .reduce((sum, item) => sum + calculateItemTotal(item), 0)
                   .toFixed(2)}{" "}
                 USD
               </span>

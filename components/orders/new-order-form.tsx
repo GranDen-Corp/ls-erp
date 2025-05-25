@@ -112,6 +112,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             isCreatingPurchaseOrder={orderForm.isCreatingPurchaseOrder}
             orderId={createdOrderId || orderData?.order_id}
             readOnly={false}
+            productUnits={orderForm.productUnits}
+            getUnitMultiplier={orderForm.getUnitMultiplier}
           />
         </div>
       )
@@ -420,6 +422,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               readOnly={orderForm.isProcurementSettingsConfirmed}
               onConfirmSettings={orderForm.confirmProcurementSettings}
               isSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+              productUnits={orderForm.productUnits}
+              getUnitMultiplier={orderForm.getUnitMultiplier}
             />
 
             {orderForm.isProcurementSettingsConfirmed && (
