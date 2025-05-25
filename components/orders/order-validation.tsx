@@ -22,6 +22,8 @@ interface ValidationItem {
   isDateValid: boolean
   priceMargin: number
   daysMargin: number
+  orderUnit: string
+  purchaseUnit: string
 }
 
 interface OrderValidationProps {
@@ -75,6 +77,8 @@ export function OrderValidation({ orderItems, procurementItems, customerCurrency
           isDateValid: false,
           priceMargin: 0,
           daysMargin: 0,
+          orderUnit: orderItem.unit || "PCS",
+          purchaseUnit: "",
         })
         return
       }
@@ -137,6 +141,8 @@ export function OrderValidation({ orderItems, procurementItems, customerCurrency
         isDateValid,
         priceMargin,
         daysMargin,
+        orderUnit: orderItem.unit || "PCS",
+        purchaseUnit: purchaseItems[0].unit || "PCS",
       })
     })
 
@@ -295,8 +301,12 @@ export function OrderValidation({ orderItems, procurementItems, customerCurrency
                         <XCircle className="h-4 w-4 mr-2" />
                       )}
                       <div>
-                        <div>訂單: {item.orderQuantity}</div>
-                        <div>採購: {item.purchaseQuantity}</div>
+                        <div>
+                          訂單: {item.orderQuantity} {item.orderUnit || "PCS"}
+                        </div>
+                        <div>
+                          採購: {item.purchaseQuantity} {item.purchaseUnit || "PCS"}
+                        </div>
                       </div>
                     </div>
                   </td>

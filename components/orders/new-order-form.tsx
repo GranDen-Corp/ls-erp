@@ -360,6 +360,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                         <TableHead className="w-[120px]">產品編號</TableHead>
                         <TableHead>產品名稱</TableHead>
                         <TableHead className="text-center w-[80px]">數量</TableHead>
+                        <TableHead className="text-center w-[80px]">單位</TableHead>
                         <TableHead className="text-right w-[100px]">單價</TableHead>
                         <TableHead className="text-right w-[100px]">金額</TableHead>
                         <TableHead className="text-center w-[80px]">批次</TableHead>
@@ -379,6 +380,11 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                           </TableCell>
                           <TableCell>{item.productName}</TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                              {orderForm.getUnitDisplayName(item.unit)}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-right">
                             {item.unitPrice.toFixed(2)} {item.currency}
                           </TableCell>
@@ -391,7 +397,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                         </TableRow>
                       ))}
                       <TableRow>
-                        <TableCell colSpan={4} className="text-right font-bold">
+                        <TableCell colSpan={5} className="text-right font-bold">
                           訂單總金額:
                         </TableCell>
                         <TableCell className="text-right font-bold">
