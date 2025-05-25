@@ -29,85 +29,6 @@ import { BatchManagement } from "./batch-management"
 import { OrderInfo } from "./order-info"
 import { EnhancedBatchManagement } from "./enhanced-batch-management"
 
-interface Customer {
-  id: string
-  customer_id?: string
-  name?: string
-  customer_name?: string
-  customer_full_name?: string
-  customer_short_name?: string
-  payment_term?: string
-  delivery_terms?: string
-  packing_condition?: string
-  qty_allowance_percent?: string
-  forwarder_agent?: string
-  shipping_agent?: string
-  sales_representative?: string
-  sales_email?: string
-  [key: string]: any
-}
-
-interface Product {
-  id: string
-  part_no: string
-  component_name?: string
-  description?: string
-  is_assembly?: boolean
-  customer_id?: string
-  unit_price?: number
-  last_price?: number
-  sub_part_no?: any
-  factory_id?: string
-  currency?: string
-  customs_code?: string
-  order_requirements?: string
-  customer_drawing?: {
-    filename?: string
-    path?: string
-  }
-  customer_drawing_version?: string
-  specification?: string
-  [key: string]: any
-}
-
-interface ShipmentBatch {
-  id: string
-  productPartNo: string // 關聯的產品編號
-  batchNumber: number
-  plannedShipDate: Date | undefined
-  quantity: number // 批次數量
-  unit: string // 新增
-  unitMultiplier: number // 新增
-  notes?: string
-  status?: string // 批次狀態
-  trackingNumber?: string // 追蹤號碼
-  actualShipDate?: Date // 實際出貨日期
-  estimatedArrivalDate?: Date // 預計到達日期
-  customsInfo?: {
-    clearanceDate?: Date
-    customsNumber?: string
-    customsFees?: number
-  } // 海關資訊
-}
-
-interface OrderItem {
-  id: string
-  productKey: string // 使用 customer_id + part_no 作為唯一標識
-  productName: string
-  productPartNo: string
-  quantity: number
-  unit: string // 新增
-  unitPrice: number
-  isAssembly: boolean
-  shipmentBatches: ShipmentBatch[] // 每個產品的批次列表
-  specifications?: string // 產品規格
-  remarks?: string // 產品備註
-  currency: string // 貨幣
-  discount?: number // 折扣
-  taxRate?: number // 稅率
-  product?: Product // 產品完整資料
-}
-
 interface NewOrderFormProps {
   onSubmit: (createPurchaseOrder?: boolean) => void
   createdOrderId?: string
@@ -145,29 +66,16 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         },
       }),
       [orderForm],
-    ) // Add orderForm as a dependency
+    )
 
-    // 當步驟變更時，更新UI - only run when currentStep changes
+    // 當步驟變更時，更新UI
     useEffect(() => {
       if (currentStep === 1) {
         orderForm.setActiveTab("procurement")
       }
     }, [currentStep, orderForm])
 
-    // 當訂單數據變更時，更新表單 - only run when orderData or currentStep changes
-    /*
-    useEffect(() => {
-      if (orderData) {
-        // 如果有訂單數據，則禁用編輯
-        if (currentStep === 1) {
-          // 在採購步驟中，只需要確保採購資料已準備好
-          orderForm.setIsProcurementReady(true)
-        }
-      }
-    }, [orderData, currentStep, orderForm])
-    */
-
-    // fixed by ChatGPT
+    // 當訂單數據變更時，更新表單
     const hasProcurementReady = useRef(false)
 
     useEffect(() => {
@@ -274,26 +182,22 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setSelectedCustomerId={orderForm.setSelectedCustomerId}
           poNumber={orderForm.poNumber}
           setPoNumber={orderForm.setPoNumber}
-          paymentTerm={orderForm.paymentTerm}
-          setPaymentTerm={orderForm.setPaymentTerm}
-          deliveryTerms={orderForm.deliveryTerms}
-          setDeliveryTerms={orderForm.setDeliveryTerms}
           orderNumber={orderForm.orderNumber}
-          isLoadingOrderNumber={orderForm.isLoadingOrderNumber}
+          setOrderNumber={orderForm.setOrderNumber}
           customOrderNumber={orderForm.customOrderNumber}
           setCustomOrderNumber={orderForm.setCustomOrderNumber}
           useCustomOrderNumber={orderForm.useCustomOrderNumber}
           setUseCustomOrderNumber={orderForm.setUseCustomOrderNumber}
-          isCheckingOrderNumber={orderForm.isCheckingOrderNumber}
-          orderNumberStatus={orderForm.orderNumberStatus}
-          orderNumberMessage={orderForm.orderNumberMessage}
-          checkOrderNumberDuplicate={orderForm.checkOrderNumberDuplicate}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
-          isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
-          getCustomerName={orderForm.getCustomerName}
           setOrderNumberStatus={orderForm.setOrderNumberStatus}
           setOrderNumberMessage={orderForm.setOrderNumberMessage}
           orderItems={orderForm.orderItems}
+          paymentTerm={orderForm.paymentTerm}
+          setPaymentTerm={orderForm.setPaymentTerm}
+          deliveryTerms={orderForm.deliveryTerms}
+          setDeliveryTerms={orderForm.setDeliveryTerms}
+          isLoadingOrderNumber={orderForm.isLoadingOrderNumber}
+          generateNewOrderNumber={orderForm.generateNewOrderNumber}
         />
 
         <Separator />
@@ -314,7 +218,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               selectedProductPartNo={orderForm.selectedProductPartNo}
               setSelectedProductPartNo={orderForm.setSelectedProductPartNo}
               customerCurrency={orderForm.customerCurrency}
-              isProductAdded={orderForm.isProductAdded}
+              isProductAdded={orderForm.checkIsProductAdded}
               isProductSelected={orderForm.isProductSelected}
               toggleProductSelection={orderForm.toggleProductSelection}
               clearAllSelections={orderForm.clearAllSelections}
@@ -373,7 +277,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                     )}
                   </Button>
                 )}
-                {orderForm.orderItems.length > 0 && (
+                {orderForm.orderItems.length > 0 && orderForm.isProductSettingsConfirmed && (
                   <Button
                     onClick={handleGoToProcurement}
                     disabled={!orderForm.isProductSettingsConfirmed}
@@ -389,7 +293,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         )}
 
         {/* 採購資料設定區域 */}
-        {orderForm.activeTab === "procurement" && (
+        {orderForm.activeTab === "procurement" && orderForm.isProcurementReady && (
           <div className="space-y-6">
             {/* 訂單摘要卡片 */}
             <div className="bg-white border rounded-md p-4">
