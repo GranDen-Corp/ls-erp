@@ -44,7 +44,7 @@ interface EnhancedBatchManagementProps {
   onClose: () => void
   orderItem: OrderItem | null
   onUpdateBatches: (productPartNo: string, batches: ShipmentBatch[]) => void
-  getUnitMultiplier: (unit: string) => number
+  getUnitMultiplier?: (unit: string) => number
 }
 
 export function EnhancedBatchManagement({
@@ -58,10 +58,28 @@ export function EnhancedBatchManagement({
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
+  // 默認的單位換算函數
+  const defaultGetUnitMultiplier = (unit: string) => {
+    const unitLower = unit.toLowerCase()
+    if (unitLower.includes("mpcs") || unitLower.includes("1000pcs")) {
+      return 1000
+    }
+    if (unitLower.includes("100pcs")) {
+      return 100
+    }
+    if (unitLower.includes("10pcs")) {
+      return 10
+    }
+    return 1
+  }
+
+  // 使用傳入的函數或默認函數
+  const unitMultiplier = getUnitMultiplier || defaultGetUnitMultiplier
+
   useEffect(() => {
     if (isOpen && orderItem) {
       // 計算訂單的實際PCS總數量
-      const orderTotalPcs = orderItem.quantity * getUnitMultiplier(orderItem.unit)
+      const orderTotalPcs = orderItem.quantity * unitMultiplier(orderItem.unit)
 
       if (orderItem.shipmentBatches && orderItem.shipmentBatches.length > 0) {
         // 使用現有批次，但確保數量正確
@@ -89,11 +107,11 @@ export function EnhancedBatchManagement({
         setBatches([defaultBatch])
       }
     }
-  }, [isOpen, orderItem, getUnitMultiplier])
+  }, [isOpen, orderItem, unitMultiplier])
 
   const calculateOrderTotalPcs = () => {
     if (!orderItem) return 0
-    return orderItem.quantity * getUnitMultiplier(orderItem.unit)
+    return orderItem.quantity * unitMultiplier(orderItem.unit)
   }
 
   const calculateTotalAllocated = () => {

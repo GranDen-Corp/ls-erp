@@ -102,8 +102,24 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
   }
 
   const handleUnitChange = (itemId: string, unit: string) => {
-    handleItemChange(itemId, "unit", unit)
-    toast.success(`單位已更新為 ${getUnitDisplayName(unit)}`)
+    const item = orderItems.find((i) => i.id === itemId)
+    if (item) {
+      handleItemChange(itemId, "unit", unit)
+
+      // 更新批次數量以反映新的單位
+      const actualQuantityInPcs = item.quantity * getUnitMultiplier(unit)
+      if (item.shipmentBatches.length > 0) {
+        const updatedBatches = item.shipmentBatches.map((batch, index) => {
+          if (index === 0) {
+            return { ...batch, quantity: actualQuantityInPcs, unit: "PCS", unitMultiplier: 1 }
+          }
+          return batch
+        })
+        handleItemChange(itemId, "shipmentBatches", updatedBatches)
+      }
+
+      toast.success(`單位已更新為 ${getUnitDisplayName(unit)}`)
+    }
   }
 
   const handlePriceChange = (itemId: string, price: number) => {
@@ -162,7 +178,6 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
             {orderItems.map((item) => {
               const unitInfo = getUnitInfo(item.unit)
               const actualQuantity = calculateActualQuantity(item.quantity, item.unit)
-              const actualUnitPrice = calculateActualUnitPrice(item.unitPrice, item.unit)
 
               return (
                 <div key={item.id} className="border rounded-lg p-4 space-y-4 bg-gray-50">
