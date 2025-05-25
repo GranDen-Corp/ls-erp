@@ -124,8 +124,10 @@ export const useOrderForm = () => {
   const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState(false)
   const [isManagingBatches, setIsManagingBatches] = useState(false)
   const [currentItemForBatch, setCurrentItemForBatch] = useState<OrderItem | null>(null)
-  const [orderInfo, setOrderInfo] = useState<any>({})
-  const [remarks, setRemarks] = useState("")
+  const [orderInfo, setOrderInfo] = useState<string>("")
+  const [remarks, setRemarks] = useState<string>("")
+  const [purchaseInfo, setPurchaseInfo] = useState<string>("")
+  const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
   const [procurementItems, setProcurementItems] = useState<any[]>([])
 
   // 初始化載入數據
@@ -629,6 +631,10 @@ export const useOrderForm = () => {
     setOrderInfo,
     remarks,
     setRemarks,
+    purchaseInfo,
+    setPurchaseInfo,
+    purchaseRemarks,
+    setPurchaseRemarks,
     procurementItems,
     setIsProcurementReady,
     generateNewOrderNumber,

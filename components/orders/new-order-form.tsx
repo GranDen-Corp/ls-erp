@@ -442,6 +442,10 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setOrderInfo={orderForm.setOrderInfo}
           remarks={orderForm.remarks}
           setRemarks={orderForm.setRemarks}
+          purchaseInfo={orderForm.purchaseInfo}
+          setPurchaseInfo={orderForm.setPurchaseInfo}
+          purchaseRemarks={orderForm.purchaseRemarks}
+          setPurchaseRemarks={orderForm.setPurchaseRemarks}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
           isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
         />

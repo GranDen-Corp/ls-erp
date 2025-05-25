@@ -151,7 +151,7 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>已選擇的產品</CardTitle>
+          <CardTitle>訂單產品摘要</CardTitle>
           <CardDescription>尚未選擇任何產品，請先選擇產品以繼續。</CardDescription>
         </CardHeader>
       </Card>
@@ -162,7 +162,7 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>已選擇的產品</CardTitle>
+          <CardTitle>訂單產品摘要</CardTitle>
           <CardDescription>調整所選產品的數量、單位、價格和幣值。</CardDescription>
         </div>
         {orderItems.length > 0 && !isProductSettingsConfirmed && (
@@ -212,15 +212,20 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
                       <Label htmlFor={`quantity-${item.id}`} className="text-sm font-medium">
                         訂購數量
                       </Label>
-                      <Input
-                        type="number"
-                        id={`quantity-${item.id}`}
-                        value={item.quantity}
-                        onChange={(e) => handleQuantityChange(item.id, Number.parseInt(e.target.value) || 0)}
-                        disabled={isProductSettingsConfirmed}
-                        min="1"
-                        className="mt-1"
-                      />
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          id={`quantity-${item.id}`}
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.id, Number.parseInt(e.target.value) || 0)}
+                          disabled={isProductSettingsConfirmed}
+                          min="1"
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-muted-foreground font-medium min-w-[60px]">
+                          {getUnitDisplayName(item.unit)}
+                        </span>
+                      </div>
                     </div>
 
                     {/* 單位設定 */}
@@ -290,15 +295,19 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
 
                   {/* 計算結果顯示 */}
                   <div className="bg-white rounded-md p-3 border">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">實際數量:</span>
-                        <span className="ml-2 font-medium">{actualQuantity.toLocaleString()} 件</span>
+                        <span className="text-muted-foreground">數量:</span>
+                        <span className="ml-2 font-medium">{item.quantity.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">單位:</span>
+                        <span className="ml-2 font-medium">{getUnitDisplayName(item.unit)}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">單價:</span>
                         <span className="ml-2 font-medium">
-                          {item.unitPrice.toFixed(4)} {item.currency}/{getUnitDisplayName(item.unit)}
+                          {item.unitPrice.toFixed(4)} {item.currency}
                         </span>
                       </div>
                       <div>
@@ -309,8 +318,9 @@ export const EnhancedProductList: React.FC<EnhancedProductListProps> = ({
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      計算方式: {item.quantity} × {getUnitDisplayName(item.unit)} × {item.unitPrice} = {actualQuantity}{" "}
-                      件 × {item.unitPrice} = {calculateItemTotal(item).toFixed(2)} {item.currency}
+                      實際數量: {calculateActualQuantity(item.quantity, item.unit).toLocaleString()} 件 | 計算方式:{" "}
+                      {item.quantity} × {getUnitDisplayName(item.unit)} × {item.unitPrice} ={" "}
+                      {calculateItemTotal(item).toFixed(2)} {item.currency}
                     </div>
                   </div>
 

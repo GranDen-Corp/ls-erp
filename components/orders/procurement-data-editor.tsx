@@ -204,18 +204,21 @@ export function ProcurementDataEditor({
             deliveryTerm: factory.delivery_term,
           }))
 
-          // 預設單位為MPCS
-          const defaultUnit = "MPCS"
+          // 使用訂單項目的單位作為預設，而不是固定的MPCS
+          const defaultUnit = existingItem?.unit || item.unit || "MPCS"
           const componentQuantity = component.quantity || 1
           const assemblyQuantity = item.quantity
-          const totalQuantity = componentQuantity * assemblyQuantity
+          const totalQuantityInPcs = componentQuantity * calculateActualQuantity(assemblyQuantity, item.unit)
+
+          // 根據預設單位計算採購數量
+          const procurementQuantity = Math.ceil(totalQuantityInPcs / getUnitMultiplier(defaultUnit))
 
           newProcurementItems.push({
             id: existingItem?.id || `proc-comp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             productPartNo: component.productPN || component.part_no || "",
             productName: component.productName || component.component_name || "",
-            quantity: existingItem?.quantity || Math.ceil(totalQuantity / getUnitMultiplier(defaultUnit)), // 轉換為MPCS單位
-            unit: existingItem?.unit || defaultUnit,
+            quantity: existingItem?.quantity || procurementQuantity,
+            unit: defaultUnit,
             factoryId: factoryId,
             factoryName: factoryName,
             factoryOptions: factoryOptions,
@@ -262,17 +265,16 @@ export function ProcurementDataEditor({
           deliveryTerm: factory.delivery_term,
         }))
 
-        // 預設單位為MPCS
-        const defaultUnit = "MPCS"
-        const orderQuantityInPcs = calculateActualQuantity(item.quantity, item.unit)
-        const procurementQuantity = Math.ceil(orderQuantityInPcs / getUnitMultiplier(defaultUnit))
+        // 使用訂單項目的單位和數量作為預設
+        const defaultUnit = existingItem?.unit || item.unit || "MPCS"
+        const defaultQuantity = existingItem?.quantity || item.quantity
 
         newProcurementItems.push({
           id: existingItem?.id || `proc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           productPartNo: item.productPartNo,
           productName: item.productName,
-          quantity: existingItem?.quantity || procurementQuantity,
-          unit: existingItem?.unit || defaultUnit,
+          quantity: defaultQuantity,
+          unit: defaultUnit,
           factoryId: factoryId,
           factoryName: factoryName,
           factoryOptions: factoryOptions,
@@ -435,6 +437,8 @@ export function ProcurementDataEditor({
             <CardTitle>採購資料設定</CardTitle>
             <CardDescription>
               為訂單中的產品設定採購資料，包括供應商、採購價格、交期等。勾選的項目將生成採購單。
+              <br />
+              <span className="text-blue-600 font-medium">採購數量和單位預設同步於訂單產品，您可以根據需要調整。</span>
             </CardDescription>
           </div>
           {!readOnly && (
@@ -509,15 +513,20 @@ export function ProcurementDataEditor({
                         <Label htmlFor={`quantity-${item.id}`} className="text-sm font-medium">
                           採購數量
                         </Label>
-                        <Input
-                          type="number"
-                          id={`quantity-${item.id}`}
-                          value={item.quantity}
-                          onChange={(e) => handleQuantityChange(item.id, Number.parseInt(e.target.value) || 0)}
-                          disabled={readOnly || isCreatingPurchaseOrder}
-                          min="1"
-                          className="mt-1"
-                        />
+                        <div className="flex items-center gap-2 mt-1">
+                          <Input
+                            type="number"
+                            id={`quantity-${item.id}`}
+                            value={item.quantity}
+                            onChange={(e) => handleQuantityChange(item.id, Number.parseInt(e.target.value) || 0)}
+                            disabled={readOnly || isCreatingPurchaseOrder}
+                            min="1"
+                            className="flex-1"
+                          />
+                          <span className="text-sm text-muted-foreground font-medium min-w-[60px]">
+                            {getUnitDisplayName(item.unit)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* 採購單位 */}
