@@ -74,7 +74,7 @@ export interface ProductType {
 // Product form props
 export interface ProductFormProps {
   productId?: string
-  isClone?: boolean
+  customerId?: string
   onSubmit?: (data: any) => void
   initialValues?: any
   isSubmitting?: boolean

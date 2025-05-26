@@ -48,7 +48,6 @@ import { saveProduct } from "@/app/actions/product-actions"
 
 export function ProductForm({
   productId,
-  isClone = false,
   onSubmit,
   initialValues,
   isSubmitting = false,
@@ -986,12 +985,23 @@ export function ProductForm({
   }
 
   // If loading product data, show loading state
-  if (isLoading) {
+  if (isLoading || dataLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
-          <p className="text-gray-500">Loading product data...</p>
+          <p className="text-gray-500">載入產品資料中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 確保所有必要的資料都已載入
+  if (!customersData.length || !factories.length || !productTypes.length) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center space-y-4">
+          <p className="text-gray-500">載入必要資料中...</p>
         </div>
       </div>
     )
@@ -1028,14 +1038,15 @@ export function ProductForm({
 
         {/* Basic info tab */}
         <TabsContent value="basic">
-          <BasicInfoTab
-            product={product}
-            handleInputChange={handleInputChange}
-            customersData={customersData}
-            factories={factories}
-            productTypes={productTypes}
-            setProduct={setProduct}
-          />
+          {!dataLoading && (
+            <BasicInfoTab
+              product={product}
+              handleInputChange={handleInputChange}
+              customersData={customersData}
+              factories={factories}
+              productTypes={productTypes}
+            />
+          )}
         </TabsContent>
 
         {/* Composite product tab */}

@@ -93,10 +93,10 @@ export default async function EditProductPage({
     sampleDate: product.sample_date || "",
   }
 
-  console.log("組合產品資訊:", {
-    isAssembly: product.is_assembly,
-    subPartNo: product.sub_part_no,
-  })
+  //console.log("組合產品資訊:", {
+  //  isAssembly: product.is_assembly,
+  //  subPartNo: product.sub_part_no,
+  //})
 
   return (
     <div className="flex flex-col gap-4">
@@ -117,7 +117,6 @@ export default async function EditProductPage({
           <ProductForm
             productId={productId}
             initialValues={formattedProduct}
-            isEdit={true}
             defaultTab="basic"
             isAssembly={product.is_assembly}
           />

@@ -18,7 +18,6 @@ interface BasicInfoTabProps {
   customersData: any[]
   factories: any[]
   productTypes: any[]
-  setProduct: (product: any) => void
   isReadOnly?: boolean
 }
 
@@ -28,7 +27,6 @@ export function BasicInfoTab({
   customersData,
   factories,
   productTypes,
-  setProduct,
   isReadOnly = false,
 }: BasicInfoTabProps) {
   const [open, setOpen] = useState(false)

@@ -426,7 +426,7 @@ export function ProductReadOnlyForm({
     {
       id: "basic-info",
       label: "基本資料",
-      content: <BasicInfoTab formData={product} onFormDataChange={() => {}} isReadOnly={true} />,
+      content: <BasicInfoTab formData={product} onFormDataChange={() => {}} productTypes={productTypeMapState} isReadOnly={true} />,
     },
     {
       id: "process",
@@ -479,7 +479,6 @@ export function ProductReadOnlyForm({
             customersData={customersData}
             factories={factories}
             productTypes={[]}
-            setProduct={() => {}}
             isReadOnly={true}
           />
         </TabsContent>

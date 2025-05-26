@@ -52,6 +52,12 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
   // 產品類別映射
   const [productTypeMap, setProductTypeMap] = useState<Record<string, string>>({})
 
+  const handleCloneProduct = (product: Product) => {
+    // 將產品資料存儲到 localStorage
+    localStorage.setItem('clonedProduct', JSON.stringify(product));
+    return '/products/new?clone=true';
+  };
+  
   // 獲取產品類別數據
   useEffect(() => {
     async function fetchProductTypes() {
@@ -355,6 +361,11 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
               paginatedProducts.map((product) => {
                 const assemblyParts = parseAssemblyParts(product)
 
+                const searchParams = new URLSearchParams({
+                  part_no: product.part_no,
+                  customer_id: product.customer_id
+                }).toString();
+
                 return (
                   <TableRow key={`${product.customer_id}-${product.part_no}`}>
                     <TableCell>
@@ -446,9 +457,14 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem asChild>
                             <Link
-                              href={`/products/new?clone=${encodeURIComponent(product.part_no)}`}
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                const url = handleCloneProduct(product)
+                                window.location.href = url
+                              }}
                               className="flex items-center"
                             >
                               <Copy className="mr-2 h-4 w-4" />
