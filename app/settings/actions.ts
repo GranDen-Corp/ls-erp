@@ -2,7 +2,13 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase-client"
 import { revalidatePath } from "next/cache"
-import type { StaticParameterFormData, ExchangeRateFormData } from "@/types/settings"
+import type {
+  StaticParameterFormData,
+  ExchangeRateFormData,
+  TradeTermFormData,
+  PaymentTermFormData,
+  OrderStatusFormData,
+} from "@/types/settings"
 
 // 靜態參數相關操作
 export async function getStaticParameters() {
@@ -172,6 +178,216 @@ export async function setBaseCurrency(id: number) {
 
   if (error) {
     console.error("Error setting base currency:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+// 交易條件相關操作
+export async function getTradeTerms() {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase.from("trade_terms").select("*").order("sort_order", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching trade terms:", error)
+    return []
+  }
+
+  return data
+}
+
+export async function createTradeTerm(formData: TradeTermFormData) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("trade_terms").insert([formData])
+
+  if (error) {
+    console.error("Error creating trade term:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function updateTradeTerm(id: number, formData: TradeTermFormData) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("trade_terms").update(formData).eq("id", id)
+
+  if (error) {
+    console.error("Error updating trade term:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function deleteTradeTerm(id: number) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("trade_terms").delete().eq("id", id)
+
+  if (error) {
+    console.error("Error deleting trade term:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function toggleTradeTermStatus(id: number, isActive: boolean) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("trade_terms").update({ is_active: !isActive }).eq("id", id)
+
+  if (error) {
+    console.error("Error toggling trade term status:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+// 付款條件相關操作
+export async function getPaymentTerms() {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase.from("payment_terms").select("*").order("sort_order", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching payment terms:", error)
+    return []
+  }
+
+  return data
+}
+
+export async function createPaymentTerm(formData: PaymentTermFormData) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("payment_terms").insert([formData])
+
+  if (error) {
+    console.error("Error creating payment term:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function updatePaymentTerm(id: number, formData: PaymentTermFormData) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("payment_terms").update(formData).eq("id", id)
+
+  if (error) {
+    console.error("Error updating payment term:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function deletePaymentTerm(id: number) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("payment_terms").delete().eq("id", id)
+
+  if (error) {
+    console.error("Error deleting payment term:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function togglePaymentTermStatus(id: number, isActive: boolean) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("payment_terms").update({ is_active: !isActive }).eq("id", id)
+
+  if (error) {
+    console.error("Error toggling payment term status:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+// 訂單狀態相關操作
+export async function getOrderStatuses() {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase.from("order_statuses").select("*").order("sort_order", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching order statuses:", error)
+    return []
+  }
+
+  return data
+}
+
+export async function createOrderStatus(formData: OrderStatusFormData) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("order_statuses").insert([formData])
+
+  if (error) {
+    console.error("Error creating order status:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function updateOrderStatus(id: number, formData: OrderStatusFormData) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("order_statuses").update(formData).eq("id", id)
+
+  if (error) {
+    console.error("Error updating order status:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function deleteOrderStatus(id: number) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("order_statuses").delete().eq("id", id)
+
+  if (error) {
+    console.error("Error deleting order status:", error)
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function toggleOrderStatusStatus(id: number, isActive: boolean) {
+  const supabase = createServerSupabaseClient()
+
+  const { error } = await supabase.from("order_statuses").update({ is_active: !isActive }).eq("id", id)
+
+  if (error) {
+    console.error("Error toggling order status status:", error)
     return { success: false, error: error.message }
   }
 

@@ -30,7 +30,7 @@ const CATEGORIES = [
   { value: "product_unit", label: "產品單位" },
   { value: "order_status", label: "訂單狀態" },
   { value: "payment_terms", label: "付款條件" },
-  { value: "delivery_terms", label: "交貨條件" },
+  { value: "trade_terms", label: "交易條件" },
   { value: "translations", label: "系統翻譯表" },
 ]
 
