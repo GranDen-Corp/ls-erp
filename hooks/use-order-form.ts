@@ -255,7 +255,7 @@ export const useOrderForm = () => {
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("products2")
+        .from("products") // 從 "products2" 改為 "products"
         .select("*")
         .eq("customer_id", customerId)
         .order("part_no")
