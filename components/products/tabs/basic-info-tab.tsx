@@ -223,14 +223,14 @@ export function BasicInfoTab({
             onValueChange={(value) => handleInputChange("productType", value)}
             disabled={isReadOnly}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="選擇產品類別" />
+            <SelectTrigger className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}>
+              <SelectValue>
+                {product.productType || "選擇產品類別"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {productTypes.map((type, index) => {
-                // 使用 type_name 作為備用 key
                 const uniqueKey = type.type_id ? `type-${type.type_id}` : `type-${type.type_name}-${index}`
-
                 return (
                   <SelectItem key={uniqueKey} value={type.type_name}>
                     {type.type_name}
