@@ -664,49 +664,17 @@ export function ProductReadOnlyForm({
                     <h3 className="text-lg font-medium">零件管理特性</h3>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label>特性名稱</Label>
+                  <div className="space-y-2">
+                    {Object.entries(product.partManagement || {}).map(([key, value]) => (
+                      <div key={key} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                        <div className="col-span-2">
+                          <Label>{key}</Label>
+                        </div>
+                        <div className="flex justify-end">
+                          <ReadOnlyCheckbox label="" checked={value === true} />
+                        </div>
                       </div>
-                      <div className="text-right"></div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                      <div className="col-span-2">
-                        <Label>安全件</Label>
-                      </div>
-                      <div className="flex justify-end">
-                        <ReadOnlyCheckbox label="" checked={product.partManagement?.safetyPart || false} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                      <div className="col-span-2">
-                        <Label>汽車件</Label>
-                      </div>
-                      <div className="flex justify-end">
-                        <ReadOnlyCheckbox label="" checked={product.partManagement?.automotivePart || false} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                      <div className="col-span-2">
-                        <Label>CBAM零件</Label>
-                      </div>
-                      <div className="flex justify-end">
-                        <ReadOnlyCheckbox label="" checked={product.partManagement?.CBAMPart || false} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                      <div className="col-span-2">
-                        <Label>熔鑄地要求</Label>
-                      </div>
-                      <div className="flex justify-end">
-                        <ReadOnlyCheckbox label="" checked={product.partManagement?.clockRequirement || false} />
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>

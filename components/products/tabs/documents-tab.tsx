@@ -359,85 +359,26 @@ export function DocumentsTab({
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label>特性名稱</Label>
+              <div className="space-y-2">
+                {Object.entries(product.partManagement || {}).map(([key, value]) => (
+                  <div key={key} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
+                    <div className="col-span-2">
+                      <Label htmlFor={key}>{key}</Label>
+                    </div>
+                    <div className="flex justify-end">
+                      <Checkbox
+                        id={key}
+                        checked={value === true}
+                        onCheckedChange={(checked) =>
+                          !isReadOnly &&
+                          handlePartManagementChange &&
+                          handlePartManagementChange(key, checked === true)
+                        }
+                        disabled={isReadOnly}
+                      />
+                    </div>
                   </div>
-                  <div className="text-right"></div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                  <div className="col-span-2">
-                    <Label htmlFor="safetyPart">安全件</Label>
-                  </div>
-                  <div className="flex justify-end">
-                    <Checkbox
-                      id="safetyPart"
-                      checked={product.partManagement?.safetyPart || false}
-                      onCheckedChange={(checked) =>
-                        !isReadOnly &&
-                        handlePartManagementChange &&
-                        handlePartManagementChange("safetyPart", checked === true)
-                      }
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                  <div className="col-span-2">
-                    <Label htmlFor="automotivePart">汽車件</Label>
-                  </div>
-                  <div className="flex justify-end">
-                    <Checkbox
-                      id="automotivePart"
-                      checked={product.partManagement?.automotivePart || false}
-                      onCheckedChange={(checked) =>
-                        !isReadOnly &&
-                        handlePartManagementChange &&
-                        handlePartManagementChange("automotivePart", checked === true)
-                      }
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                  <div className="col-span-2">
-                    <Label htmlFor="CBAMPart">CBAM零件</Label>
-                  </div>
-                  <div className="flex justify-end">
-                    <Checkbox
-                      id="CBAMPart"
-                      checked={product.partManagement?.CBAMPart || false}
-                      onCheckedChange={(checked) =>
-                        !isReadOnly &&
-                        handlePartManagementChange &&
-                        handlePartManagementChange("CBAMPart", checked === true)
-                      }
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                  <div className="col-span-2">
-                    <Label htmlFor="clockRequirement">熔鑄地要求</Label>
-                  </div>
-                  <div className="flex justify-end">
-                    <Checkbox
-                      id="clockRequirement"
-                      checked={product.partManagement?.clockRequirement || false}
-                      onCheckedChange={(checked) =>
-                        !isReadOnly &&
-                        handlePartManagementChange &&
-                        handlePartManagementChange("clockRequirement", checked === true)
-                      }
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </CardContent>
