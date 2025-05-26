@@ -33,7 +33,7 @@ export interface Customer {
   carton_format: string
   ship_to_address: string
   max_carton_weight: number
-  payment_term: string
+  payment_terms: string
   delivery_terms: string
   packing_info: string
   payment_condition: string
@@ -43,4 +43,6 @@ export interface Customer {
   acceptance_percent: number
   require_report: boolean | string
   legacy_system_note: string
+  payment_method: string
+  delivery_method: string
 }

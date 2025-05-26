@@ -56,9 +56,16 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [currency, setCurrency] = useState("TWD")
   const [exchangeRate, setExchangeRate] = useState(1)
   const [paymentDueDate, setPaymentDueDate] = useState("")
-  const [paymentTerm, setPaymentTerm] = useState("")
+  const [paymentTerms, setPaymentTerms] = useState("")
   const [paymentCondition, setPaymentCondition] = useState("")
   const [deliveryTerms, setDeliveryTerms] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState("")
+  const [deliveryMethod, setDeliveryMethod] = useState("")
+  const [paymentDays, setPaymentDays] = useState("")
+
+  // 新增選項資料狀態
+  const [paymentTermsOptions, setPaymentTermsOptions] = useState<any[]>([])
+  const [tradeTermsOptions, setTradeTermsOptions] = useState<any[]>([])
 
   // 包裝與出貨
   const [groupPackagingDefault, setGroupPackagingDefault] = useState("")
@@ -82,6 +89,35 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
   // 當 initialData 變更時更新狀態
   useEffect(() => {
+    // 載入付款方式選項
+    const loadPaymentTerms = async () => {
+      const { data, error } = await supabaseClient
+        .from("payment_terms")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+
+      if (!error && data) {
+        setPaymentTermsOptions(data)
+      }
+    }
+
+    // 載入交貨方式選項
+    const loadTradeTerms = async () => {
+      const { data, error } = await supabaseClient
+        .from("trade_terms")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+
+      if (!error && data) {
+        setTradeTermsOptions(data)
+      }
+    }
+
+    loadPaymentTerms()
+    loadTradeTerms()
+
     if (initialData) {
       // 基本資訊
       setCustomerId(initialData.customer_id || "")
@@ -110,9 +146,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setCurrency(initialData.currency || "TWD")
       setExchangeRate(initialData.exchange_rate || 1)
       setPaymentDueDate(initialData.payment_due_date || "")
-      setPaymentTerm(initialData.payment_term || "")
+      setPaymentTerms(initialData.payment_terms || "")
       setPaymentCondition(initialData.payment_condition || "")
       setDeliveryTerms(initialData.delivery_terms || "")
+      setPaymentMethod(initialData.payment_method || "")
+      setDeliveryMethod(initialData.delivery_method || "")
+      setPaymentDays(initialData.payment_condition || "")
+      setPaymentTerms(initialData.payment_terms || "")
 
       // 包裝與出貨
       setGroupPackagingDefault(initialData.group_packaging_default || "")
@@ -184,9 +224,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         currency,
         exchange_rate: exchangeRate,
         payment_due_date: paymentDueDate,
-        payment_term: paymentTerm,
+        payment_terms: paymentTerms,
         payment_condition: paymentCondition,
         delivery_terms: deliveryTerms,
+        payment_method: paymentMethod,
+        delivery_method: deliveryMethod,
+        payment_condition: paymentDays,
 
         // 包裝與出貨
         group_packaging_default: groupPackagingDefault,
@@ -256,24 +299,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
     { value: "JPY", label: "日圓 (JPY)" },
     { value: "CNY", label: "人民幣 (CNY)" },
     { value: "GBP", label: "英鎊 (GBP)" },
-  ]
-
-  const deliveryTermsOptions = [
-    { value: "EXW", label: "工廠交貨 (EXW)" },
-    { value: "FOB", label: "船上交貨 (FOB)" },
-    { value: "CIF", label: "成本保險加運費 (CIF)" },
-    { value: "DAP", label: "目的地交貨 (DAP)" },
-    { value: "DDP", label: "完稅後交貨 (DDP)" },
-  ]
-
-  const paymentTermOptions = [
-    { value: "T/T 30 days", label: "電匯 30 天" },
-    { value: "T/T 60 days", label: "電匯 60 天" },
-    { value: "T/T 90 days", label: "電匯 90 天" },
-    { value: "L/C at sight", label: "即期信用證" },
-    { value: "L/C 60 days", label: "60 天信用證" },
-    { value: "D/P 30 days", label: "付款交單 30 天" },
-    { value: "D/A 60 days", label: "承兌交單 60 天" },
   ]
 
   return (
@@ -527,53 +552,65 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="paymentDueDate">付款日期</Label>
-                  <Input
-                    id="paymentDueDate"
-                    value={paymentDueDate}
-                    onChange={(e) => setPaymentDueDate(e.target.value)}
-                    placeholder="例如: 每月15日"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentTerm">Payment term</Label>
-                  <Select value={paymentTerm} onValueChange={setPaymentTerm}>
+                  <Label htmlFor="paymentMethod">付款方式</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger>
-                      <SelectValue placeholder="選擇付款條件" />
+                      <SelectValue placeholder="選擇付款方式" />
                     </SelectTrigger>
                     <SelectContent>
-                      {paymentTermOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                      {paymentTermsOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.code}>
+                          {option.name_zh}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="paymentCondition">付款條件</Label>
-                  <Textarea
-                    id="paymentCondition"
-                    value={paymentCondition}
-                    onChange={(e) => setPaymentCondition(e.target.value)}
+                  <Label htmlFor="deliveryMethod">交貨方式</Label>
+                  <Select value={deliveryMethod} onValueChange={setDeliveryMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇交貨方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tradeTermsOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.code}>
+                          {option.name_zh}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="paymentTerms">付款條件</Label>
+                  <Input
+                    id="paymentTerms"
+                    value={paymentTerms}
+                    onChange={(e) => setPaymentTerms(e.target.value)}
                     placeholder="例如: 月結30天"
-                    rows={3}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="paymentDays">付款天數</Label>
+                  <Input
+                    id="paymentDays"
+                    value={paymentDays}
+                    onChange={(e) => setPaymentDays(e.target.value)}
+                    placeholder="例如: 30天"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="deliveryTerms">交貨條件</Label>
-                  <Select value={deliveryTerms} onValueChange={setDeliveryTerms}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇交貨條件" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {deliveryTermsOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="deliveryTerms"
+                    value={deliveryTerms}
+                    onChange={(e) => setDeliveryTerms(e.target.value)}
+                    placeholder="例如: 工廠交貨"
+                  />
                 </div>
               </div>
             </CardContent>

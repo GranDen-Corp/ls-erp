@@ -6,21 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export interface DatePickerProps {
-  date: Date | undefined
-  setDate: (date: Date | undefined) => void
-  className?: string
+interface DatePickerProps {
+  date?: Date
+  onSelect?: (date: Date | undefined) => void
   placeholder?: string
   disabled?: boolean
+  className?: string
 }
 
-export function DatePicker({
-  date,
-  setDate,
-  className,
-  placeholder = "Select date",
-  disabled = false,
-}: DatePickerProps) {
+export function DatePicker({ date, onSelect, placeholder = "選擇日期", disabled = false, className }: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -30,11 +24,11 @@ export function DatePicker({
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+          {date ? format(date, "yyyy/MM/dd") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+      <PopoverContent className="w-auto p-0">
+        <Calendar mode="single" selected={date} onSelect={onSelect} initialFocus />
       </PopoverContent>
     </Popover>
   )

@@ -1,43 +1,30 @@
-import { type ClassValue, clsx } from "clsx"
+import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Format a date to a string
- * @param date The date to format
- * @param options The Intl.DateTimeFormat options
- * @returns The formatted date string
- */
-export function formatDate(
-  date: Date | string | number,
-  options: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  },
-): string {
+export function formatDate(date: Date | string | null): string {
   if (!date) return ""
-
-  const dateObj = typeof date === "string" || typeof date === "number" ? new Date(date) : date
-
-  return new Intl.DateTimeFormat("en-US", options).format(dateObj)
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return ""
+  return d.toLocaleDateString("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
 }
 
-/**
- * Format a number as currency
- * @param amount The amount to format
- * @param currency The currency code (default: USD)
- * @param locale The locale (default: en-US)
- * @returns The formatted currency string
- */
-export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
-  return new Intl.NumberFormat(locale, {
+export function formatCurrency(amount: number | string | null, currency = "USD"): string {
+  if (!amount) return ""
+  const num = typeof amount === "string" ? Number.parseFloat(amount) : amount
+  if (isNaN(num)) return ""
+
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency,
+    currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  }).format(num)
 }
