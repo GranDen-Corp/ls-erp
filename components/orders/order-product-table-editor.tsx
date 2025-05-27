@@ -122,106 +122,169 @@ export function OrderProductTableEditor({
     }))
 
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>訂單報表 - ${orderData?.order_id || orderId}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .order-info { margin-bottom: 20px; }
-            .order-info table { width: 100%; border-collapse: collapse; }
-            .order-info td { padding: 5px; border: 1px solid #ddd; }
-            .products-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            .products-table th, .products-table td { 
-              border: 1px solid #ddd; 
-              padding: 8px; 
-              text-align: left; 
-              vertical-align: top;
-            }
-            .products-table th { background-color: #f5f5f5; }
-            .description-cell { 
-              font-family: monospace; 
-              font-size: 11px; 
-              white-space: pre-line; 
-              min-height: 200px;
-              width: 300px;
-            }
-            .number-cell { text-align: right; }
-            .center-cell { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>訂單報表</h1>
-            <h2>Order Report</h2>
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Sales Confirmation - ${orderData?.order_id || orderId}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            font-size: 12px;
+          }
+          .header-image {
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+          }
+          .title-section {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .title-main {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .title-decoration {
+            font-size: 16px;
+            letter-spacing: 2px;
+          }
+          .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+          }
+          .left-info {
+            width: 45%;
+          }
+          .right-info {
+            width: 45%;
+            text-align: left;
+          }
+          .info-line {
+            margin-bottom: 8px;
+          }
+          .shipping-mark-line {
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+            margin-bottom: 8px;
+          }
+          .products-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+          }
+          .products-table th, .products-table td { 
+            border: 1px solid #000; 
+            padding: 8px; 
+            text-align: left; 
+            vertical-align: top;
+          }
+          .products-table th { 
+            background-color: #f5f5f5; 
+            font-weight: bold;
+          }
+          .description-cell { 
+            font-family: monospace; 
+            font-size: 10px; 
+            white-space: pre-line; 
+            min-height: 200px;
+            width: 300px;
+          }
+          .number-cell { text-align: right; }
+          .center-cell { text-align: center; }
+          @media print {
+            body { margin: 0; }
+            .header-image { max-width: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <!-- Locksure Header -->
+        <img src="/images/LS_print_header.png" alt="Locksure Header" class="header-image" />
+        
+        <!-- Title Section -->
+        <div class="title-section">
+          <div class="title-main">SALES CONFIRMATION</div>
+          <div class="title-decoration">*************************</div>
+        </div>
+        
+        <!-- Information Section -->
+        <div class="info-section">
+          <!-- Left Side -->
+          <div class="left-info">
+            <div class="info-line">Our Ref.: ${orderData?.order_id || orderId}</div>
+            <div class="info-line">Your Ref.: ${orderData?.po_id || ""}</div>
+            <div class="info-line">Date: ${new Date()
+              .toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "2-digit",
+              })
+              .replace(/ /g, "-")}</div>
+            <div class="info-line">&nbsp;</div>
+            <div class="info-line">Messrs.:</div>
+            <div class="info-line">${orderData?.customer?.order_packaging_display || orderData?.customer_name || ""}</div>
+            <div class="info-line">${orderData?.customer?.customer_address || ""}</div>
           </div>
           
-          <div class="order-info">
-            <table>
-              <tr>
-                <td><strong>訂單編號:</strong></td>
-                <td>${orderData?.order_id || orderId}</td>
-                <td><strong>客戶PO:</strong></td>
-                <td>${orderData?.po_id || ""}</td>
-              </tr>
-              <tr>
-                <td><strong>客戶名稱:</strong></td>
-                <td>${orderData?.customer_name || ""}</td>
-                <td><strong>建立日期:</strong></td>
-                <td>${new Date().toLocaleDateString()}</td>
-              </tr>
-              <tr>
-                <td><strong>付款條件:</strong></td>
-                <td>${orderData?.payment_terms || ""}</td>
-                <td><strong>交付條件:</strong></td>
-                <td>${orderData?.trade_terms || ""}</td>
-              </tr>
-            </table>
+          <!-- Right Side -->
+          <div class="right-info">
+            <div class="info-line">Shipping Mark:</div>
+            <div class="shipping-mark-line">---------------</div>
+            <div class="info-line">PO ${orderData?.po_id || ""}</div>
+            <div class="info-line">XXXXX</div>
+            <div class="info-line">C/NO.</div>
+            <div class="info-line">MADE IN TAIWAN</div>
+            <div class="info-line">R.O.C.</div>
           </div>
+        </div>
 
-          <table class="products-table">
-            <thead>
+        <!-- Products Table -->
+        <table class="products-table">
+          <thead>
+            <tr>
+              <th style="width: 120px;">Part No.</th>
+              <th style="width: 300px;">Description</th>
+              <th style="width: 80px;">Quantity</th>
+              <th style="width: 60px;">Unit</th>
+              <th style="width: 100px;">Unit Price</th>
+              <th style="width: 100px;">Total Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${printData
+              .map(
+                (item) => `
               <tr>
-                <th>產品編號</th>
-                <th>產品描述</th>
-                <th>數量</th>
-                <th>單位</th>
-                <th>單價</th>
-                <th>總價</th>
+                <td class="center-cell">${item.part_no}</td>
+                <td class="description-cell">${item.description}</td>
+                <td class="center-cell">${item.quantity}</td>
+                <td class="center-cell">${item.unit}</td>
+                <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
+                <td class="number-cell">$${item.total_price.toFixed(2)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${printData
-                .map(
-                  (item) => `
-                <tr>
-                  <td class="center-cell">${item.part_no}</td>
-                  <td class="description-cell">${item.description}</td>
-                  <td class="center-cell">${item.quantity}</td>
-                  <td class="center-cell">${item.unit}</td>
-                  <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
-                  <td class="number-cell">$${item.total_price.toFixed(2)}</td>
-                </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>
 
-          ${
-            orderData?.remarks
-              ? `
-            <div style="margin-top: 30px;">
-              <strong>備註:</strong><br>
-              ${orderData.remarks}
-            </div>
-          `
-              : ""
-          }
-        </body>
-      </html>
-    `
+        ${
+          orderData?.remarks
+            ? `
+          <div style="margin-top: 30px;">
+            <strong>Remarks:</strong><br>
+            ${orderData.remarks}
+          </div>
+        `
+            : ""
+        }
+      </body>
+    </html>
+  `
 
     // 開啟列印視窗
     const printWindow = window.open("", "_blank")
