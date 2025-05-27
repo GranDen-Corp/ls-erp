@@ -21,13 +21,66 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
 
   // 將資料庫資料轉換為表單所需的格式
   const formattedCustomer = {
+    // 基本資訊
+    customer_id: customer.customer_id || "",
+    customer_full_name: customer.customer_full_name || customer.customer_name || "",
+    customer_short_name: customer.customer_short_name || customer.short_name || "",
+    group_code: customer.group_code || customer.group_tag || "",
+    division_location: customer.division_location || customer.country || "",
+    use_group_setting: customer.use_group_setting || false,
+
+    // 聯絡資訊
+    customer_phone: customer.customer_phone || customer.phone || "",
+    customer_fax: customer.customer_fax || customer.fax || "",
+    report_email: customer.report_email || "",
+    invoice_email: customer.invoice_email || customer.email || "",
+    customer_address: customer.customer_address || customer.address || "",
+    invoice_address: customer.invoice_address || "",
+    ship_to_address: customer.ship_to_address || "",
+    client_lead_person: customer.client_lead_person || "",
+    client_contact_person: customer.client_contact_person || customer.contact_person || "",
+    client_procurement: customer.client_procurement || "",
+    client_sales: customer.client_sales || "",
+    sales_representative: customer.sales_representative || "",
+    logistics_coordinator: customer.logistics_coordinator || "",
+
+    // 財務資訊
+    currency: customer.currency || "USD",
+    exchange_rate: customer.exchange_rate || 1,
+    payment_due_date: customer.payment_due_date || customer.payment_terms || "",
+    payment_terms: customer.payment_terms || "",
+    payment_terms_specification: customer.payment_terms_specification || customer.payment_condition || "",
+    trade_terms: customer.trade_terms || customer.delivery_terms || "",
+    trade_terms_specification: customer.trade_terms_specification || "",
+
+    // 包裝與出貨
+    group_packaging_default: customer.group_packaging_default || "",
+    order_packaging_display: customer.order_packaging_display || "",
+    customer_packaging: customer.customer_packaging || "",
+    packaging_details: customer.packaging_details || "",
+    packing_info: customer.packing_info || "",
+    pallet_format: customer.pallet_format || "",
+    carton_format: customer.carton_format || "",
+    max_carton_weight: customer.max_carton_weight || 0,
+    sc_shipping_mark: customer.sc_shipping_mark || "",
+    labels: customer.labels || "",
+
+    // 品質與報告
+    qty_allowance_percent: customer.qty_allowance_percent || 0,
+    acceptance_percent: customer.acceptance_percent || 0,
+    report_type: customer.report_type || "",
+    require_report: customer.require_report || false,
+    cbam_note: customer.cbam_note || "",
+    legacy_system_note: customer.legacy_system_note || "",
+
+    // 向後兼容的欄位映射
     id: customer.customer_id || "",
-    name: customer.customer_name || "",
+    name: customer.customer_full_name || customer.customer_name || "",
     code: customer.customer_code || customer.customer_id || "",
-    contactPerson: customer.contact_person || "",
-    phone: customer.phone || customer.customer_phone || "",
-    email: customer.email || customer.invoice_email || "",
-    address: customer.address || customer.customer_address || "",
+    contactPerson: customer.client_contact_person || customer.contact_person || "",
+    phone: customer.customer_phone || customer.phone || "",
+    email: customer.invoice_email || customer.email || "",
+    address: customer.customer_address || customer.address || "",
     region: customer.region || "",
     industry: customer.industry || "",
     registrationDate: customer.registration_date ? new Date(customer.registration_date) : undefined,
@@ -38,11 +91,11 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     creditLimit: customer.credit_limit ? Number(customer.credit_limit) : 0,
     status: customer.status || "active",
     shortName: customer.customer_short_name || customer.short_name || "",
-    fax: customer.fax || customer.customer_fax || "",
-    country: customer.country || customer.division_location || "",
+    fax: customer.customer_fax || customer.fax || "",
+    country: customer.division_location || customer.country || "",
     bankName: customer.bank_name || "",
     bankAccount: customer.bank_account || "",
-    groupTag: customer.group_tag || customer.group_code || "",
+    groupTag: customer.group_code || customer.group_tag || "",
   }
 
   return (

@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { formatDate, formatCurrency } from "@/lib/utils"
 import Link from "next/link"
 import { Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,8 +21,25 @@ interface CustomerOrderHistoryProps {
   customerId: string
 }
 
+// Helper function to format date
+const formatDate = (dateString: string) => {
+  try {
+    return new Date(dateString).toLocaleDateString("zh-TW")
+  } catch (e) {
+    return dateString
+  }
+}
+
+// Helper function to format currency
+const formatCurrency = (amount: number, currency: string) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency || "USD",
+  }).format(amount)
+}
+
 export default function CustomerOrderHistory({ customerId }: CustomerOrderHistoryProps) {
-  // 模擬訂單數據
+  // Mock order data - in a real app, this would fetch from the database
   const [orders] = useState<Order[]>([
     {
       id: "order-001",
