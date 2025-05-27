@@ -90,8 +90,8 @@ export const useOrderForm = () => {
   // 訂單基本資訊
   const [orderNumber, setOrderNumber] = useState<string>("")
   const [poNumber, setPoNumber] = useState<string>("")
-  const [paymentTerm, setPaymentTerm] = useState<string>("")
-  const [deliveryTerms, setDeliveryTerms] = useState<string>("")
+  const [paymentTerms, setPaymentTerms] = useState<string>("") // 更新欄位名稱
+  const [tradeTerms, setTradeTerms] = useState<string>("") // 更新欄位名稱
 
   // 訂單編號相關
   const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState(false)
@@ -124,7 +124,7 @@ export const useOrderForm = () => {
   const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState(false)
   const [isManagingBatches, setIsManagingBatches] = useState(false)
   const [currentItemForBatch, setCurrentItemForBatch] = useState<OrderItem | null>(null)
-  const [orderInfo, setOrderInfo] = useState<string>("")
+  const [orderInfo, setOrderInfo] = useState<Record<string, any>>({}) // 更新為 jsonb 格式
   const [remarks, setRemarks] = useState<string>("")
   const [purchaseInfo, setPurchaseInfo] = useState<string>("")
   const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
@@ -169,7 +169,7 @@ export const useOrderForm = () => {
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("static_parameters")
+        .from("unit_setting")
         .select("*")
         .eq("category", "product_unit")
         .eq("is_active", true)
@@ -229,15 +229,15 @@ export const useOrderForm = () => {
       const customer = customers.find((c) => c.customer_id === selectedCustomerId)
       if (customer) {
         setSelectedCustomer(customer)
-        setPaymentTerm(customer.payment_due_date || "")
-        setDeliveryTerms("") // customers 表中沒有 delivery_terms 欄位
+        setPaymentTerms(customer.payment_due_date || "") // 更新欄位名稱
+        setTradeTerms("") // customers 表中沒有 trade_terms 欄位
         setCustomerCurrency(customer.currency || "USD")
         loadCustomerProducts(selectedCustomerId)
       }
     } else {
       setSelectedCustomer(null)
-      setPaymentTerm("")
-      setDeliveryTerms("")
+      setPaymentTerms("")
+      setTradeTerms("")
       setCustomerCurrency("USD")
       setRegularProducts([])
       setAssemblyProducts([])
@@ -562,10 +562,10 @@ export const useOrderForm = () => {
     selectedCustomer,
     poNumber,
     setPoNumber,
-    paymentTerm,
-    setPaymentTerm,
-    deliveryTerms,
-    setDeliveryTerms,
+    paymentTerms, // 更新欄位名稱
+    setPaymentTerms, // 更新欄位名稱
+    tradeTerms, // 更新欄位名稱
+    setTradeTerms, // 更新欄位名稱
     orderNumber,
     setOrderNumber,
     isLoadingOrderNumber,

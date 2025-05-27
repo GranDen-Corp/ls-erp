@@ -226,10 +226,10 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setOrderNumberStatus={orderForm.setOrderNumberStatus}
           setOrderNumberMessage={orderForm.setOrderNumberMessage}
           orderItems={orderForm.orderItems}
-          paymentTerm={orderForm.paymentTerm}
-          setPaymentTerm={orderForm.setPaymentTerm}
-          deliveryTerms={orderForm.deliveryTerms}
-          setDeliveryTerms={orderForm.setDeliveryTerms}
+          paymentTerms={orderForm.paymentTerms}
+          setPaymentTerms={orderForm.setPaymentTerms}
+          tradeTerms={orderForm.tradeTerms}
+          setTradeTerms={orderForm.setTradeTerms}
           isLoadingOrderNumber={orderForm.isLoadingOrderNumber}
           generateNewOrderNumber={orderForm.generateNewOrderNumber}
         />

@@ -5,9 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrderStatusUpdate } from "@/components/orders/order-status-update"
 import { OrderStatusHistory } from "@/components/orders/order-status-history"
 import { OrderShipmentBatches } from "@/components/orders/order-shipment-batches"
+import { PrintOrderReport } from "@/components/orders/print-order-report"
 import { supabaseClient } from "@/lib/supabase-client"
 import { Badge } from "@/components/ui/badge"
 import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
+import { Button } from "@/components/ui/button"
+import { Printer } from "lucide-react"
 
 // 從 Supabase 獲取訂單數據
 async function getOrder(orderId: string) {
@@ -96,7 +99,33 @@ export default async function OrderPage({
           訂單 #{order.order_id}
           <span className="ml-2 text-lg font-normal text-muted-foreground">{order.customer_name}</span>
         </h1>
-        <div className="text-sm text-muted-foreground">流水號: {order.order_sid}</div>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-muted-foreground">流水號: {order.order_sid}</div>
+          <PrintOrderReport
+            orderData={{
+              order_id: order.order_id,
+              po_id: order.po_id,
+              customer_name: order.customer_name,
+              customer_address: order.customer_address,
+              customer_contact: order.customer_contact,
+              order_date: order.order_date,
+              delivery_date: order.delivery_date,
+              payment_terms: order.payment_terms, // 更新欄位名稱
+              trade_terms: order.trade_terms, // 更新欄位名稱
+              remarks: order.remarks,
+              amount: order.amount || 0,
+              currency: order.currency || "USD",
+              batch_items: order.batch_items || [],
+              order_info: order.order_info || {}, // 新增 jsonb 欄位
+            }}
+            trigger={
+              <Button variant="outline" size="sm">
+                <Printer className="h-4 w-4 mr-2" />
+                列印報表
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -126,16 +155,31 @@ export default async function OrderPage({
                     <dd>{order.status}</dd>
                     <dt className="font-medium">總金額</dt>
                     <dd>${order.amount?.toLocaleString()}</dd>
+                    <dt className="font-medium">付款條件</dt>
+                    <dd>{order.payment_terms || "未設定"}</dd>
+                    <dt className="font-medium">交易條件</dt>
+                    <dd>{order.trade_terms || "未設定"}</dd>
                   </dl>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>備註</CardTitle>
+                  <CardTitle>訂單資訊</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm">{order.notes || "無備註"}</p>
+                  {order.order_info && typeof order.order_info === "object" ? (
+                    <div className="space-y-2">
+                      {Object.entries(order.order_info).map(([key, value]) => (
+                        <div key={key} className="text-sm">
+                          <span className="font-medium">{key}:</span>
+                          <span className="ml-2">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm">{order.remarks || "無備註"}</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

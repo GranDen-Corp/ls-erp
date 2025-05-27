@@ -116,9 +116,6 @@ export function OrdersTable() {
           setProducts(productMap)
         }
 
-        // 修改獲取訂單資料的部分，添加批次項目的處理
-        // 在 useEffect 中獲取訂單資料的部分，修改為:
-
         // 3. 獲取訂單資料 - 使用新的資料表結構
         try {
           const { data: ordersData, error: ordersError } = await supabaseClient

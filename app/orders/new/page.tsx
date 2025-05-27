@@ -154,8 +154,8 @@ export default function NewOrderPage() {
       explanation += `- 訂單編號 (order_id): ${orderData.order_id || "(尚未設定)"}\n`
       explanation += `- 客戶ID (customer_id): ${orderData.customer_id || "(尚未選擇)"}\n`
       explanation += `- 客戶PO編號 (po_id): ${orderData.po_id || "(尚未填寫)"}\n`
-      explanation += `- 付款條件 (payment_term): ${orderData.payment_term || "(尚未填寫)"}\n`
-      explanation += `- 交貨條件 (delivery_terms): ${orderData.delivery_terms || "(尚未填寫)"}\n`
+      explanation += `- 付款條件 (payment_terms): ${orderData.payment_terms || "(尚未填寫)"}\n`
+      explanation += `- 交易條件 (trade_terms): ${orderData.trade_terms || "(尚未填寫)"}\n`
       explanation += `- 訂單狀態 (status): ${orderData.status} (0 = 待確認)\n`
       explanation += `- 備註 (remarks): ${orderData.remarks || "(無)"}\n`
       explanation += `- 創建時間 (created_at): ${orderData.created_at}\n`
@@ -205,10 +205,10 @@ export default function NewOrderPage() {
         </CardHeader>
         <CardContent>
           {submitSuccess && (
-            <Alert variant="success" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>成功</AlertTitle>
-              <AlertDescription>訂單已成功提交。</AlertDescription>
+            <Alert variant="default" className="mb-4 border-green-200 bg-green-50">
+              <AlertCircle className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-800">成功</AlertTitle>
+              <AlertDescription className="text-green-700">訂單已成功提交。</AlertDescription>
             </Alert>
           )}
           {submitError && (
