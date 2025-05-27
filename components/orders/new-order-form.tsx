@@ -15,6 +15,7 @@ import {
   LucideSave,
   LucidePackage,
   LucideClipboardList,
+  LucideEye,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -22,6 +23,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProcurementDataEditor } from "@/components/orders/procurement-data-editor"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
 import { OrderValidation } from "@/components/orders/order-validation"
+import { PrintOrderReport } from "@/components/orders/print-order-report"
+import { OrderProductTableEditor } from "@/components/orders/order-product-table-editor"
 import { useOrderForm } from "@/hooks/use-order-form"
 import CustomerSelection from "./customer-selection"
 import { ProductSelection } from "./product-selection"
@@ -45,6 +48,7 @@ const MemoizedEnhancedProductList = memo(EnhancedProductList)
 const MemoizedProductList = memo(ProductList)
 const MemoizedOrderInfo = memo(OrderInfo)
 const MemoizedBatchManagement = memo(BatchManagement)
+const MemoizedOrderProductTableEditor = memo(OrderProductTableEditor)
 
 const NewOrderForm = forwardRef<any, NewOrderFormProps>(
   ({ onSubmit, createdOrderId, currentStep = 0, orderData }, ref) => {
@@ -86,6 +90,35 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         hasProcurementReady.current = true
       }
     }, [orderData, currentStep, orderForm])
+
+    // 準備列印報表的資料
+    const preparePrintData = () => {
+      const selectedCustomer = orderForm.customers.find((c) => c.customer_id === orderForm.selectedCustomerId)
+
+      return {
+        order_id: orderForm.useCustomOrderNumber ? orderForm.customOrderNumber : orderForm.orderNumber,
+        po_id: orderForm.poNumber || "",
+        customer_name: selectedCustomer?.customer_full_name || "未選擇客戶",
+        customer_address: selectedCustomer?.customer_address || "",
+        customer_contact: selectedCustomer?.customer_phone || "",
+        order_date: new Date().toISOString(),
+        delivery_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        payment_terms: orderForm.paymentTerms || "",
+        trade_terms: orderForm.tradeTerms || "",
+        remarks: orderForm.remarks || "",
+        amount: orderForm.calculateTotal(),
+        currency: orderForm.customerCurrency,
+        order_info: orderForm.orderInfo || "",
+        batch_items: orderForm.orderItems.map((item) => ({
+          part_no: item.productPartNo,
+          description: item.productName,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total_price: orderForm.calculateItemTotal(item),
+          unit: orderForm.getUnitDisplayName(item.unit),
+        })),
+      }
+    }
 
     // 根據當前步驟渲染不同的內容
     if (currentStep === 1) {
@@ -182,6 +215,21 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
               {/* 快速操作按鈕 */}
               <div className="flex gap-2">
+                {/* 列印按鈕 - 只有在產品設定確認後才啟用 */}
+                {orderForm.isProductSettingsConfirmed && orderForm.orderItems.length > 0 && (
+                  <>
+                    <PrintOrderReport
+                      orderData={preparePrintData()}
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          <LucideEye className="h-4 w-4 mr-2" />
+                          預覽列印
+                        </Button>
+                      }
+                    />
+                  </>
+                )}
+
                 {orderForm.isProductSettingsConfirmed && orderForm.isProcurementSettingsConfirmed && (
                   <>
                     <Button
@@ -327,6 +375,18 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </div>
               </CardContent>
             </Card>
+
+            {/* 訂單產品表格編輯器 */}
+            <MemoizedOrderProductTableEditor
+              orderItems={orderForm.orderItems}
+              orderId={orderForm.useCustomOrderNumber ? orderForm.customOrderNumber : orderForm.orderNumber}
+              customerCurrency={orderForm.customerCurrency}
+              onTableDataChange={orderForm.handleOrderTableDataChange}
+              isVisible={orderForm.isProductSettingsConfirmed}
+              isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
+              getUnitDisplayName={orderForm.getUnitDisplayName}
+              calculateItemTotal={orderForm.calculateItemTotal}
+            />
           </div>
         )}
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase-client"
 import { generateOrderNumber } from "@/lib/order-number-generator"
 
@@ -9,6 +9,8 @@ interface Customer {
   customer_full_name: string
   customer_short_name?: string
   payment_due_date?: string
+  payment_terms_specification?: string
+  trade_terms_specification?: string
   currency?: string
   customer_address?: string
   customer_phone?: string
@@ -37,6 +39,10 @@ interface Product {
   customer_drawing: any
   customer_drawing_version: string
   specification: string
+  product_type?: string
+  customer_original_drawing?: string
+  drawing_version?: string
+  packaging_requirements?: string
 }
 
 interface OrderItem {
@@ -66,197 +72,117 @@ interface ExchangeRate {
   is_active: boolean
 }
 
-export const useOrderForm = () => {
-  const [productUnits, setProductUnits] = useState<
-    Array<{
-      id: number
-      code: string
-      name: string
-      value: string
-    }>
-  >([])
+interface ProductTableItem {
+  part_no: string
+  description: string
+  quantity: number
+  unit_price: number
+  total_price: number
+  unit: string
+}
 
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
-
-  // 基本狀態
+export function useOrderForm() {
+  // Basic state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // 客戶相關
-  const [customers, setCustomers] = useState<Customer[]>([])
+  // Form data with proper string initialization
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("")
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-
-  // 訂單基本資訊
-  const [orderNumber, setOrderNumber] = useState<string>("")
   const [poNumber, setPoNumber] = useState<string>("")
-  const [paymentTerms, setPaymentTerms] = useState<string>("") // 更新欄位名稱
-  const [tradeTerms, setTradeTerms] = useState<string>("") // 更新欄位名稱
-
-  // 訂單編號相關
-  const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState(false)
+  const [orderNumber, setOrderNumber] = useState<string>("")
   const [customOrderNumber, setCustomOrderNumber] = useState<string>("")
-  const [useCustomOrderNumber, setUseCustomOrderNumber] = useState(false)
-  const [isCheckingOrderNumber, setIsCheckingOrderNumber] = useState(false)
-  const [orderNumberStatus, setOrderNumberStatus] = useState<string>("")
-  const [orderNumberMessage, setOrderNumberMessage] = useState<string>("")
+  const [useCustomOrderNumber, setUseCustomOrderNumber] = useState<boolean>(false)
+  const [paymentTerms, setPaymentTerms] = useState<string>("")
+  const [tradeTerms, setTradeTerms] = useState<string>("")
+  const [remarks, setRemarks] = useState<string>("")
+  const [orderInfo, setOrderInfo] = useState<Record<string, any>>({})
+  const [purchaseInfo, setPurchaseInfo] = useState<string>("")
+  const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
 
-  // 產品相關
+  // Data arrays
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [regularProducts, setRegularProducts] = useState<Product[]>([])
   const [assemblyProducts, setAssemblyProducts] = useState<Product[]>([])
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
+  const [procurementItems, setProcurementItems] = useState<any[]>([])
+  const [productUnits, setProductUnits] = useState<any[]>([])
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
+  const [orderTableData, setOrderTableData] = useState<ProductTableItem[]>([])
+
+  // UI state
+  const [activeTab, setActiveTab] = useState<string>("products")
+  const [productSelectionTab, setProductSelectionTab] = useState<string>("regular")
+  const [productSearchTerm, setProductSearchTerm] = useState<string>("")
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
   const [selectedProductPartNo, setSelectedProductPartNo] = useState<string>("")
-  const [productSelectionTab, setProductSelectionTab] = useState("regular")
-  const [productSearchTerm, setProductSearchTerm] = useState("")
-  const [loadingSelectedProducts, setLoadingSelectedProducts] = useState(false)
-
-  // 工作流程狀態
-  const [isProductSettingsConfirmed, setIsProductSettingsConfirmed] = useState(false)
-  const [isProcurementSettingsConfirmed, setIsProcurementSettingsConfirmed] = useState(false)
-  const [isProcurementReady, setIsProcurementReady] = useState(false)
-  const [activeTab, setActiveTab] = useState("products")
-  const [isSplitView, setIsSplitView] = useState(false)
-
-  // 其他狀態
-  const [customerCurrency, setCustomerCurrency] = useState("USD")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState(false)
-  const [isManagingBatches, setIsManagingBatches] = useState(false)
+  const [isProductSettingsConfirmed, setIsProductSettingsConfirmed] = useState<boolean>(false)
+  const [isProcurementSettingsConfirmed, setIsProcurementSettingsConfirmed] = useState<boolean>(false)
+  const [isProcurementReady, setIsProcurementReady] = useState<boolean>(false)
+  const [isSplitView, setIsSplitView] = useState<boolean>(false)
+  const [isManagingBatches, setIsManagingBatches] = useState<boolean>(false)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState<boolean>(false)
+  const [isLoadingOrderNumber, setIsLoadingOrderNumber] = useState<boolean>(false)
+  const [loadingSelectedProducts, setLoadingSelectedProducts] = useState<boolean>(false)
   const [currentItemForBatch, setCurrentItemForBatch] = useState<OrderItem | null>(null)
-  const [orderInfo, setOrderInfo] = useState<Record<string, any>>({}) // 更新為 jsonb 格式
-  const [remarks, setRemarks] = useState<string>("")
-  const [purchaseInfo, setPurchaseInfo] = useState<string>("")
-  const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
-  const [procurementItems, setProcurementItems] = useState<any[]>([])
+  const [orderNumberStatus, setOrderNumberStatus] = useState<string>("")
+  const [orderNumberMessage, setOrderNumberMessage] = useState<string>("")
+  const [isCheckingOrderNumber, setIsCheckingOrderNumber] = useState<boolean>(false)
 
-  // 初始化載入數據
+  // Load initial data
   useEffect(() => {
-    const initializeData = async () => {
-      setLoading(true)
+    const loadData = async () => {
       try {
-        await Promise.all([loadCustomers(), loadProductUnits(), loadExchangeRates(), generateNewOrderNumber()])
-      } catch (error) {
-        console.error("初始化數據失敗:", error)
-        setError("載入數據失敗，請重新整理頁面")
+        setLoading(true)
+        const supabase = createClient()
+
+        // Load data from correct tables
+        const [customersRes, unitsRes, ratesRes] = await Promise.all([
+          supabase.from("customers").select("*").order("customer_full_name"),
+          supabase
+            .from("unit_setting")
+            .select("*")
+            .eq("category", "product_unit")
+            .eq("is_active", true)
+            .order("sort_order"),
+          supabase.from("exchange_rates").select("*").eq("is_active", true).order("currency_code"),
+        ])
+
+        if (customersRes.error) throw customersRes.error
+        if (unitsRes.error) throw unitsRes.error
+        if (ratesRes.error) throw ratesRes.error
+
+        setCustomers(customersRes.data || [])
+        setProductUnits(unitsRes.data || [])
+        setExchangeRates(ratesRes.data || [])
+
+        // Generate initial order number
+        const newOrderNumber = await generateOrderNumber()
+        setOrderNumber(newOrderNumber || "")
+      } catch (err: any) {
+        console.error("Error loading data:", err)
+        setError(err.message || "載入資料時發生錯誤")
       } finally {
         setLoading(false)
       }
     }
 
-    initializeData()
+    loadData()
   }, [])
 
-  // 載入客戶列表
-  const loadCustomers = async () => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase.from("customers").select("*").order("customer_full_name")
-
-      if (error) {
-        console.error("載入客戶失敗:", error)
-        return
-      }
-
-      setCustomers(data || [])
-    } catch (error) {
-      console.error("載入客戶失敗:", error)
-    }
-  }
-
-  // 載入產品單位
-  const loadProductUnits = async () => {
+  // Load customer products when customer is selected
+  const loadCustomerProducts = useCallback(async (customerId: string) => {
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("unit_setting")
-        .select("*")
-        .eq("category", "product_unit")
-        .eq("is_active", true)
-        .order("sort_order")
-
-      if (error) {
-        console.error("載入產品單位失敗:", error)
-        return
-      }
-
-      setProductUnits(data || [])
-    } catch (error) {
-      console.error("載入產品單位失敗:", error)
-    }
-  }
-
-  // 載入匯率數據
-  const loadExchangeRates = async () => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("exchange_rates")
-        .select("*")
-        .eq("is_active", true)
-        .order("currency_code")
-
-      if (error) {
-        console.error("載入匯率失敗:", error)
-        return
-      }
-
-      setExchangeRates(data || [])
-    } catch (error) {
-      console.error("載入匯率失敗:", error)
-    }
-  }
-
-  // 生成新訂單編號
-  const generateNewOrderNumber = async () => {
-    if (useCustomOrderNumber) return
-
-    setIsLoadingOrderNumber(true)
-    try {
-      const newOrderNumber = await generateOrderNumber()
-      setOrderNumber(newOrderNumber)
-    } catch (error) {
-      console.error("生成訂單編號失敗:", error)
-      setError("生成訂單編號失敗")
-    } finally {
-      setIsLoadingOrderNumber(false)
-    }
-  }
-
-  // 當選擇客戶時載入相關數據
-  useEffect(() => {
-    if (selectedCustomerId) {
-      const customer = customers.find((c) => c.customer_id === selectedCustomerId)
-      if (customer) {
-        setSelectedCustomer(customer)
-        setPaymentTerms(customer.payment_due_date || "") // 更新欄位名稱
-        setTradeTerms("") // customers 表中沒有 trade_terms 欄位
-        setCustomerCurrency(customer.currency || "USD")
-        loadCustomerProducts(selectedCustomerId)
-      }
-    } else {
-      setSelectedCustomer(null)
-      setPaymentTerms("")
-      setTradeTerms("")
-      setCustomerCurrency("USD")
-      setRegularProducts([])
-      setAssemblyProducts([])
-      // 重置產品相關狀態
-      setOrderItems([])
-      setSelectedProducts([])
-      setIsProductSettingsConfirmed(false)
-      setIsProcurementReady(false)
-      setIsProcurementSettingsConfirmed(false)
-    }
-  }, [selectedCustomerId, customers])
-
-  // 載入客戶對應的產品
-  const loadCustomerProducts = async (customerId: string) => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("products") // 從 "products2" 改為 "products"
-        .select("*")
+        .from("products")
+        .select(`
+          *,
+          product_type,
+          customer_original_drawing,
+          drawing_version,
+          packaging_requirements
+        `)
         .eq("customer_id", customerId)
         .order("part_no")
 
@@ -274,15 +200,58 @@ export const useOrderForm = () => {
     } catch (error) {
       console.error("載入產品失敗:", error)
     }
-  }
+  }, [])
 
-  const getUnitDisplayName = (unitValue: string) => {
-    const unit = productUnits.find((u) => u.value === unitValue)
-    return unit ? unit.code : `${unitValue}PCS`
-  }
+  // Customer selection handler
+  const handleCustomerSelection = useCallback(
+    (customerId: string) => {
+      setSelectedCustomerId(customerId)
 
-  // 計算單位換算係數
-  const getUnitMultiplier = (unit: string) => {
+      if (customerId) {
+        const customer = customers.find((c) => c.customer_id === customerId)
+        if (customer) {
+          // Ensure we always set strings, never null/undefined
+          setPaymentTerms(customer.payment_terms_specification || customer.payment_due_date || "")
+          setTradeTerms(customer.trade_terms_specification || "")
+          loadCustomerProducts(customerId)
+        }
+      } else {
+        setPaymentTerms("")
+        setTradeTerms("")
+        setRegularProducts([])
+        setAssemblyProducts([])
+        setOrderItems([])
+        setSelectedProducts([])
+        setIsProductSettingsConfirmed(false)
+        setIsProcurementReady(false)
+        setIsProcurementSettingsConfirmed(false)
+        setOrderTableData([])
+      }
+    },
+    [customers, loadCustomerProducts],
+  )
+
+  // Get customer currency
+  const customerCurrency = useMemo(() => {
+    const customer = customers.find((c) => c.customer_id === selectedCustomerId)
+    return customer?.currency || "USD"
+  }, [customers, selectedCustomerId])
+
+  // Get selected customer
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => c.customer_id === selectedCustomerId) || null
+  }, [customers, selectedCustomerId])
+
+  // Utility functions
+  const getUnitDisplayName = useCallback(
+    (unitValue: string) => {
+      const unit = productUnits.find((u) => u.value === unitValue)
+      return unit ? unit.code : `${unitValue}PCS`
+    },
+    [productUnits],
+  )
+
+  const getUnitMultiplier = useCallback((unit: string) => {
     const unitLower = unit.toLowerCase()
     if (unitLower.includes("mpcs") || unitLower.includes("1000pcs")) {
       return 1000
@@ -293,111 +262,51 @@ export const useOrderForm = () => {
     if (unitLower.includes("10pcs")) {
       return 10
     }
-    // 默認為1 (pcs, set等)
     return 1
-  }
+  }, [])
 
-  // 計算實際數量（考慮單位換算）
-  const calculateActualQuantity = (quantity: number, unit: string) => {
-    return quantity * getUnitMultiplier(unit)
-  }
+  const calculateItemTotal = useCallback(
+    (item: OrderItem) => {
+      const actualQuantityInPcs = item.quantity * getUnitMultiplier(item.unit)
+      return actualQuantityInPcs * item.unitPrice
+    },
+    [getUnitMultiplier],
+  )
 
-  // 計算實際單價（考慮單位換算）
-  const calculateActualUnitPrice = (unitPrice: number, unit: string) => {
-    return unitPrice * getUnitMultiplier(unit)
-  }
-
-  const getCurrentItem = () => {
-    return currentItemForBatch
-  }
-
-  const handleItemChange = (id: string, field: string, value: any) => {
-    setOrderItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
-  }
-
-  const handleRemoveProduct = (id: string) => {
-    setOrderItems((prev) => prev.filter((item) => item.id !== id))
-
-    // 如果沒有產品了，解鎖客戶選擇
-    if (orderItems.length <= 1) {
-      setIsProductSettingsConfirmed(false)
-      setIsProcurementReady(false)
-      setIsProcurementSettingsConfirmed(false)
-    }
-  }
-
-  const calculateItemTotal = (item: OrderItem) => {
-    // 計算實際件數（考慮單位換算）
-    const actualQuantityInPcs = item.quantity * getUnitMultiplier(item.unit)
-    // 總價 = 實際件數 × 單價
-    return actualQuantityInPcs * item.unitPrice
-  }
-
-  const openBatchManagement = (item: OrderItem) => {
-    setCurrentItemForBatch(item)
-    setIsManagingBatches(true)
-  }
-
-  const handleClearAllProducts = () => {
-    setOrderItems([])
-    setIsProductSettingsConfirmed(false)
-    setIsProcurementReady(false)
-    setIsProcurementSettingsConfirmed(false)
-    setSelectedProducts([])
-  }
-
-  const calculateTotal = () => {
+  const calculateTotal = useCallback(() => {
     return orderItems.reduce((total, item) => total + calculateItemTotal(item), 0)
-  }
+  }, [orderItems, calculateItemTotal])
 
-  const confirmProductsReady = () => {
-    setIsProductSettingsConfirmed(!isProductSettingsConfirmed)
-    if (!isProductSettingsConfirmed) {
-      // 確認產品設定時，準備進入採購設定階段
-      setIsProcurementReady(true)
-    } else {
-      // 取消確認時，重置採購相關狀態
-      setIsProcurementReady(false)
-      setIsProcurementSettingsConfirmed(false)
-    }
-  }
+  const calculateActualQuantity = useCallback(
+    (quantity: number, unit: string) => {
+      return quantity * getUnitMultiplier(unit)
+    },
+    [getUnitMultiplier],
+  )
 
-  const confirmProcurementSettings = () => {
-    setIsProcurementSettingsConfirmed(!isProcurementSettingsConfirmed)
-  }
+  const calculateActualUnitPrice = useCallback(
+    (unitPrice: number, unit: string) => {
+      return unitPrice * getUnitMultiplier(unit)
+    },
+    [getUnitMultiplier],
+  )
 
-  const handleSubmitOrder = async (createPurchaseOrder = false) => {
-    console.log("提交訂單...")
-    // TODO: 實現訂單提交邏輯
-  }
+  // Product management
+  const checkIsProductAdded = useCallback(
+    (partNo: string) => {
+      return orderItems.some((item) => item.productPartNo === partNo)
+    },
+    [orderItems],
+  )
 
-  const createPurchaseOrders = async (orderId: string) => {
-    console.log("創建採購單:", orderId)
-    // TODO: 實現採購單創建邏輯
-  }
+  const isProductSelected = useCallback(
+    (partNo: string) => {
+      return selectedProducts.includes(partNo)
+    },
+    [selectedProducts],
+  )
 
-  const getOrderData = async (skipValidation = false) => {
-    return {}
-  }
-
-  const handleProcurementDataChange = (data: any) => {
-    setProcurementItems(data)
-  }
-
-  const checkOrderNumberDuplicate = async (orderNumber: string) => {
-    // TODO: 實現訂單編號重複檢查
-  }
-
-  const getCustomerName = (customerId: string) => {
-    const customer = customers.find((c) => c.customer_id === customerId)
-    return customer?.customer_full_name || customer?.customer_short_name || ""
-  }
-
-  const isProductSelected = (partNo: string) => {
-    return selectedProducts.includes(partNo)
-  }
-
-  const toggleProductSelection = (partNo: string) => {
+  const toggleProductSelection = useCallback((partNo: string) => {
     setSelectedProducts((prev) => {
       if (prev.includes(partNo)) {
         return prev.filter((p) => p !== partNo)
@@ -405,18 +314,13 @@ export const useOrderForm = () => {
         return [...prev, partNo]
       }
     })
-  }
+  }, [])
 
-  const clearAllSelections = () => {
+  const clearAllSelections = useCallback(() => {
     setSelectedProducts([])
-  }
+  }, [])
 
-  // Check if a product is already added to the order
-  const checkIsProductAdded = (partNo: string) => {
-    return orderItems.some((item) => item.productPartNo === partNo)
-  }
-
-  const handleAddSelectedProducts = () => {
+  const handleAddSelectedProducts = useCallback(() => {
     if (selectedProducts.length === 0) return
 
     setLoadingSelectedProducts(true)
@@ -445,8 +349,8 @@ export const useOrderForm = () => {
                 id: `batch-${Date.now()}`,
                 productPartNo: product.part_no,
                 batchNumber: 1,
-                quantity: actualQuantityInPcs, // 使用實際PCS數量
-                unit: "PCS", // 批次統一使用PCS
+                quantity: actualQuantityInPcs,
+                unit: "PCS",
                 unitMultiplier: 1,
                 plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
                 status: "pending",
@@ -471,9 +375,17 @@ export const useOrderForm = () => {
     } finally {
       setLoadingSelectedProducts(false)
     }
-  }
+  }, [
+    selectedProducts,
+    regularProducts,
+    assemblyProducts,
+    checkIsProductAdded,
+    productUnits,
+    getUnitMultiplier,
+    customerCurrency,
+  ])
 
-  const handleAddAssemblyProduct = () => {
+  const handleAddAssemblyProduct = useCallback(() => {
     if (!selectedProductPartNo) return
 
     const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
@@ -493,7 +405,7 @@ export const useOrderForm = () => {
             id: `batch-${Date.now()}`,
             batchNumber: 1,
             quantity: 1,
-            plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30天後
+            plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             status: "pending",
           },
         ],
@@ -506,36 +418,166 @@ export const useOrderForm = () => {
       setSelectedProductPartNo("")
       console.log("成功添加組件產品:", product.part_no)
     }
-  }
+  }, [selectedProductPartNo, assemblyProducts, checkIsProductAdded, productUnits, customerCurrency])
 
-  const getProductPartNo = (product: Product) => {
+  // Form submission
+  const handleSubmitOrder = useCallback(
+    async (createPurchaseOrder = false) => {
+      try {
+        setIsSubmitting(true)
+
+        // Validate required fields
+        if (!selectedCustomerId) throw new Error("請選擇客戶")
+        if (!poNumber) throw new Error("請輸入客戶PO編號")
+        if (orderItems.length === 0) throw new Error("請至少添加一個產品")
+
+        const supabase = createClient()
+
+        // Prepare order data
+        const orderData = {
+          order_id: useCustomOrderNumber ? customOrderNumber : orderNumber,
+          customer_id: selectedCustomerId,
+          po_id: poNumber,
+          payment_terms: paymentTerms || "",
+          trade_terms: tradeTerms || "",
+          remarks: remarks || "",
+          order_info: orderInfo,
+          status: 0,
+          created_at: new Date().toISOString(),
+          order_items: orderItems.map((item) => ({
+            product_part_no: item.productPartNo,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            currency: item.currency,
+            unit: item.unit,
+            is_assembly: item.isAssembly,
+            shipment_batches: item.shipmentBatches || [],
+          })),
+        }
+
+        // Insert order
+        const { data, error } = await supabase.from("orders").insert([orderData]).select()
+
+        if (error) throw error
+
+        return data
+      } catch (err: any) {
+        console.error("Error submitting order:", err)
+        throw err
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [
+      selectedCustomerId,
+      poNumber,
+      orderItems,
+      useCustomOrderNumber,
+      customOrderNumber,
+      orderNumber,
+      paymentTerms,
+      tradeTerms,
+      remarks,
+      orderInfo,
+    ],
+  )
+
+  // Other handlers
+  const confirmProductsReady = useCallback(() => {
+    setIsProductSettingsConfirmed(!isProductSettingsConfirmed)
+    if (!isProductSettingsConfirmed) {
+      setIsProcurementReady(true)
+    } else {
+      setIsProcurementReady(false)
+      setIsProcurementSettingsConfirmed(false)
+      setOrderTableData([])
+    }
+  }, [isProductSettingsConfirmed])
+
+  const handleOrderTableDataChange = useCallback((tableData: ProductTableItem[]) => {
+    setOrderTableData(tableData)
+    setOrderInfo((prev) => ({
+      ...prev,
+      product_table: tableData,
+    }))
+  }, [])
+
+  const generateNewOrderNumber = useCallback(async () => {
+    if (useCustomOrderNumber) return
+
+    setIsLoadingOrderNumber(true)
+    try {
+      const newOrderNumber = await generateOrderNumber()
+      setOrderNumber(newOrderNumber || "")
+    } catch (error) {
+      console.error("生成訂單編號失敗:", error)
+      setError("生成訂單編號失敗")
+    } finally {
+      setIsLoadingOrderNumber(false)
+    }
+  }, [useCustomOrderNumber])
+
+  const handleItemChange = useCallback((id: string, field: string, value: any) => {
+    setOrderItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
+  }, [])
+
+  const handleRemoveProduct = useCallback(
+    (id: string) => {
+      setOrderItems((prev) => prev.filter((item) => item.id !== id))
+
+      if (orderItems.length <= 1) {
+        setIsProductSettingsConfirmed(false)
+        setIsProcurementReady(false)
+        setIsProcurementSettingsConfirmed(false)
+        setOrderTableData([])
+      }
+    },
+    [orderItems.length],
+  )
+
+  const openBatchManagement = useCallback((item: OrderItem) => {
+    setCurrentItemForBatch(item)
+    setIsManagingBatches(true)
+  }, [])
+
+  const getCurrentItem = useCallback(() => {
+    return currentItemForBatch
+  }, [currentItemForBatch])
+
+  const handleClearAllProducts = useCallback(() => {
+    setOrderItems([])
+    setIsProductSettingsConfirmed(false)
+    setIsProcurementReady(false)
+    setIsProcurementSettingsConfirmed(false)
+    setSelectedProducts([])
+    setOrderTableData([])
+  }, [])
+
+  const getProductPartNo = useCallback((product: Product) => {
     return product.part_no || ""
-  }
+  }, [])
 
-  const getProductName = (product: Product) => {
+  const getProductName = useCallback((product: Product) => {
     return product.component_name || product.part_no || ""
-  }
+  }, [])
 
-  const isProductAssembly = (product: Product) => {
+  const isProductAssembly = useCallback((product: Product) => {
     return product.is_assembly || false
-  }
+  }, [])
 
-  const parseSubPartNo = (product: Product) => {
+  const parseSubPartNo = useCallback((product: Product) => {
     if (!product.sub_part_no) return []
 
     try {
-      // If it's already an array, return it
       if (Array.isArray(product.sub_part_no)) {
         return product.sub_part_no
       }
 
-      // If it's a string, try to parse it as JSON
       if (typeof product.sub_part_no === "string") {
         const parsed = JSON.parse(product.sub_part_no)
         return Array.isArray(parsed) ? parsed : []
       }
 
-      // If it's an object, wrap it in an array
       if (typeof product.sub_part_no === "object") {
         return [product.sub_part_no]
       }
@@ -545,98 +587,166 @@ export const useOrderForm = () => {
       console.error("Error parsing sub_part_no:", error)
       return []
     }
-  }
+  }, [])
+
+  const handleProcurementDataChange = useCallback((data: any) => {
+    setProcurementItems(data)
+  }, [])
+
+  const createPurchaseOrders = useCallback(async (orderId: string) => {
+    console.log("創建採購單:", orderId)
+    return []
+  }, [])
+
+  const confirmProcurementSettings = useCallback(() => {
+    setIsProcurementSettingsConfirmed(!isProcurementSettingsConfirmed)
+  }, [isProcurementSettingsConfirmed])
+
+  const getOrderData = useCallback(
+    async (skipValidation = false) => {
+      return {
+        order_id: useCustomOrderNumber ? customOrderNumber : orderNumber,
+        customer_id: selectedCustomerId,
+        po_id: poNumber,
+        payment_terms: paymentTerms,
+        trade_terms: tradeTerms,
+        remarks: remarks,
+        order_info: orderInfo,
+        order_items: orderItems,
+        created_at: new Date().toISOString(),
+        status: 0,
+      }
+    },
+    [
+      useCustomOrderNumber,
+      customOrderNumber,
+      orderNumber,
+      selectedCustomerId,
+      poNumber,
+      paymentTerms,
+      tradeTerms,
+      remarks,
+      orderInfo,
+      orderItems,
+    ],
+  )
+
+  const getCustomerName = useCallback(
+    (customerId: string) => {
+      const customer = customers.find((c) => c.customer_id === customerId)
+      return customer?.customer_full_name || customer?.customer_short_name || ""
+    },
+    [customers],
+  )
+
+  const checkOrderNumberDuplicate = useCallback(async (orderNumber: string) => {
+    // TODO: 實現訂單編號重複檢查
+  }, [])
 
   return {
-    productUnits,
-    exchangeRates,
-    getUnitDisplayName,
-    getUnitMultiplier,
-    calculateActualQuantity,
-    calculateActualUnitPrice,
+    // State
     loading,
     error,
-    customers,
     selectedCustomerId,
-    setSelectedCustomerId,
     selectedCustomer,
     poNumber,
-    setPoNumber,
-    paymentTerms, // 更新欄位名稱
-    setPaymentTerms, // 更新欄位名稱
-    tradeTerms, // 更新欄位名稱
-    setTradeTerms, // 更新欄位名稱
     orderNumber,
-    setOrderNumber,
-    isLoadingOrderNumber,
     customOrderNumber,
-    setCustomOrderNumber,
     useCustomOrderNumber,
-    setUseCustomOrderNumber,
-    isCheckingOrderNumber,
-    orderNumberStatus,
-    orderNumberMessage,
-    checkOrderNumberDuplicate,
+    paymentTerms,
+    tradeTerms,
+    remarks,
+    orderInfo,
+    purchaseInfo,
+    purchaseRemarks,
+    customers,
+    regularProducts,
+    assemblyProducts,
+    orderItems,
+    procurementItems,
+    productUnits,
+    exchangeRates,
+    orderTableData,
+    activeTab,
+    productSelectionTab,
+    productSearchTerm,
+    selectedProducts,
+    selectedProductPartNo,
     isProductSettingsConfirmed,
     isProcurementSettingsConfirmed,
     isProcurementReady,
-    getCustomerName,
+    isSplitView,
+    isManagingBatches,
+    isSubmitting,
+    isCreatingPurchaseOrder,
+    isLoadingOrderNumber,
+    loadingSelectedProducts,
+    currentItemForBatch,
+    orderNumberStatus,
+    orderNumberMessage,
+    isCheckingOrderNumber,
+    customerCurrency,
+
+    // Setters
+    setSelectedCustomerId: handleCustomerSelection,
+    setPoNumber,
+    setOrderNumber,
+    setCustomOrderNumber,
+    setUseCustomOrderNumber,
+    setPaymentTerms,
+    setTradeTerms,
+    setRemarks,
+    setOrderInfo,
+    setPurchaseInfo,
+    setPurchaseRemarks,
+    setOrderItems,
+    setActiveTab,
+    setProductSelectionTab,
+    setProductSearchTerm,
+    setSelectedProductPartNo,
+    setIsProductSettingsConfirmed,
+    setIsProcurementSettingsConfirmed,
+    setIsProcurementReady,
+    setIsSplitView,
+    setIsManagingBatches,
+    setIsSubmitting,
+    setIsCreatingPurchaseOrder,
+    setIsLoadingOrderNumber,
+    setLoadingSelectedProducts,
     setOrderNumberStatus,
     setOrderNumberMessage,
-    orderItems,
-    setOrderItems,
-    activeTab,
-    setActiveTab,
-    isSplitView,
-    setIsSplitView,
-    regularProducts,
-    assemblyProducts,
-    productSelectionTab,
-    setProductSelectionTab,
-    productSearchTerm,
-    setProductSearchTerm,
-    selectedProducts,
-    selectedProductPartNo,
-    setSelectedProductPartNo,
-    customerCurrency,
+
+    // Methods
+    getUnitDisplayName,
+    getUnitMultiplier,
+    calculateItemTotal,
+    calculateTotal,
+    calculateActualQuantity,
+    calculateActualUnitPrice,
     checkIsProductAdded,
     isProductSelected,
     toggleProductSelection,
     clearAllSelections,
+    handleSubmitOrder,
+    confirmProductsReady,
+    handleOrderTableDataChange,
+    generateNewOrderNumber,
+    handleItemChange,
+    handleRemoveProduct,
+    openBatchManagement,
+    getCurrentItem,
+    handleClearAllProducts,
     handleAddSelectedProducts,
     handleAddAssemblyProduct,
-    loadingSelectedProducts,
     getProductPartNo,
     getProductName,
     isProductAssembly,
     parseSubPartNo,
-    handleItemChange,
-    handleRemoveProduct,
-    calculateItemTotal,
-    openBatchManagement,
-    handleClearAllProducts,
-    calculateTotal,
-    confirmProductsReady,
-    confirmProcurementSettings,
-    handleSubmitOrder,
-    createPurchaseOrders,
-    getOrderData,
     handleProcurementDataChange,
-    isSubmitting,
-    isCreatingPurchaseOrder,
-    isManagingBatches,
-    setIsManagingBatches,
-    getCurrentItem,
-    orderInfo,
-    setOrderInfo,
-    remarks,
-    setRemarks,
-    purchaseInfo,
-    setPurchaseInfo,
-    purchaseRemarks,
-    setPurchaseRemarks,
-    procurementItems,
-    setIsProcurementReady,
-    generateNewOrderNumber,
+    createPurchaseOrders,
+    confirmProcurementSettings,
+    getOrderData,
+    getCustomerName,
+    checkOrderNumberDuplicate,
   }
 }
