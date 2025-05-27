@@ -15,10 +15,8 @@ import {
   LucideAlertTriangle,
   LucideCheckCircle,
   LucidePackage,
-  LucidePrinter,
 } from "lucide-react"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
-import { PrintOrderReport } from "@/components/orders/print-order-report"
 
 interface OrderItem {
   id: string
@@ -89,32 +87,6 @@ export function EnhancedProductList({
     return Math.abs(totalBatchQuantity - actualQuantity) > 0.01
   }
 
-  // 準備列印報表的資料
-  const preparePrintData = () => {
-    return {
-      order_id: "PREVIEW-ORDER",
-      po_id: "PREVIEW-PO",
-      customer_name: "預覽客戶",
-      customer_address: "預覽地址",
-      customer_contact: "預覽聯絡人",
-      order_date: new Date().toISOString(),
-      delivery_date: new Date().toISOString(),
-      payment_term: "T/T 30 days",
-      delivery_terms: "FOB Taiwan",
-      remarks: "這是預覽報表",
-      amount: calculateTotal(),
-      currency: customerCurrency,
-      batch_items: orderItems.map((item) => ({
-        part_no: item.productPartNo,
-        description: item.productName,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total_price: calculateItemTotal(item),
-        unit: getUnitDisplayName(item.unit),
-      })),
-    }
-  }
-
   if (orderItems.length === 0) {
     return (
       <Card>
@@ -146,17 +118,6 @@ export function EnhancedProductList({
           <Badge variant="outline" className="bg-green-50 text-green-700">
             總金額: {formatCurrencyAmount(calculateTotal(), customerCurrency)}
           </Badge>
-          {orderItems.length > 0 && (
-            <PrintOrderReport
-              orderData={preparePrintData()}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <LucidePrinter className="h-4 w-4 mr-2" />
-                  預覽報表
-                </Button>
-              }
-            />
-          )}
           {!isProductSettingsConfirmed && (
             <Button variant="outline" size="sm" onClick={handleClearAllProducts}>
               <LucideTrash2 className="h-4 w-4 mr-2" />

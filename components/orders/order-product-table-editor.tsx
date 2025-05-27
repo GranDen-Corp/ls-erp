@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw, Save, Eye, Printer } from "lucide-react"
 import { formatProductDescription } from "@/lib/product-description-formatter"
-import { PrintOrderReport } from "@/components/orders/print-order-report"
 
 interface ProductTableItem {
   part_no: string
@@ -107,7 +106,139 @@ export function OrderProductTableEditor({
     setHasChanges(false)
   }
 
-  if (!isVisible || !isProductSettingsConfirmed) {
+  // 處理預覽列印
+  const handlePreviewPrint = () => {
+    console.log("預覽列印 - orderData:", orderData)
+    console.log("預覽列印 - orderItems:", orderItems)
+
+    // 直接調用列印功能
+    const printData = tableData.map((item) => ({
+      part_no: item.part_no,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+    }))
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>訂單報表 - ${orderData?.order_id || orderId}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .order-info { margin-bottom: 20px; }
+            .order-info table { width: 100%; border-collapse: collapse; }
+            .order-info td { padding: 5px; border: 1px solid #ddd; }
+            .products-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .products-table th, .products-table td { 
+              border: 1px solid #ddd; 
+              padding: 8px; 
+              text-align: left; 
+              vertical-align: top;
+            }
+            .products-table th { background-color: #f5f5f5; }
+            .description-cell { 
+              font-family: monospace; 
+              font-size: 11px; 
+              white-space: pre-line; 
+              min-height: 200px;
+              width: 300px;
+            }
+            .number-cell { text-align: right; }
+            .center-cell { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>訂單報表</h1>
+            <h2>Order Report</h2>
+          </div>
+          
+          <div class="order-info">
+            <table>
+              <tr>
+                <td><strong>訂單編號:</strong></td>
+                <td>${orderData?.order_id || orderId}</td>
+                <td><strong>客戶PO:</strong></td>
+                <td>${orderData?.po_id || ""}</td>
+              </tr>
+              <tr>
+                <td><strong>客戶名稱:</strong></td>
+                <td>${orderData?.customer_name || ""}</td>
+                <td><strong>建立日期:</strong></td>
+                <td>${new Date().toLocaleDateString()}</td>
+              </tr>
+              <tr>
+                <td><strong>付款條件:</strong></td>
+                <td>${orderData?.payment_terms || ""}</td>
+                <td><strong>交付條件:</strong></td>
+                <td>${orderData?.trade_terms || ""}</td>
+              </tr>
+            </table>
+          </div>
+
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>產品編號</th>
+                <th>產品描述</th>
+                <th>數量</th>
+                <th>單位</th>
+                <th>單價</th>
+                <th>總價</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${printData
+                .map(
+                  (item) => `
+                <tr>
+                  <td class="center-cell">${item.part_no}</td>
+                  <td class="description-cell">${item.description}</td>
+                  <td class="center-cell">${item.quantity}</td>
+                  <td class="center-cell">${item.unit}</td>
+                  <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
+                  <td class="number-cell">$${item.total_price.toFixed(2)}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+
+          ${
+            orderData?.remarks
+              ? `
+            <div style="margin-top: 30px;">
+              <strong>備註:</strong><br>
+              ${orderData.remarks}
+            </div>
+          `
+              : ""
+          }
+        </body>
+      </html>
+    `
+
+    // 開啟列印視窗
+    const printWindow = window.open("", "_blank")
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.print()
+    }
+  }
+
+  // 處理直接列印
+  const handleDirectPrint = () => {
+    console.log("直接列印 - orderData:", orderData)
+    handlePreviewPrint() // 暫時使用相同的列印邏輯
+  }
+
+  if (!isVisible) {
     return null
   }
 
@@ -123,27 +254,16 @@ export function OrderProductTableEditor({
               </Badge>
             )}
 
-            {/* 列印按鈕組 */}
-            <PrintOrderReport
-              orderData={orderData}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4 mr-2" />
-                  預覽列印
-                </Button>
-              }
-            />
+            {/* 簡化的列印按鈕 - 直接實現功能 */}
+            <Button variant="outline" size="sm" onClick={handlePreviewPrint} className="flex items-center gap-1">
+              <Eye className="h-4 w-4" />
+              預覽列印
+            </Button>
 
-            <PrintOrderReport
-              orderData={orderData}
-              directPrint={true}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Printer className="h-4 w-4 mr-2" />
-                  直接列印
-                </Button>
-              }
-            />
+            <Button variant="outline" size="sm" onClick={handleDirectPrint} className="flex items-center gap-1">
+              <Printer className="h-4 w-4" />
+              直接列印
+            </Button>
 
             <Button variant="outline" size="sm" onClick={generateTableData} className="flex items-center gap-1">
               <RefreshCw className="h-4 w-4" />

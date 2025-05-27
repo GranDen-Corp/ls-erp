@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,18 +44,39 @@ interface PrintOrderReportProps {
     payment_terms: string
     trade_terms: string
     remarks: string
-    created_at: string
+    created_at?: string
+    order_date?: string
+    customer_name?: string
+    customer_address?: string
+    customer_contact?: string
+    amount?: number
+    currency?: string
+    batch_items?: any[]
   }
-  customer: Customer | null
-  orderItems: OrderItem[]
-  isEnabled: boolean
+  customer?: Customer | null
+  orderItems?: OrderItem[]
+  isEnabled?: boolean
+  trigger?: React.ReactNode
+  directPrint?: boolean
 }
 
-export function PrintOrderReport({ orderData, customer, orderItems = [], isEnabled }: PrintOrderReportProps) {
+export function PrintOrderReport({
+  orderData,
+  customer,
+  orderItems = [],
+  isEnabled = true, // 默認啟用
+  trigger,
+  directPrint = false,
+}: PrintOrderReportProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const preparePrintData = () => {
-    // Add null check and default to empty array
+    // 如果有 batch_items 就使用，否則從 orderItems 生成
+    if (orderData?.batch_items && orderData.batch_items.length > 0) {
+      return orderData.batch_items
+    }
+
+    // 從 orderItems 生成打印數據
     if (!orderItems || !Array.isArray(orderItems)) {
       return []
     }
@@ -129,9 +152,9 @@ export function PrintOrderReport({ orderData, customer, orderItems = [], isEnabl
               </tr>
               <tr>
                 <td><strong>客戶名稱:</strong></td>
-                <td>${customer?.customer_full_name || ""}</td>
+                <td>${orderData?.customer_name || customer?.customer_full_name || ""}</td>
                 <td><strong>建立日期:</strong></td>
-                <td>${orderData?.created_at ? new Date(orderData.created_at).toLocaleDateString() : ""}</td>
+                <td>${orderData?.created_at || orderData?.order_date ? new Date(orderData.created_at || orderData.order_date).toLocaleDateString() : ""}</td>
               </tr>
               <tr>
                 <td><strong>付款條件:</strong></td>
@@ -196,6 +219,12 @@ export function PrintOrderReport({ orderData, customer, orderItems = [], isEnabl
 
   const printData = preparePrintData()
 
+  // 如果有自定義 trigger，直接返回它
+  if (trigger) {
+    return <div onClick={directPrint ? handlePrint : handlePreview}>{trigger}</div>
+  }
+
+  // 默認按鈕
   return (
     <div className="flex gap-2">
       <Button
@@ -239,11 +268,13 @@ export function PrintOrderReport({ orderData, customer, orderItems = [], isEnabl
                   <strong>客戶PO:</strong> {orderData?.po_id || ""}
                 </div>
                 <div>
-                  <strong>客戶名稱:</strong> {customer?.customer_full_name || ""}
+                  <strong>客戶名稱:</strong> {orderData?.customer_name || customer?.customer_full_name || ""}
                 </div>
                 <div>
                   <strong>建立日期:</strong>{" "}
-                  {orderData?.created_at ? new Date(orderData.created_at).toLocaleDateString() : ""}
+                  {orderData?.created_at || orderData?.order_date
+                    ? new Date(orderData.created_at || orderData.order_date).toLocaleDateString()
+                    : ""}
                 </div>
                 <div>
                   <strong>付款條件:</strong> {orderData?.payment_terms || ""}
