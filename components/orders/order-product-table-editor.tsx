@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { RefreshCw, Save } from "lucide-react"
+import { RefreshCw, Save, Eye, Printer } from "lucide-react"
 import { formatProductDescription } from "@/lib/product-description-formatter"
+import { PrintOrderReport } from "@/components/orders/print-order-report"
 
 interface ProductTableItem {
   part_no: string
@@ -46,6 +47,7 @@ interface OrderProductTableEditorProps {
   isProductSettingsConfirmed: boolean
   getUnitDisplayName: (unit: string) => string
   calculateItemTotal: (item: OrderItem) => number
+  orderData: any
 }
 
 export function OrderProductTableEditor({
@@ -57,6 +59,7 @@ export function OrderProductTableEditor({
   isProductSettingsConfirmed,
   getUnitDisplayName,
   calculateItemTotal,
+  orderData,
 }: OrderProductTableEditorProps) {
   const [tableData, setTableData] = useState<ProductTableItem[]>([])
   const [hasChanges, setHasChanges] = useState(false)
@@ -119,6 +122,29 @@ export function OrderProductTableEditor({
                 有未儲存的變更
               </Badge>
             )}
+
+            {/* 列印按鈕組 */}
+            <PrintOrderReport
+              orderData={orderData}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Eye className="h-4 w-4 mr-2" />
+                  預覽列印
+                </Button>
+              }
+            />
+
+            <PrintOrderReport
+              orderData={orderData}
+              directPrint={true}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Printer className="h-4 w-4 mr-2" />
+                  直接列印
+                </Button>
+              }
+            />
+
             <Button variant="outline" size="sm" onClick={generateTableData} className="flex items-center gap-1">
               <RefreshCw className="h-4 w-4" />
               重新生成

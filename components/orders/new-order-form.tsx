@@ -15,7 +15,6 @@ import {
   LucideSave,
   LucidePackage,
   LucideClipboardList,
-  LucideEye,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -23,7 +22,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProcurementDataEditor } from "@/components/orders/procurement-data-editor"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
 import { OrderValidation } from "@/components/orders/order-validation"
-import { PrintOrderReport } from "@/components/orders/print-order-report"
 import { OrderProductTableEditor } from "@/components/orders/order-product-table-editor"
 import { useOrderForm } from "@/hooks/use-order-form"
 import CustomerSelection from "./customer-selection"
@@ -215,21 +213,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
               {/* 快速操作按鈕 */}
               <div className="flex gap-2">
-                {/* 列印按鈕 - 只有在產品設定確認後才啟用 */}
-                {orderForm.isProductSettingsConfirmed && orderForm.orderItems.length > 0 && (
-                  <>
-                    <PrintOrderReport
-                      orderData={preparePrintData()}
-                      trigger={
-                        <Button variant="outline" size="sm">
-                          <LucideEye className="h-4 w-4 mr-2" />
-                          預覽列印
-                        </Button>
-                      }
-                    />
-                  </>
-                )}
-
                 {orderForm.isProductSettingsConfirmed && orderForm.isProcurementSettingsConfirmed && (
                   <>
                     <Button
@@ -386,6 +369,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
               getUnitDisplayName={orderForm.getUnitDisplayName}
               calculateItemTotal={orderForm.calculateItemTotal}
+              orderData={preparePrintData()}
             />
           </div>
         )}
@@ -504,12 +488,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         {/* 訂單資訊和備註 - 始終顯示在頁面底部 */}
         <MemoizedOrderInfo
-          orderInfo={orderForm.orderInfo}
-          setOrderInfo={orderForm.setOrderInfo}
           remarks={orderForm.remarks}
           setRemarks={orderForm.setRemarks}
-          purchaseInfo={orderForm.purchaseInfo}
-          setPurchaseInfo={orderForm.setPurchaseInfo}
           purchaseRemarks={orderForm.purchaseRemarks}
           setPurchaseRemarks={orderForm.setPurchaseRemarks}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
