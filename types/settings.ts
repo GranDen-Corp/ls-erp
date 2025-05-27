@@ -1,3 +1,5 @@
+// Note: StaticParameter interface corresponds to the unit_setting table in the database
+
 export interface StaticParameter {
   id: number
   category: string

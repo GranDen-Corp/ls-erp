@@ -2,9 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import StaticParametersManager from "@/components/static-parameters-manager"
 import ExchangeRatesManager from "@/components/exchange-rates-manager"
-import TradeTermsManager from "@/components/settings/trade-terms-manager"
-import PaymentTermsManager from "@/components/settings/payment-terms-manager"
-import OrderStatusesManager from "@/components/settings/order-statuses-manager"
 import { getStaticParameters, getExchangeRates, getTradeTerms, getPaymentTerms, getOrderStatuses } from "./actions"
 
 export default async function SettingsPage() {
@@ -25,12 +22,9 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="system-parameters" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="system-parameters">系統參數設定</TabsTrigger>
           <TabsTrigger value="exchange-rates">匯率設定</TabsTrigger>
-          <TabsTrigger value="trade-terms">交易條件</TabsTrigger>
-          <TabsTrigger value="payment-terms">付款條件</TabsTrigger>
-          <TabsTrigger value="order-statuses">訂單狀態</TabsTrigger>
           <TabsTrigger value="team-matrix">團隊矩陣</TabsTrigger>
         </TabsList>
 
@@ -38,10 +32,15 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>系統參數設定</CardTitle>
-              <CardDescription>設定系統中使用的各種參數，包括產品單位、系統翻譯等</CardDescription>
+              <CardDescription>設定系統中使用的各種參數，包括產品單位、交易條件、付款條件、訂單狀態等</CardDescription>
             </CardHeader>
             <CardContent>
-              <StaticParametersManager parameters={staticParameters} />
+              <StaticParametersManager
+                parameters={staticParameters}
+                tradeTerms={tradeTerms}
+                paymentTerms={paymentTerms}
+                orderStatuses={orderStatuses}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -54,42 +53,6 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <ExchangeRatesManager exchangeRates={exchangeRates} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="trade-terms">
-          <Card>
-            <CardHeader>
-              <CardTitle>交易條件設定</CardTitle>
-              <CardDescription>管理國際貿易條件，如FOB、CIF等貿易術語</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TradeTermsManager tradeTerms={tradeTerms} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payment-terms">
-          <Card>
-            <CardHeader>
-              <CardTitle>付款條件設定</CardTitle>
-              <CardDescription>管理付款方式和條件，如信用證、電匯等</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PaymentTermsManager paymentTerms={paymentTerms} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="order-statuses">
-          <Card>
-            <CardHeader>
-              <CardTitle>訂單狀態設定</CardTitle>
-              <CardDescription>管理訂單處理流程的各個狀態</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <OrderStatusesManager orderStatuses={orderStatuses} />
             </CardContent>
           </Card>
         </TabsContent>

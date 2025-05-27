@@ -15,7 +15,7 @@ export async function getStaticParameters() {
   const supabase = createServerSupabaseClient()
 
   const { data, error } = await supabase
-    .from("static_parameters")
+    .from("unit_setting")
     .select("*")
     .order("category", { ascending: true })
     .order("sort_order", { ascending: true })
@@ -31,7 +31,7 @@ export async function getStaticParameters() {
 export async function createStaticParameter(formData: StaticParameterFormData) {
   const supabase = createServerSupabaseClient()
 
-  const { error } = await supabase.from("static_parameters").insert([formData])
+  const { error } = await supabase.from("unit_setting").insert([formData])
 
   if (error) {
     console.error("Error creating static parameter:", error)
@@ -45,7 +45,7 @@ export async function createStaticParameter(formData: StaticParameterFormData) {
 export async function updateStaticParameter(id: number, formData: StaticParameterFormData) {
   const supabase = createServerSupabaseClient()
 
-  const { error } = await supabase.from("static_parameters").update(formData).eq("id", id)
+  const { error } = await supabase.from("unit_setting").update(formData).eq("id", id)
 
   if (error) {
     console.error("Error updating static parameter:", error)
@@ -59,7 +59,7 @@ export async function updateStaticParameter(id: number, formData: StaticParamete
 export async function deleteStaticParameter(id: number) {
   const supabase = createServerSupabaseClient()
 
-  const { error } = await supabase.from("static_parameters").delete().eq("id", id)
+  const { error } = await supabase.from("unit_setting").delete().eq("id", id)
 
   if (error) {
     console.error("Error deleting static parameter:", error)
@@ -73,7 +73,7 @@ export async function deleteStaticParameter(id: number) {
 export async function toggleStaticParameterStatus(id: number, isActive: boolean) {
   const supabase = createServerSupabaseClient()
 
-  const { error } = await supabase.from("static_parameters").update({ is_active: isActive }).eq("id", id)
+  const { error } = await supabase.from("unit_setting").update({ is_active: isActive }).eq("id", id)
 
   if (error) {
     console.error("Error toggling static parameter status:", error)
