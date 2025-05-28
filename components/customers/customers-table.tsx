@@ -48,6 +48,12 @@ interface TeamMember {
   is_active?: boolean
 }
 
+interface PaymentTerm {
+  code: string
+  name_zh: string
+  name_en: string
+}
+
 interface CustomersTableProps {
   data?: Customer[]
   isLoading?: boolean
@@ -60,36 +66,56 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
   const [sortField, setSortField] = useState<SortField>("customer_id")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [teamMembers, setTeamMembers] = useState<Record<string, string>>({})
+  const [paymentTerms, setPaymentTerms] = useState<Record<string, string>>({})
   const [loadingTeamMembers, setLoadingTeamMembers] = useState(true)
 
-  // 獲取團隊成員資料
+  // 獲取團隊成員資料和付款條件
   useEffect(() => {
-    async function fetchTeamMembers() {
+    async function fetchData() {
       try {
         setLoadingTeamMembers(true)
-        const { data, error } = await supabaseClient.from("team_members").select("ls_employee_id, name")
 
-        if (error) {
-          console.error("Error fetching team members:", error)
-          return
+        // 獲取團隊成員
+        const { data: teamData, error: teamError } = await supabaseClient
+          .from("team_members")
+          .select("ls_employee_id, name")
+
+        if (teamError) {
+          console.error("Error fetching team members:", teamError)
+        } else {
+          const teamMemberMap: Record<string, string> = {}
+          teamData.forEach((member) => {
+            if (member.ls_employee_id && member.name) {
+              teamMemberMap[member.ls_employee_id] = member.name
+            }
+          })
+          setTeamMembers(teamMemberMap)
         }
 
-        const teamMemberMap: Record<string, string> = {}
-        data.forEach((member) => {
-          if (member.ls_employee_id && member.name) {
-            teamMemberMap[member.ls_employee_id] = member.name
-          }
-        })
+        // 獲取付款條件
+        const { data: paymentData, error: paymentError } = await supabaseClient
+          .from("payment_terms")
+          .select("code, name_zh, name_en")
 
-        setTeamMembers(teamMemberMap)
+        if (paymentError) {
+          console.error("Error fetching payment terms:", paymentError)
+        } else {
+          const paymentTermMap: Record<string, string> = {}
+          paymentData.forEach((term) => {
+            if (term.code && term.name_zh) {
+              paymentTermMap[term.code] = term.name_zh
+            }
+          })
+          setPaymentTerms(paymentTermMap)
+        }
       } catch (error) {
-        console.error("Failed to fetch team members:", error)
+        console.error("Failed to fetch data:", error)
       } finally {
         setLoadingTeamMembers(false)
       }
     }
 
-    fetchTeamMembers()
+    fetchData()
   }, [])
 
   // 處理排序
@@ -164,6 +190,18 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
     return customer.report_email || customer.invoice_email || "-"
   }
 
+  // 獲取付款條件
+  const getPaymentTerms = (customer: Customer) => {
+    if (!customer.payment_terms) return "-"
+
+    const termName = paymentTerms[customer.payment_terms]
+    if (termName) {
+      return `${termName} (${customer.payment_terms})`
+    }
+
+    return customer.payment_terms
+  }
+
   // 獲取活躍度狀態
   const getActivityStatus = (customer: Customer) => {
     if (customer.status === "inactive") {
@@ -235,9 +273,7 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
                     <TableCell>{getSalesRepresentative(customer)}</TableCell>
                     <TableCell>{getLogisticsCoordinator(customer)}</TableCell>
                     <TableCell>{customer.trade_terms || "-"}</TableCell>
-                    <TableCell>
-                      {customer.payment_terms || customer.payment_due_date ? `${customer.payment_due_date}天` : "-"}
-                    </TableCell>
+                    <TableCell>{getPaymentTerms(customer)}</TableCell>
                     <TableCell>
                       <Badge variant={activityStatus.variant}>{activityStatus.label}</Badge>
                     </TableCell>

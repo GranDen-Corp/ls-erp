@@ -10,9 +10,17 @@ import {
   updateTeamMemberCustomers,
   updateTeamMemberFactories,
   updateCustomerRepresentSales,
+  updateCustomerLogisticsCoordinator,
   updateSupplierQualityContact,
 } from "@/app/settings/team-matrix-actions"
 import { useToast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { Check, ChevronsUpDown, Search, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 interface AssignmentDialogProps {
   open: boolean
@@ -26,6 +34,9 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
   const [selectedCustomer, setSelectedCustomer] = useState<string>("")
   const [selectedFactory, setSelectedFactory] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [customerAssignmentType, setCustomerAssignmentType] = useState<"sales" | "logistics">("sales")
+  const [openCustomerSelector, setOpenCustomerSelector] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -205,7 +216,35 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
           title: "成功",
           description: "業務負責人已設定",
         })
-        onClose()
+        loadData() // 重新載入資料以更新顯示
+      } else {
+        toast({
+          title: "錯誤",
+          description: result.error || "設定失敗",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "錯誤",
+        description: "操作失敗",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSetLogisticsCustomer = async (customerId: string) => {
+    if (!member) return
+
+    try {
+      const result = await updateCustomerLogisticsCoordinator(customerId, member.ls_employee_id)
+
+      if (result.success) {
+        toast({
+          title: "成功",
+          description: "船務負責人已設定",
+        })
+        loadData() // 重新載入資料以更新顯示
       } else {
         toast({
           title: "錯誤",
@@ -233,7 +272,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
           title: "成功",
           description: "品管負責人已設定",
         })
-        onClose()
+        loadData() // 重新載入資料以更新顯示
       } else {
         toast({
           title: "錯誤",
@@ -250,9 +289,36 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
     }
   }
 
+  // 過濾客戶列表
+  const filteredCustomers = customers.filter((customer) => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      customer.customer_id?.toLowerCase().includes(searchLower) ||
+      customer.customer_short_name?.toLowerCase().includes(searchLower)
+    )
+  })
+
+  // 檢查客戶是否已有指定的負責人
+  const hasResponsible = (customer: any, type: "sales" | "logistics") => {
+    if (type === "sales") {
+      return customer.sales_representative && customer.sales_representative !== member?.ls_employee_id
+    } else {
+      return customer.logistics_coordinator && customer.logistics_coordinator !== member?.ls_employee_id
+    }
+  }
+
+  // 檢查客戶是否已由當前成員負責
+  const isResponsibleBy = (customer: any, type: "sales" | "logistics") => {
+    if (type === "sales") {
+      return customer.sales_representative === member?.ls_employee_id
+    } else {
+      return customer.logistics_coordinator === member?.ls_employee_id
+    }
+  }
+
   if (!member) return null
 
-  const shouldShowCustomers = member.role === "admin" || member.role === "sales"
+  const shouldShowCustomers = member.role === "admin" || member.role === "sales" || member.role === "shipping"
   const shouldShowFactories = member.role === "admin" || member.role === "shipping" || member.role === "qc"
 
   return (
@@ -276,7 +342,186 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
             <TabsContent value="customers" className="space-y-4">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">客戶分配</h3>
-                <p className="text-muted-foreground">客戶分配功能正在開發中...</p>
+
+                {/* 客戶分配類型選擇 */}
+                <div className="flex space-x-2 mb-4">
+                  <Button
+                    variant={customerAssignmentType === "sales" ? "default" : "outline"}
+                    onClick={() => setCustomerAssignmentType("sales")}
+                    disabled={member.role !== "admin" && member.role !== "sales"}
+                  >
+                    業務負責人
+                  </Button>
+                  <Button
+                    variant={customerAssignmentType === "logistics" ? "default" : "outline"}
+                    onClick={() => setCustomerAssignmentType("logistics")}
+                    disabled={member.role !== "admin" && member.role !== "shipping"}
+                  >
+                    船務負責人
+                  </Button>
+                </div>
+
+                {/* 客戶選擇器 */}
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Popover open={openCustomerSelector} onOpenChange={setOpenCustomerSelector}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openCustomerSelector}
+                          className="w-full justify-between"
+                        >
+                          {selectedCustomer
+                            ? customers.find((customer) => customer.customer_id === selectedCustomer)
+                                ?.customer_short_name
+                            : "選擇客戶..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput placeholder="搜尋客戶..." />
+                          <CommandList>
+                            <CommandEmpty>找不到客戶</CommandEmpty>
+                            <CommandGroup>
+                              <ScrollArea className="h-[300px]">
+                                {filteredCustomers.map((customer) => (
+                                  <CommandItem
+                                    key={customer.customer_id}
+                                    value={customer.customer_id}
+                                    onSelect={() => {
+                                      setSelectedCustomer(
+                                        customer.customer_id === selectedCustomer ? "" : customer.customer_id,
+                                      )
+                                      setOpenCustomerSelector(false)
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedCustomer === customer.customer_id ? "opacity-100" : "opacity-0",
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{customer.customer_short_name}</span>
+                                      <span className="text-xs text-muted-foreground">{customer.customer_id}</span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </ScrollArea>
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Button
+                      onClick={() => {
+                        if (customerAssignmentType === "sales") {
+                          handleSetSalesCustomer(selectedCustomer)
+                        } else {
+                          handleSetLogisticsCustomer(selectedCustomer)
+                        }
+                        setSelectedCustomer("")
+                      }}
+                      disabled={!selectedCustomer}
+                    >
+                      設定為{customerAssignmentType === "sales" ? "業務" : "船務"}負責人
+                    </Button>
+                  </div>
+
+                  {/* 客戶列表 */}
+                  <div className="border rounded-md">
+                    <div className="p-2 bg-muted/50 border-b flex justify-between items-center">
+                      <h4 className="font-medium">客戶列表</h4>
+                      <div className="flex items-center space-x-2">
+                        <Search className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="搜尋客戶..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="h-8 w-[200px]"
+                        />
+                      </div>
+                    </div>
+                    <ScrollArea className="h-[300px]">
+                      <div className="p-2 space-y-2">
+                        {filteredCustomers.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground">沒有找到符合條件的客戶</div>
+                        ) : (
+                          filteredCustomers.map((customer) => {
+                            const isSalesResponsible = isResponsibleBy(customer, "sales")
+                            const isLogisticsResponsible = isResponsibleBy(customer, "logistics")
+                            const hasSalesResponsible = hasResponsible(customer, "sales")
+                            const hasLogisticsResponsible = hasResponsible(customer, "logistics")
+
+                            return (
+                              <div
+                                key={customer.customer_id}
+                                className="flex justify-between items-center p-2 border rounded-md hover:bg-muted/30"
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{customer.customer_short_name}</span>
+                                  <span className="text-xs text-muted-foreground">{customer.customer_id}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {customerAssignmentType === "sales" && (
+                                    <>
+                                      {isSalesResponsible ? (
+                                        <Badge variant="default" className="flex items-center space-x-1">
+                                          <span>業務負責人</span>
+                                          <X
+                                            className="h-3 w-3 cursor-pointer"
+                                            onClick={() => handleSetSalesCustomer(customer.customer_id)}
+                                          />
+                                        </Badge>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleSetSalesCustomer(customer.customer_id)}
+                                          disabled={hasSalesResponsible}
+                                          title={hasSalesResponsible ? "此客戶已有業務負責人" : ""}
+                                        >
+                                          {hasSalesResponsible ? "已有負責人" : "設為業務負責人"}
+                                        </Button>
+                                      )}
+                                    </>
+                                  )}
+
+                                  {customerAssignmentType === "logistics" && (
+                                    <>
+                                      {isLogisticsResponsible ? (
+                                        <Badge variant="default" className="flex items-center space-x-1">
+                                          <span>船務負責人</span>
+                                          <X
+                                            className="h-3 w-3 cursor-pointer"
+                                            onClick={() => handleSetLogisticsCustomer(customer.customer_id)}
+                                          />
+                                        </Badge>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleSetLogisticsCustomer(customer.customer_id)}
+                                          disabled={hasLogisticsResponsible}
+                                          title={hasLogisticsResponsible ? "此客戶已有船務負責人" : ""}
+                                        >
+                                          {hasLogisticsResponsible ? "已有負責人" : "設為船務負責人"}
+                                        </Button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           )}

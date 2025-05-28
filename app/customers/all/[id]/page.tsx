@@ -43,7 +43,7 @@ async function getCustomer(id: string): Promise<Customer> {
       status: "active",
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
-      sales_representative: data.sales_representative || "", // 修改這行
+      sales_representative: data.sales_representative || "",
       ...data, // 包含所有其他字段
     }
   } catch (error) {
@@ -309,10 +309,6 @@ export default async function CustomerDetailsPage({
                       : customer.logistics_coordinator || "-"}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">負責船務</p>
-                  <p>{customer.logistics_coordinator || "-"}</p>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -334,8 +330,8 @@ export default async function CustomerDetailsPage({
                   <p>{customer.exchange_rate || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">付款日期</p>
-                  <p>{customer.payment_due_date || "-"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">付款天數</p>
+                  <p>{customer.payment_due_date ? `${customer.payment_due_date} 天` : "-"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">付款方式</p>

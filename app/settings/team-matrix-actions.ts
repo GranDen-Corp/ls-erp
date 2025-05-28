@@ -374,6 +374,7 @@ export async function updateCustomerRepresentSales(
       .eq("customer_id", customerId)
 
     if (updateError) {
+      console.log("Trying fallback field 'represent_sales'")
       const { error: fallbackError } = await supabase
         .from("customers")
         .update({ represent_sales: employeeId })

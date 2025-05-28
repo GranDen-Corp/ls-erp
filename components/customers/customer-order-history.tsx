@@ -1,20 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { supabaseClient } from "@/lib/supabase-client"
 
 interface Order {
   id: string
-  orderNumber: string
-  date: string
+  order_number: string
+  order_date: string
   status: string
-  totalAmount: number
+  total_amount: number
   currency: string
+  customer_id: string
 }
 
 interface CustomerOrderHistoryProps {
@@ -39,33 +42,40 @@ const formatCurrency = (amount: number, currency: string) => {
 }
 
 export default function CustomerOrderHistory({ customerId }: CustomerOrderHistoryProps) {
-  // Mock order data - in a real app, this would fetch from the database
-  const [orders] = useState<Order[]>([
-    {
-      id: "order-001",
-      orderNumber: "PO-2023-0125",
-      date: "2023-05-15T10:30:00Z",
-      status: "completed",
-      totalAmount: 25000,
-      currency: "USD",
-    },
-    {
-      id: "order-002",
-      orderNumber: "PO-2023-0156",
-      date: "2023-06-22T14:45:00Z",
-      status: "processing",
-      totalAmount: 18500,
-      currency: "USD",
-    },
-    {
-      id: "order-003",
-      orderNumber: "PO-2023-0189",
-      date: "2023-08-10T09:15:00Z",
-      status: "pending",
-      totalAmount: 32000,
-      currency: "USD",
-    },
-  ])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // 獲取客戶訂單資料
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!customerId) return
+
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        const { data, error } = await supabaseClient
+          .from("orders")
+          .select("id, order_number, order_date, status, total_amount, currency, customer_id")
+          .eq("customer_id", customerId)
+          .order("order_date", { ascending: false })
+
+        if (error) {
+          throw new Error(error.message)
+        }
+
+        setOrders(data || [])
+      } catch (err) {
+        console.error("獲取訂單資料時出錯:", err)
+        setError(err instanceof Error ? err.message : "獲取訂單資料失敗")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [customerId])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -75,9 +85,43 @@ export default function CustomerOrderHistory({ customerId }: CustomerOrderHistor
         return <Badge variant="secondary">處理中</Badge>
       case "pending":
         return <Badge variant="outline">待處理</Badge>
+      case "cancelled":
+        return <Badge variant="destructive">已取消</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>訂單歷史</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {Array(3)
+              .fill(0)
+              .map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>訂單歷史</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4 text-red-600">載入訂單資料時發生錯誤: {error}</div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -102,9 +146,9 @@ export default function CustomerOrderHistory({ customerId }: CustomerOrderHistor
             <TableBody>
               {orders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                  <TableCell>{formatDate(order.date)}</TableCell>
-                  <TableCell>{formatCurrency(order.totalAmount, order.currency)}</TableCell>
+                  <TableCell className="font-medium">{order.order_number}</TableCell>
+                  <TableCell>{formatDate(order.order_date)}</TableCell>
+                  <TableCell>{formatCurrency(order.total_amount, order.currency)}</TableCell>
                   <TableCell>{getStatusBadge(order.status)}</TableCell>
                   <TableCell>
                     <Link href={`/orders/${order.id}`}>

@@ -112,7 +112,7 @@ export function TeamMatrixManager() {
     setAssignmentDialogOpen(false)
     setEditingMember(null)
     setSelectedMember(null)
-    loadMembers()
+    loadMembers() // 重新載入成員資料以更新顯示
   }
 
   const getCurrentDepartment = () => {

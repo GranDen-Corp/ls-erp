@@ -17,16 +17,16 @@ import { supabaseClient } from "@/lib/supabase-client"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-// 表單驗證 schema
+// 表單驗證 schema - 對應 suppliers 表結構
 const factoryFormSchema = z.object({
   factory_id: z.string().min(1, { message: "供應商編號不能為空" }),
-  factory_name: z.string().optional(),
+  factory_name: z.string().min(1, { message: "供應商名稱不能為空" }),
   factory_full_name: z.string().min(1, { message: "供應商全名不能為空" }),
   factory_address: z.string().optional(),
   factory_phone: z.string().optional(),
   factory_fax: z.string().optional(),
   tax_id: z.string().optional(),
-  supplier_type: z.string().optional(),
+  supplier_type: z.string().min(1, { message: "請選擇供應商類型" }),
   category1: z.string().optional(),
   category2: z.string().optional(),
   category3: z.string().optional(),
@@ -45,6 +45,8 @@ const factoryFormSchema = z.object({
   postal_code: z.string().optional(),
   notes: z.string().optional(),
   status: z.string().optional(),
+  quality_contact1: z.string().optional(),
+  quality_contact2: z.string().optional(),
 })
 
 type FactoryFormValues = z.infer<typeof factoryFormSchema>
@@ -77,6 +79,8 @@ const defaultValues: Partial<FactoryFormValues> = {
   postal_code: "",
   notes: "",
   status: "active",
+  quality_contact1: "",
+  quality_contact2: "",
 }
 
 interface FactoryFormProps {
@@ -107,32 +111,34 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
 
       // 將初始數據映射到表單字段
       const formData = {
-        factory_id: mergedInitialData.factory_id || mergedInitialData.id || "",
-        factory_name: mergedInitialData.factory_name || mergedInitialData.name || "",
-        factory_full_name: mergedInitialData.factory_full_name || mergedInitialData.fullName || "",
-        factory_address: mergedInitialData.factory_address || mergedInitialData.address || "",
-        factory_phone: mergedInitialData.factory_phone || mergedInitialData.phone || "",
-        factory_fax: mergedInitialData.factory_fax || mergedInitialData.fax || "",
-        tax_id: mergedInitialData.tax_id || mergedInitialData.taxId || "",
-        supplier_type: mergedInitialData.supplier_type || mergedInitialData.supplierType || "assembly",
-        category1: mergedInitialData.category1 || mergedInitialData.category || "",
+        factory_id: mergedInitialData.factory_id || "",
+        factory_name: mergedInitialData.factory_name || "",
+        factory_full_name: mergedInitialData.factory_full_name || "",
+        factory_address: mergedInitialData.factory_address || "",
+        factory_phone: mergedInitialData.factory_phone || "",
+        factory_fax: mergedInitialData.factory_fax || "",
+        tax_id: mergedInitialData.tax_id || "",
+        supplier_type: mergedInitialData.supplier_type || "assembly",
+        category1: mergedInitialData.category1 || "",
         category2: mergedInitialData.category2 || "",
         category3: mergedInitialData.category3 || "",
-        iso9001_certified: mergedInitialData.iso9001_certified || mergedInitialData.iso9001Certified || "否",
-        iatf16949_certified: mergedInitialData.iatf16949_certified || mergedInitialData.iatf16949Certified || "否",
-        iso17025_certified: mergedInitialData.iso17025_certified || mergedInitialData.iso17025Certified || "否",
-        cqi9_certified: mergedInitialData.cqi9_certified || mergedInitialData.cqi9Certified || "否",
-        cqi11_certified: mergedInitialData.cqi11_certified || mergedInitialData.cqi11Certified || "否",
-        cqi12_certified: mergedInitialData.cqi12_certified || mergedInitialData.cqi12Certified || "否",
-        contact_person: mergedInitialData.contact_person || mergedInitialData.contactPerson || "",
-        contact_phone: mergedInitialData.contact_phone || mergedInitialData.contactPhone || "",
-        contact_email: mergedInitialData.contact_email || mergedInitialData.email || "",
+        iso9001_certified: mergedInitialData.iso9001_certified || "否",
+        iatf16949_certified: mergedInitialData.iatf16949_certified || "否",
+        iso17025_certified: mergedInitialData.iso17025_certified || "否",
+        cqi9_certified: mergedInitialData.cqi9_certified || "否",
+        cqi11_certified: mergedInitialData.cqi11_certified || "否",
+        cqi12_certified: mergedInitialData.cqi12_certified || "否",
+        contact_person: mergedInitialData.contact_person || "",
+        contact_phone: mergedInitialData.contact_phone || "",
+        contact_email: mergedInitialData.contact_email || "",
         website: mergedInitialData.website || "",
         country: mergedInitialData.country || "台灣",
         city: mergedInitialData.city || "",
-        postal_code: mergedInitialData.postal_code || mergedInitialData.postalCode || "",
+        postal_code: mergedInitialData.postal_code || "",
         notes: mergedInitialData.notes || "",
         status: mergedInitialData.status || "active",
+        quality_contact1: mergedInitialData.quality_contact1 || "",
+        quality_contact2: mergedInitialData.quality_contact2 || "",
       }
 
       form.reset(formData)
@@ -162,14 +168,25 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
         }
       }
 
+      // 準備要保存的數據
+      const supplierData = {
+        ...data,
+        updated_at: new Date().toISOString(),
+      }
+
+      // 如果是新增，加入創建時間
+      if (!factoryId && !factory) {
+        supplierData.created_at = new Date().toISOString()
+      }
+
       // 插入或更新供應商資料
       const { error: saveError } =
         factoryId || factory
           ? await supabaseClient
               .from("suppliers")
-              .update(data)
+              .update(supplierData)
               .eq("factory_id", factoryId || factory.factory_id)
-          : await supabaseClient.from("suppliers").insert(data)
+          : await supabaseClient.from("suppliers").insert(supplierData)
 
       if (saveError) {
         throw new Error(`保存供應商資料時出錯: ${saveError.message}`)
@@ -182,7 +199,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
       })
 
       // 導航回供應商列表
-      router.push("/factories")
+      router.push("/factories/all")
       router.refresh()
     } catch (err) {
       console.error("保存供應商資料時出錯:", err)
@@ -209,8 +226,9 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
         )}
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">基本資訊</TabsTrigger>
+            <TabsTrigger value="contact">聯絡資訊</TabsTrigger>
             <TabsTrigger value="certification">認證資訊</TabsTrigger>
             <TabsTrigger value="additional">其他資訊</TabsTrigger>
           </TabsList>
@@ -219,7 +237,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
             <Card>
               <CardHeader>
                 <CardTitle>基本資訊</CardTitle>
-                <CardDescription>輸入供應商的基本聯絡資訊</CardDescription>
+                <CardDescription>輸入供應商的基本資訊</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -242,6 +260,36 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
 
                   <FormField
                     control={form.control}
+                    name="factory_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>供應商名稱 *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入供應商名稱" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="factory_full_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>供應商全名 *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="輸入供應商全名" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
                     name="tax_id"
                     render={({ field }) => (
                       <FormItem>
@@ -253,139 +301,32 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="factory_full_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>供應商全名 *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入供應商全名" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   <FormField
                     control={form.control}
-                    name="factory_name"
+                    name="supplier_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>供應商簡稱</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入供應商簡稱" {...field} />
-                        </FormControl>
+                        <FormLabel>供應商類型 *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="選擇供應商類型" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="assembly">組裝廠</SelectItem>
+                            <SelectItem value="production">生產廠</SelectItem>
+                            <SelectItem value="parts">零件廠</SelectItem>
+                            <SelectItem value="material">材料供應商</SelectItem>
+                            <SelectItem value="service">服務供應商</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="contact_person"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>聯絡人</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入聯絡人姓名" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="contact_phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>聯絡人電話</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入聯絡人電話" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="contact_email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>聯絡人電子郵件</FormLabel>
-                      <FormControl>
-                        <Input placeholder="輸入聯絡人電子郵件" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="factory_phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>公司電話</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入公司電話" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="factory_fax"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>公司傳真</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入公司傳真" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>網站</FormLabel>
-                      <FormControl>
-                        <Input placeholder="輸入網站網址" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="factory_address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>地址</FormLabel>
-                      <FormControl>
-                        <Input placeholder="輸入完整地址" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
@@ -429,47 +370,6 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
 
                   <FormField
                     control={form.control}
-                    name="postal_code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>郵遞區號</FormLabel>
-                        <FormControl>
-                          <Input placeholder="輸入郵遞區號" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="supplier_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>供應商類型</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="選擇供應商類型" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="assembly">組裝廠</SelectItem>
-                            <SelectItem value="production">生產廠</SelectItem>
-                            <SelectItem value="parts">零件廠</SelectItem>
-                            <SelectItem value="material">材料供應商</SelectItem>
-                            <SelectItem value="service">服務供應商</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
                     name="status"
                     render={({ field }) => (
                       <FormItem>
@@ -485,6 +385,150 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
                             <SelectItem value="inactive">停用</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="factory_address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>地址</FormLabel>
+                      <FormControl>
+                        <Input placeholder="輸入完整地址" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contact">
+            <Card>
+              <CardHeader>
+                <CardTitle>聯絡資訊</CardTitle>
+                <CardDescription>設定供應商的聯絡方式</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="factory_phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>公司電話</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入公司電話" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="factory_fax"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>公司傳真</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入公司傳真" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="contact_person"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>聯絡人</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入聯絡人姓名" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="contact_phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>聯絡人電話</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入聯絡人電話" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="contact_email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>聯絡人電子郵件</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入聯絡人電子郵件" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>網站</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入網站網址" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="quality_contact1"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>品質聯絡人1</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入品質聯絡人1" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="quality_contact2"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>品質聯絡人2</FormLabel>
+                        <FormControl>
+                          <Input placeholder="輸入品質聯絡人2" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -726,7 +770,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
         </Tabs>
 
         <div className="flex justify-end gap-2 mt-4">
-          <Button type="button" variant="outline" onClick={() => router.push("/factories")} disabled={isLoading}>
+          <Button type="button" variant="outline" onClick={() => router.push("/factories/all")} disabled={isLoading}>
             取消
           </Button>
           <Button type="submit" disabled={isLoading}>

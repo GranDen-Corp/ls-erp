@@ -48,12 +48,12 @@ interface TradeTerm {
   is_active: boolean
 }
 
-interface TradeTerm {
+interface TeamMember {
   id: number
-  code: string
-  name_en: string
-  name_zh: string
-  description: string
+  ls_employee_id: string
+  name: string
+  role?: string
+  department?: string
   is_active: boolean
 }
 
@@ -90,7 +90,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   // 財務資訊
   const [currency, setCurrency] = useState("USD") // 預設為USD
   const [exchangeRate, setExchangeRate] = useState(1)
-  const [paymentDueDate, setPaymentDueDate] = useState("")
+  const [paymentDays, setPaymentDays] = useState("") // 改為付款天數
   const [paymentTerms, setPaymentTerms] = useState("")
   const [paymentTermsSpecification, setPaymentTermsSpecification] = useState("")
   const [tradeTerms, setTradeTerms] = useState("")
@@ -99,7 +99,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   // 付款和交貨條件選項資料
   const [paymentTermOptions, setPaymentTermOptions] = useState<PaymentTerm[]>([])
   const [tradeTermOptions, setTradeTermOptions] = useState<TradeTerm[]>([])
-  const [exchangeRateOptions, setExchangeRateOptions] = useState<ExchangeRate[]>([]) // Declare exchangeRateOptions
+  const [exchangeRateOptions, setExchangeRateOptions] = useState<ExchangeRate[]>([])
+  const [teamMemberOptions, setTeamMemberOptions] = useState<TeamMember[]>([])
 
   // 包裝與出貨
   const [groupPackagingDefault, setGroupPackagingDefault] = useState("")
@@ -121,67 +122,59 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [cbamNote, setCbamNote] = useState("")
   const [legacySystemNote, setLegacySystemNote] = useState("")
 
-  // 載入匯率選項
+  // 載入所有選項資料
   useEffect(() => {
-    const loadExchangeRates = async () => {
+    const loadOptions = async () => {
       try {
-        const { data, error } = await supabaseClient
+        // 載入匯率選項
+        const { data: exchangeData, error: exchangeError } = await supabaseClient
           .from("exchange_rates")
           .select("*")
           .eq("is_active", true)
           .order("currency_code", { ascending: true })
 
-        if (!error && data) {
-          setExchangeRateOptions(data)
+        if (!exchangeError && exchangeData) {
+          setExchangeRateOptions(exchangeData)
         }
-      } catch (error) {
-        console.error("載入匯率選項時出錯:", error)
-      }
-    }
 
-    loadExchangeRates()
-  }, [])
-
-  // 載入付款條件選項
-  useEffect(() => {
-    const loadPaymentTerms = async () => {
-      try {
-        const { data, error } = await supabaseClient
+        // 載入付款條件選項
+        const { data: paymentData, error: paymentError } = await supabaseClient
           .from("payment_terms")
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
 
-        if (!error && data) {
-          setPaymentTermOptions(data)
+        if (!paymentError && paymentData) {
+          setPaymentTermOptions(paymentData)
         }
-      } catch (error) {
-        console.error("載入付款條件選項時出錯:", error)
-      }
-    }
 
-    loadPaymentTerms()
-  }, [])
-
-  // 載入交貨條件選項
-  useEffect(() => {
-    const loadTradeTerms = async () => {
-      try {
-        const { data, error } = await supabaseClient
+        // 載入交貨條件選項
+        const { data: tradeData, error: tradeError } = await supabaseClient
           .from("trade_terms")
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
 
-        if (!error && data) {
-          setTradeTermOptions(data)
+        if (!tradeError && tradeData) {
+          setTradeTermOptions(tradeData)
+        }
+
+        // 載入團隊成員選項
+        const { data: teamData, error: teamError } = await supabaseClient
+          .from("team_members")
+          .select("*")
+          .eq("is_active", true)
+          .order("name", { ascending: true })
+
+        if (!teamError && teamData) {
+          setTeamMemberOptions(teamData)
         }
       } catch (error) {
-        console.error("載入交貨條件選項時出錯:", error)
+        console.error("載入選項資料時出錯:", error)
       }
     }
 
-    loadTradeTerms()
+    loadOptions()
   }, [])
 
   // 當 initialData 變更時更新狀態
@@ -210,13 +203,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       )
       setClientProcurement(initialData.client_procurement || "")
       setClientSales(initialData.client_sales || "")
-      setSalesRepresentative(initialData.represent_sales || initialData.sales_representative || "")
+      setSalesRepresentative(initialData.sales_representative || "")
       setLogisticsCoordinator(initialData.logistics_coordinator || "")
 
       // 財務資訊
       setCurrency(initialData.currency || "USD")
       setExchangeRate(Number(initialData.exchange_rate) || 1)
-      setPaymentDueDate(initialData.payment_due_date || "")
+      setPaymentDays(initialData.payment_due_date || "") // 改為付款天數
       setPaymentTerms(initialData.payment_terms || "")
       setPaymentTermsSpecification(initialData.payment_terms_specification || initialData.payment_condition || "")
       setTradeTerms(initialData.trade_terms || initialData.delivery_terms || "")
@@ -248,12 +241,10 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const handleCurrencyChange = (selectedCurrency: string) => {
     setCurrency(selectedCurrency)
 
-    // 如果是新增模式，自動設定匯率
-    if (!customerId) {
-      const selectedRate = exchangeRateOptions.find((rate) => rate.currency_code === selectedCurrency)
-      if (selectedRate) {
-        setExchangeRate(selectedRate.rate_to_usd)
-      }
+    // 自動設定匯率
+    const selectedRate = exchangeRateOptions.find((rate) => rate.currency_code === selectedCurrency)
+    if (selectedRate) {
+      setExchangeRate(selectedRate.rate_to_usd)
     }
   }
 
@@ -298,13 +289,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         client_contact_person: clientContactPerson,
         client_procurement: clientProcurement,
         client_sales: clientSales,
-        represent_sales: salesRepresentative,
+        sales_representative: salesRepresentative,
         logistics_coordinator: logisticsCoordinator,
 
         // 財務資訊
         currency,
         exchange_rate: exchangeRate,
-        payment_due_date: paymentDueDate,
+        payment_due_date: paymentDays, // 改為付款天數
         payment_terms: paymentTerms,
         payment_terms_specification: paymentTermsSpecification,
         trade_terms: tradeTerms,
@@ -312,8 +303,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
         // 包裝與出貨
         group_packaging_default: groupPackagingDefault,
-        orderPackagingDisplay: orderPackagingDisplay,
-        customerPackaging: customerPackaging,
+        order_packaging_display: orderPackagingDisplay,
+        customer_packaging: customerPackaging,
         packaging_details: packagingDetails,
         packing_info: packingInfo,
         pallet_format: palletFormat,
@@ -567,21 +558,33 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="salesRepresentative">負責業務</Label>
-                  <Input
-                    id="salesRepresentative"
-                    value={salesRepresentative}
-                    onChange={(e) => setSalesRepresentative(e.target.value)}
-                    placeholder="例如: 孫七"
-                  />
+                  <Select value={salesRepresentative} onValueChange={setSalesRepresentative}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇負責業務" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamMemberOptions.map((member) => (
+                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id}>
+                          {member.name} ({member.ls_employee_id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="logisticsCoordinator">負責船務</Label>
-                  <Input
-                    id="logisticsCoordinator"
-                    value={logisticsCoordinator}
-                    onChange={(e) => setLogisticsCoordinator(e.target.value)}
-                    placeholder="例如: 周八"
-                  />
+                  <Select value={logisticsCoordinator} onValueChange={setLogisticsCoordinator}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇負責船務" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamMemberOptions.map((member) => (
+                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id}>
+                          {member.name} ({member.ls_employee_id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -620,15 +623,16 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     onChange={(e) => setExchangeRate(Number.parseFloat(e.target.value) || 1)}
                     placeholder="例如: 30.5"
                   />
-                  {!customerId && <p className="text-sm text-muted-foreground">選擇幣別後會自動填入當前匯率</p>}
+                  <p className="text-sm text-muted-foreground">選擇幣別後會自動填入當前匯率，仍可手動修改</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="paymentDueDate">付款日期</Label>
+                  <Label htmlFor="paymentDays">付款天數</Label>
                   <Input
-                    id="paymentDueDate"
-                    value={paymentDueDate}
-                    onChange={(e) => setPaymentDueDate(e.target.value)}
-                    placeholder="例如: 每月15日"
+                    id="paymentDays"
+                    type="number"
+                    value={paymentDays}
+                    onChange={(e) => setPaymentDays(e.target.value)}
+                    placeholder="例如: 30"
                   />
                 </div>
                 <div className="space-y-2">
