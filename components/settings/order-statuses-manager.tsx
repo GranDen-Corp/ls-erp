@@ -246,8 +246,7 @@ export default function OrderStatusesManager({ orderStatuses }: OrderStatusesMan
                     <div key={status.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className={`w-4 h-4 rounded-full ${statusColor}`}></div>
-                          <span className="font-medium">{status.name_zh}</span>
+                          <Badge className={`${statusColor} text-white border-0 px-3 py-1`}>{status.name_zh}</Badge>
                           <Badge variant="outline">{status.status_code}</Badge>
                           <Badge variant={status.is_active ? "default" : "secondary"}>
                             {status.is_active ? "啟用" : "停用"}

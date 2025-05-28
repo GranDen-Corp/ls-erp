@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 
 // 在 import 部分添加新的引用
 import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
@@ -692,13 +693,12 @@ export function OrdersTable() {
                       </TableCell>
                       <TableCell>{getOrderDate(order)}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          className={`${status.color} text-white px-2 py-1 h-auto rounded-md text-xs`}
+                        <Badge
+                          className={`${status.color} text-white border-0 px-3 py-1 cursor-pointer hover:opacity-80`}
                           onClick={() => openStatusDialog(order)}
                         >
                           {status.text}
-                        </Button>
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
