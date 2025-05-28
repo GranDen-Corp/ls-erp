@@ -37,7 +37,6 @@ export async function saveProduct(formData: any) {
       original_drawing_version: formData.originalDrawingVersion,
       drawing_version: formData.drawingVersion,
       customer_original_drawing: formData.customerOriginalDrawing,
-      jinzhan_drawing: formData.jinzhanDrawing,
       customer_drawing: formData.customerDrawing,
       factory_drawing: formData.factoryDrawing,
       customer_drawing_version: formData.customerDrawingVersion,

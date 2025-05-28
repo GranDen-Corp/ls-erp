@@ -35,10 +35,6 @@ export interface Product {
     path: string
     filename: string
   }
-  jinzhanDrawing: {
-    path: string
-    filename: string
-  }
   customerDrawing: {
     path: string
     filename: string

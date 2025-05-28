@@ -53,7 +53,6 @@ export default async function EditProductPage({
     originalDrawingVersion: product.original_drawing_version || "",
     drawingVersion: product.drawing_version || "",
     customerOriginalDrawing: product.customer_original_drawing || { path: "", filename: "" },
-    jinzhanDrawing: product.jinzhan_drawing || { path: "", filename: "" },
     customerDrawing: product.customer_drawing || { path: "", filename: "" },
     factoryDrawing: product.factory_drawing || { path: "", filename: "" },
     customerDrawingVersion: product.customer_drawing_version || "",

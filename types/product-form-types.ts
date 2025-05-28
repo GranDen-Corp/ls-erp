@@ -109,7 +109,6 @@ export interface Product {
   original_drawing_version: string
   drawing_version: string
   customer_original_drawing: DocumentRecord
-  jinzhan_drawing: DocumentRecord
   customer_drawing: DocumentRecord
   factory_drawing: DocumentRecord
   customer_drawing_version: string
@@ -191,7 +190,6 @@ export interface ProductFormValues {
   original_drawing_version: string
   drawing_version: string
   customer_original_drawing: DocumentRecord
-  jinzhan_drawing: DocumentRecord
   customer_drawing: DocumentRecord
   factory_drawing: DocumentRecord
   customer_drawing_version: string

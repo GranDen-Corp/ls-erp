@@ -75,7 +75,6 @@ export function ProductForm({
     ...defaultProduct,
     ...initialProduct,
     customerOriginalDrawing: initialProduct.customerOriginalDrawing || emptyFileObject,
-    jinzhanDrawing: initialProduct.jinzhanDrawing || emptyFileObject,
     customerDrawing: initialProduct.customerDrawing || emptyFileObject,
     factoryDrawing: initialProduct.factoryDrawing || emptyFileObject,
     complianceStatus: {
@@ -169,7 +168,6 @@ export function ProductForm({
         ...defaultProduct,
         ...initialValues,
         customerOriginalDrawing: initialValues.customerOriginalDrawing || emptyFileObject,
-        jinzhanDrawing: initialValues.jinzhanDrawing || emptyFileObject,
         customerDrawing: initialValues.customerDrawing || emptyFileObject,
         factoryDrawing: initialValues.factoryDrawing || emptyFileObject,
         complianceStatus: {
@@ -897,7 +895,6 @@ export function ProductForm({
         // Drawing information
         originalDrawingVersion: product.originalDrawingVersion,
         drawingVersion: product.drawingVersion,
-        jinzhanDrawing: product.jinzhanDrawing,
         customerOriginalDrawing: product.customerOriginalDrawing,
         customerDrawing: product.customerDrawing,
         factoryDrawing: product.factoryDrawing,
