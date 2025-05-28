@@ -43,12 +43,32 @@ async function getCustomer(id: string): Promise<Customer> {
       status: "active",
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
-      represent_sales: data.represent_sales || "", // 新增這行
+      sales_representative: data.sales_representative || "", // 修改這行
       ...data, // 包含所有其他字段
     }
   } catch (error) {
     console.error("獲取客戶資料時出錯:", error)
     notFound()
+  }
+}
+
+// 獲取團隊成員名稱的函數
+async function getTeamMemberName(employeeId: string): Promise<string> {
+  if (!employeeId) return ""
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("team_members")
+      .select("name")
+      .eq("ls_employee_id", employeeId)
+      .single()
+
+    if (!error && data) {
+      return data.name
+    }
+    return employeeId // 如果找不到，返回員工ID
+  } catch (error) {
+    return employeeId
   }
 }
 
@@ -115,6 +135,9 @@ export default async function CustomerDetailsPage({
   const currencyName = customer.currency ? await getCurrencyName(customer.currency) : ""
   const paymentTermName = customer.payment_terms ? await getPaymentTermName(customer.payment_terms) : ""
   const tradeTermName = customer.trade_terms ? await getTradeTermName(customer.trade_terms) : ""
+  const salesRepresentativeName = customer.sales_representative
+    ? await getTeamMemberName(customer.sales_representative)
+    : ""
 
   // 格式化日期的輔助函數
   const formatDate = (dateString?: string) => {
@@ -269,7 +292,11 @@ export default async function CustomerDetailsPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">負責業務</p>
-                  <p>{customer.represent_sales || customer.sales_representative || "-"}</p>
+                  <p>
+                    {salesRepresentativeName
+                      ? `${salesRepresentativeName} (${customer.sales_representative})`
+                      : customer.sales_representative || "-"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">負責船務</p>

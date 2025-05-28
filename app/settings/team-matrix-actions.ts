@@ -50,18 +50,18 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
       return []
     }
 
-    // 獲取所有客戶 - 先嘗試 represent_sales，如果失敗則使用 client_sales
+    // 獲取所有客戶 - 修改為使用 sales_representative
     let customers: any[] = []
     try {
       const { data: customersData, error: customersErr } = await supabase
         .from("customers")
-        .select("customer_id, customer_short_name, represent_sales")
+        .select("customer_id, customer_short_name, sales_representative")
 
       if (customersErr) {
-        console.warn("represent_sales column not found, trying client_sales")
+        console.warn("sales_representative column not found, trying fallback")
         const { data: fallbackData, error: fallbackError } = await supabase
           .from("customers")
-          .select("customer_id, customer_short_name, client_sales")
+          .select("customer_id, customer_short_name, represent_sales")
 
         if (!fallbackError) {
           customers = fallbackData || []
@@ -107,7 +107,8 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
       const salesCustomers =
         customers?.filter(
           (customer) =>
-            customer.represent_sales === member.ls_employee_id || customer.client_sales === member.ls_employee_id,
+            customer.sales_representative === member.ls_employee_id ||
+            customer.represent_sales === member.ls_employee_id,
         ) || []
 
       // 透過 quality_contact1/2 關聯的工廠 (1對1)
@@ -223,13 +224,13 @@ export async function getCustomersForAssignment() {
     let data: any[] = []
     const { data: customersData, error: customersErr } = await supabase
       .from("customers")
-      .select("customer_id, customer_short_name, represent_sales")
+      .select("customer_id, customer_short_name, sales_representative")
       .order("customer_short_name")
 
     if (customersErr) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("customers")
-        .select("customer_id, customer_short_name, client_sales")
+        .select("customer_id, customer_short_name, represent_sales")
         .order("customer_short_name")
 
       if (!fallbackError) {
@@ -329,7 +330,7 @@ export async function updateTeamMemberFactories(
   }
 }
 
-// 更新客戶的業務負責人
+// 更新客戶的業務負責人 - 修改為使用 sales_representative
 export async function updateCustomerRepresentSales(
   customerId: string,
   employeeId: string | null,
@@ -340,13 +341,13 @@ export async function updateCustomerRepresentSales(
     let error: any = null
     const { error: updateError } = await supabase
       .from("customers")
-      .update({ represent_sales: employeeId })
+      .update({ sales_representative: employeeId })
       .eq("customer_id", customerId)
 
     if (updateError) {
       const { error: fallbackError } = await supabase
         .from("customers")
-        .update({ client_sales: employeeId })
+        .update({ represent_sales: employeeId })
         .eq("customer_id", customerId)
 
       if (fallbackError) {

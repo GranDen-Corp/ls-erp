@@ -31,8 +31,6 @@ interface Customer {
   invoice_email?: string
   client_contact_person?: string
   sales_representative?: string
-  represent_sales?: string
-  client_sales?: string
   payment_due_date?: string
   payment_terms?: string
   trade_terms?: string
@@ -134,7 +132,7 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
 
   // 獲取業務負責人
   const getSalesRepresentative = (customer: Customer) => {
-    const employeeId = customer.represent_sales || customer.client_sales || customer.sales_representative
+    const employeeId = customer.sales_representative
     if (!employeeId) return "-"
 
     // 從團隊成員中查找名稱

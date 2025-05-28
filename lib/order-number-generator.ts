@@ -17,54 +17,44 @@ export async function generateOrderNumber(): Promise<string> {
     const yearMonth = `${shortYear}${month}` // YYMM 格式
 
     // 計算當月的1日 (台北時間)
-    const startOfMonth = new Date(Date.UTC(year, taipeiTime.getUTCMonth(), 1, -8, 0, 0, 0)) // UTC-8 = 台北時間的當月1日00:00
+    const startOfMonth = new Date(year, taipeiTime.getUTCMonth(), 1)
+    const startOfMonthISO = startOfMonth.toISOString()
 
-    // 查詢當月的第一個訂單的 order_sid
-    const { data: firstOrderOfMonth, error: firstOrderError } = await supabase
+    console.log("訂單編號生成 - 當月開始日期:", startOfMonthISO)
+
+    // 查詢當月已有的訂單數量
+    const { data: monthlyOrders, error: monthlyError } = await supabase
       .from("orders")
-      .select("order_sid")
-      .gte("created_at", startOfMonth.toISOString())
-      .order("order_sid", { ascending: true })
-      .limit(1)
-      .single()
+      .select("order_id")
+      .gte("created_at", startOfMonthISO)
+      .like("order_id", `L-${yearMonth}%`)
+      .order("order_id", { ascending: false })
 
-    if (firstOrderError && firstOrderError.code !== "PGRST116") {
-      // PGRST116 是 "結果為空" 的錯誤碼
-      console.error("獲取月度第一個訂單失敗:", firstOrderError)
-      // 如果查詢失敗，使用簡單的時間戳方案
+    if (monthlyError) {
+      console.error("查詢當月訂單失敗:", monthlyError)
+      // 如果查詢失敗，使用時間戳作為備用方案
       const timestamp = now.getTime().toString().slice(-5)
       return `L-${yearMonth}${timestamp}`
     }
 
-    // 獲取最新的訂單 order_sid
-    const { data: latestOrder, error: latestOrderError } = await supabase
-      .from("orders")
-      .select("order_sid")
-      .order("order_sid", { ascending: false })
-      .limit(1)
-      .single()
-
-    if (latestOrderError) {
-      console.error("獲取最新訂單失敗:", latestOrderError)
-      // 如果查詢失敗，使用簡單的時間戳方案
-      const timestamp = now.getTime().toString().slice(-5)
-      return `L-${yearMonth}${timestamp}`
-    }
-
-    let sequenceNumber = 1 // 默認從1開始
-
-    if (firstOrderOfMonth && latestOrder) {
-      // 如果當月有訂單，計算當前訂單在本月度的序號
-      const firstSidOfMonth = firstOrderOfMonth.order_sid
-      const latestSid = latestOrder.order_sid
-      sequenceNumber = latestSid - firstSidOfMonth + 2 // +2 是因為我們要的是下一個編號，而且從1開始計數
+    // 計算下一個序號
+    let nextSequence = 1
+    if (monthlyOrders && monthlyOrders.length > 0) {
+      // 從最新的訂單編號中提取序號
+      const latestOrderId = monthlyOrders[0].order_id
+      const sequencePart = latestOrderId.substring(latestOrderId.length - 5)
+      const currentSequence = Number.parseInt(sequencePart, 10)
+      nextSequence = currentSequence + 1
     }
 
     // 確保序號是5位數，不足前面補0
-    const formattedSequence = String(sequenceNumber).padStart(5, "0")
+    const formattedSequence = String(nextSequence).padStart(5, "0")
 
     // 生成最終的訂單編號
-    return `L-${yearMonth}${formattedSequence}`
+    const newOrderNumber = `L-${yearMonth}${formattedSequence}`
+    console.log("生成的訂單編號:", newOrderNumber)
+
+    return newOrderNumber
   } catch (error) {
     console.error("生成訂單編號失敗:", error)
     // 備用方案：使用時間戳
