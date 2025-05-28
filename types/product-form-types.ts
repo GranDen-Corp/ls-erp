@@ -7,11 +7,12 @@ export interface DocumentRecord {
 
 // Compliance status type
 export interface ComplianceStatus {
-  status: string
+  regulation: string
+  status: boolean
+  regulationType: string
   substances: string
   reason: string
   document: string
-  filename: string
 }
 
 // Note type
@@ -132,17 +133,7 @@ export interface Product {
     clockRequirement: boolean
     [key: string]: boolean
   }
-  compliance_status: {
-    RoHS: ComplianceStatus
-    REACh: ComplianceStatus
-    EUPOP: ComplianceStatus
-    TSCA: ComplianceStatus
-    CP65: ComplianceStatus
-    PFAS: ComplianceStatus
-    CMRT: ComplianceStatus
-    EMRT: ComplianceStatus
-    [key: string]: ComplianceStatus
-  }
+  compliance_status: ComplianceStatus[]
   edit_notes: Note[]
   process_data: ProcessRecord[]
   order_requirements: string
@@ -214,17 +205,7 @@ export interface ProductFormValues {
     clockRequirement: boolean
     [key: string]: boolean
   }
-  compliance_status: {
-    RoHS: ComplianceStatus
-    REACh: ComplianceStatus
-    EUPOP: ComplianceStatus
-    TSCA: ComplianceStatus
-    CP65: ComplianceStatus
-    PFAS: ComplianceStatus
-    CMRT: ComplianceStatus
-    EMRT: ComplianceStatus
-    [key: string]: ComplianceStatus
-  }
+  compliance_status: ComplianceStatus []
   edit_notes: Note[]
   process_data: ProcessRecord[]
   order_requirements: string

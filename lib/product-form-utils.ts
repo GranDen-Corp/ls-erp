@@ -60,7 +60,9 @@ export const emptyFileObject = {
 
 // Default empty compliance status
 export const emptyComplianceStatus = {
-  status: "",
+  regulation: "",
+  regulationType: "",
+  status: false,
   substances: "",
   reason: "",
   document: "",
@@ -124,16 +126,7 @@ export const getDefaultProduct = (isAssembly = false) => ({
   assemblyCostPerHour: 10,
   additionalCosts: 0,
   // Compliance requirements related fields
-  complianceStatus: {
-    RoHS: emptyComplianceStatus,
-    REACh: emptyComplianceStatus,
-    EUPOP: emptyComplianceStatus,
-    TSCA: emptyComplianceStatus,
-    CP65: emptyComplianceStatus,
-    PFAS: emptyComplianceStatus,
-    CMRT: emptyComplianceStatus,
-    EMRT: emptyComplianceStatus,
-  },
+  complianceStatus:[],
   // Important document related fields
   importantDocuments: {
     PPAP: emptyDocumentRecord,

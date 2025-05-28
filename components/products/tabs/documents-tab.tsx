@@ -16,7 +16,7 @@ interface DocumentsTabProps {
   setIsPartManagementDialogOpen?: (open: boolean) => void
   setIsComplianceDialogOpen?: (open: boolean) => void
   handlePartManagementChange?: (field: string, value: boolean) => void
-  handleComplianceStatusChange?: (regulation: string, status: string) => void
+  handleComplianceStatusChange?: (regulation: string, status: boolean) => void
   handleComplianceFieldChange?: (regulation: string, field: string, value: string) => void
   form?: any
   documentData?: any
@@ -82,17 +82,23 @@ export function DocumentsTab({
       default:
         if (fieldType.startsWith("compliance_")) {
           const regulation = fieldType.split("_")[1]
-          setProduct((prev: any) => ({
-            ...prev,
-            complianceStatus: {
-              ...(prev.complianceStatus || {}),
-              [regulation]: {
-                ...(prev.complianceStatus?.[regulation] || {}),
-                document: fileData.path,
-                filename: fileData.filename,
-              },
-            },
-          }))
+          setProduct((prev: any) => {
+            const exists = (prev.complianceStatus || []).some((item: any) => item.regulation === regulation)
+            return {
+              ...prev,
+              complianceStatus: exists
+                ? prev.complianceStatus.map((item: any) =>
+                    item.regulation === regulation
+                      ? { ...item, document: fileData.path }
+                      : item
+                  )
+                : [...(prev.complianceStatus || []), {
+                    regulation,
+                    document: fileData.path,
+                    regulationType: "standard",
+                  }],
+            }
+          })
         } else if (fieldType.startsWith("customDoc_")) {
           const key = fieldType.replace("customDoc_", "")
           setProduct((prev: any) => ({
@@ -421,87 +427,72 @@ export function DocumentsTab({
                   </div>
                 </div>
 
-                {["RoHS", "REACh", "EUPOP", "TSCA", "CP65", "PFAS", "CMRT", "EMRT"].map((regulation) => (
-                  <div key={regulation} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
-                    <div>
-                      <Label>{regulation}</Label>
-                    </div>
-                    {regulation === "PFAS" || regulation === "CMRT" || regulation === "EMRT" ? (
-                      <RadioGroup
-                        value={product.complianceStatus?.[regulation]?.status || ""}
-                        onValueChange={(value) =>
-                          !isReadOnly && handleComplianceStatusChange && handleComplianceStatusChange(regulation, value)
-                        }
-                        className="flex justify-center space-x-4"
-                        disabled={isReadOnly}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="含有" id={`${regulation}-has`} />
-                          <Label htmlFor={`${regulation}-has`} className="text-sm">
-                            含有
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="不含有" id={`${regulation}-not-has`} />
-                          <Label htmlFor={`${regulation}-not-has`} className="text-sm">
-                            不含有
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    ) : (
-                      <RadioGroup
-                        value={product.complianceStatus?.[regulation]?.status || ""}
-                        onValueChange={(value) =>
-                          !isReadOnly && handleComplianceStatusChange && handleComplianceStatusChange(regulation, value)
-                        }
-                        className="flex justify-center space-x-4"
-                        disabled={isReadOnly}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="符合" id={`${regulation}-comply`} />
-                          <Label htmlFor={`${regulation}-comply`} className="text-sm">
-                            符合
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="不符" id={`${regulation}-not-comply`} />
-                          <Label htmlFor={`${regulation}-not-comply`} className="text-sm">
-                            不符
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    )}
+                {product.complianceStatus && Object.entries(product.complianceStatus).map(([idx,data]: any) => (
+                  <div key={data.regulation} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
+                    <div><Label>{data.regulation}</Label></div>
+
+                    <RadioGroup
+                      value={data.status ? "Yes" : "No"}
+                      onValueChange={(value) =>
+                        !isReadOnly && handleComplianceStatusChange && handleComplianceStatusChange(data.regulation, value === "Yes")
+                      }
+                      className="flex justify-center space-x-4"
+                      disabled={isReadOnly}
+                    >
+                      {data.regulationType === "containment" ? (
+                        <>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="Yes" id={`${data.regulation}-has`} />
+                            <Label htmlFor={`${data.regulation}-has`} className="text-sm">含有</Label>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="No" id={`${data.regulation}-not-has`} />
+                            <Label htmlFor={`${data.regulation}-not-has`} className="text-sm">不含有</Label>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="Yes" id={`${data.regulation}-comply`} />
+                            <Label htmlFor={`${data.regulation}-comply`} className="text-sm">符合</Label>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="No" id={`${data.regulation}-not-comply`} />
+                            <Label htmlFor={`${data.regulation}-not-comply`} className="text-sm">不符</Label>
+                          </div>
+                        </>
+                      )}
+                    </RadioGroup>
+
                     <div>
                       <Input
                         type="text"
-                        value={product.complianceStatus?.[regulation]?.substances || ""}
+                        value={data.substances || ""}
                         onChange={(e) =>
-                          !isReadOnly &&
-                          handleComplianceFieldChange &&
-                          handleComplianceFieldChange(regulation, "substances", e.target.value)
+                          !isReadOnly && handleComplianceFieldChange && handleComplianceFieldChange(data.regulation, "substances", e.target.value)
                         }
                         placeholder="含有物質"
                         disabled={isReadOnly}
                       />
                     </div>
+
                     <div>
                       <Input
                         type="text"
-                        value={product.complianceStatus?.[regulation]?.reason || ""}
+                        value={data.reason || ""}
                         onChange={(e) =>
-                          !isReadOnly &&
-                          handleComplianceFieldChange &&
-                          handleComplianceFieldChange(regulation, "reason", e.target.value)
+                          !isReadOnly && handleComplianceFieldChange && handleComplianceFieldChange(data.regulation, "reason", e.target.value)
                         }
                         placeholder="理由"
                         disabled={isReadOnly}
                       />
                     </div>
+
                     <div className="flex items-center gap-2">
                       <Input
                         type="file"
-                        id={`compliance_${regulation}`}
-                        onChange={(e) => handleFileUpload(e, `compliance_${regulation}`)}
+                        id={`compliance_${data.regulation}`}
+                        onChange={(e) => handleFileUpload(e, data.regulation)}
                         className="hidden"
                         disabled={isReadOnly}
                       />
@@ -510,7 +501,7 @@ export function DocumentsTab({
                         variant="outline"
                         size="sm"
                         className="w-full"
-                        onClick={() => document.getElementById(`compliance_${regulation}`)?.click()}
+                        onClick={() => document.getElementById(`compliance_${data.regulation}`)?.click()}
                         disabled={isReadOnly}
                       >
                         選擇文件連結

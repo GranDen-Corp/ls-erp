@@ -92,63 +92,13 @@ export interface Product {
     clockRequirement: boolean
   }
   complianceStatus: {
-    RoHS: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    REACh: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    EUPOP: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    TSCA: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    CP65: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    PFAS: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    CMRT: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-    EMRT: {
-      status: string
-      substances: string
-      reason: string
-      document: string
-      filename: string
-    }
-  }
+    regulation: string
+    regulationType: string
+    status: boolean
+    substances: string
+    reason: string
+    document: string
+  }[]
   editNotes: {
     content: string
     date: string

@@ -77,10 +77,9 @@ export function ProductForm({
     customerOriginalDrawing: initialProduct.customerOriginalDrawing || emptyFileObject,
     customerDrawing: initialProduct.customerDrawing || emptyFileObject,
     factoryDrawing: initialProduct.factoryDrawing || emptyFileObject,
-    complianceStatus: {
-      ...defaultProduct.complianceStatus,
-      ...(initialProduct.complianceStatus || {}),
-    },
+    complianceStatus: Array.isArray(initialProduct.complianceStatus)
+    ? initialProduct.complianceStatus
+    : [], // 或是進一步轉換舊格式
     importantDocuments: {
       ...defaultProduct.importantDocuments,
       ...(initialProduct.importantDocuments || {}),
@@ -122,11 +121,11 @@ export function ProductForm({
   const [newPartManagement, setNewPartManagement] = useState({ name: "", value: false })
   const [newCompliance, setNewCompliance] = useState({
     regulation: "",
-    status: "",
+    regulationType: "",
+    status: false,
     substances: "",
     reason: "",
     document: "",
-    filename: "",
   })
 
   // Data loading states
@@ -170,10 +169,9 @@ export function ProductForm({
         customerOriginalDrawing: initialValues.customerOriginalDrawing || emptyFileObject,
         customerDrawing: initialValues.customerDrawing || emptyFileObject,
         factoryDrawing: initialValues.factoryDrawing || emptyFileObject,
-        complianceStatus: {
-          ...defaultProduct.complianceStatus,
-          ...(initialValues.complianceStatus || {}),
-        },
+        complianceStatus: Array.isArray(initialValues.complianceStatus)
+        ? initialValues.complianceStatus
+        : [],
         importantDocuments: {
           ...defaultProduct.importantDocuments,
           ...(initialValues.importantDocuments || {}),
@@ -732,28 +730,30 @@ export function ProductForm({
     if (newCompliance.regulation) {
       setProduct((prev) => ({
         ...prev,
-        complianceStatus: {
-          ...(prev.complianceStatus || {}),
-          [newCompliance.regulation]: {
+        complianceStatus: [
+          ...(prev.complianceStatus || []),
+          {
+            regulation: newCompliance.regulation,
+            regulationType: newCompliance.regulationType,
             status: newCompliance.status,
             substances: newCompliance.substances,
             reason: newCompliance.reason,
             document: newCompliance.document,
-            filename: newCompliance.filename,
           },
-        },
+        ],
       }))
+  
       setNewCompliance({
         regulation: "",
-        status: "",
+        regulationType: "",
+        status: false,
         substances: "",
         reason: "",
         document: "",
-        filename: "",
       })
+  
       setIsComplianceDialogOpen(false)
-
-      // 顯示成功提示
+  
       toast({
         title: "符合性要求已新增",
         description: `法規 "${newCompliance.regulation}" 已成功新增`,
@@ -1077,32 +1077,35 @@ export function ProductForm({
                 },
               }))
             }}
+            
             handleComplianceStatusChange={(regulation, status) => {
-              setProduct((prev) => ({
-                ...prev,
-                complianceStatus: {
-                  ...(prev.complianceStatus || {}),
-                  [regulation]: {
-                    ...(prev.complianceStatus?.[regulation as keyof typeof prev.complianceStatus] ||
-                      emptyComplianceStatus),
-                    status,
-                  },
-                },
-              }))
+              setProduct((prev) => {
+                const exists = (prev.complianceStatus || []).some((item: any) => item.regulation === regulation)
+                return {
+                  ...prev,
+                  complianceStatus: exists
+                    ? prev.complianceStatus.map((item: any) =>
+                        item.regulation === regulation ? { ...item, status } : item
+                      )
+                    : [...(prev.complianceStatus || []), { regulation, status, regulationType: "standard" }],
+                }
+              })
             }}
+            
             handleComplianceFieldChange={(regulation, field, value) => {
-              setProduct((prev) => ({
-                ...prev,
-                complianceStatus: {
-                  ...(prev.complianceStatus || {}),
-                  [regulation]: {
-                    ...(prev.complianceStatus?.[regulation as keyof typeof prev.complianceStatus] ||
-                      emptyComplianceStatus),
-                    [field]: value,
-                  },
-                },
-              }))
+              setProduct((prev) => {
+                const exists = (prev.complianceStatus || []).some((item: any) => item.regulation === regulation)
+                return {
+                  ...prev,
+                  complianceStatus: exists
+                    ? prev.complianceStatus.map((item: any) =>
+                        item.regulation === regulation ? { ...item, [field]: value } : item
+                      )
+                    : [...(prev.complianceStatus || []), { regulation, [field]: value, regulationType: "standard" }],
+                }
+              })
             }}
+
           />
         </TabsContent>
 

@@ -53,6 +53,8 @@ interface DocumentRecord {
 
 // 符合性狀態類型
 interface ComplianceStatus {
+  regulation: string
+  regulationType: string
   status: string
   substances: string
   reason: string
@@ -93,6 +95,8 @@ const emptyFileObject = {
 
 // 默認的空符合性狀態
 const emptyComplianceStatus = {
+  regulation: "",
+  regulationType: "",
   status: "",
   substances: "",
   reason: "",
@@ -624,7 +628,7 @@ export function ProductReadOnlyForm({
                       <Label>產能分析</Label>
                       <Input
                         value={product.importantDocuments?.capacityAnalysis?.filename || "未選擇文件"}
-                        readOnly
+                        readOnly  
                         className="bg-gray-50 cursor-not-allowed"
                       />
                     </div>
@@ -707,40 +711,62 @@ export function ProductReadOnlyForm({
                       </div>
                     </div>
 
-                    {["RoHS", "REACh", "EUPOP", "TSCA", "CP65", "PFAS", "CMRT", "EMRT"].map((regulation) => (
-                      <div key={regulation} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
-                        <div>
-                          <Label>{regulation}</Label>
+                    {product.complianceStatus &&
+                      Object.entries(product.complianceStatus).map(([idx,data]: any) => (
+                        <div key={data.regulation} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
+                          <div>
+                            <Label>{data.regulation}</Label>
+                          </div>
+                          
+                          <div className="flex justify-center space-x-4">
+                            {data.regulationType === "containment" ? (
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-1">
+                                  <input type="radio" checked={data.status === true} disabled className="form-radio" />
+                                  <Label className="text-sm">含有</Label>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <input type="radio" checked={data.status === false} disabled className="form-radio" />
+                                  <Label className="text-sm">不含有</Label>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-1">
+                                  <input type="radio" checked={data.status === true} disabled className="form-radio" />
+                                  <Label className="text-sm">符合</Label>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <input type="radio" checked={data.status === false} disabled className="form-radio" />
+                                  <Label className="text-sm">不符</Label>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+
+                          <div>
+                            <Input
+                              value={data.substances || ""}
+                              readOnly
+                              className="bg-gray-50 cursor-not-allowed"
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              value={data.reason || ""}
+                              readOnly
+                              className="bg-gray-50 cursor-not-allowed"
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              value={data.filename || "未上傳文件"}
+                              readOnly
+                              className="bg-gray-50 cursor-not-allowed"
+                            />
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <Input
-                            value={product.complianceStatus?.[regulation]?.status || ""}
-                            readOnly
-                            className="bg-gray-50 cursor-not-allowed text-center"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={product.complianceStatus?.[regulation]?.substances || ""}
-                            readOnly
-                            className="bg-gray-50 cursor-not-allowed"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={product.complianceStatus?.[regulation]?.reason || ""}
-                            readOnly
-                            className="bg-gray-50 cursor-not-allowed"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            value={product.complianceStatus?.[regulation]?.filename || "未上傳文件"}
-                            readOnly
-                            className="bg-gray-50 cursor-not-allowed"
-                          />
-                        </div>
-                      </div>
                     ))}
                   </div>
                 </div>

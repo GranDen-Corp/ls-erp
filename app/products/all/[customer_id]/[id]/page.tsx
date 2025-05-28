@@ -64,7 +64,7 @@ export default async function ProductDetailPage({
     assemblyTime: product.assembly_time || 30,
     assemblyCostPerHour: product.assembly_cost_per_hour || 10,
     additionalCosts: product.additional_costs || 0,
-    complianceStatus: product.compliance_status || {},
+    complianceStatus: product.compliance_status || [],
     importantDocuments: product.important_documents || {},
     partManagement: product.part_management || {},
     editNotes: product.edit_notes || [],

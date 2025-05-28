@@ -29,22 +29,13 @@ export interface PartManagement {
 }
 
 export interface ComplianceStatus {
-  status: string
+  regulation: string
+  regulationType: string
+  status: boolean
   substances: string
   reason: string
   document: string
   filename: string
-}
-
-export interface ComplianceStatuses {
-  RoHS: ComplianceStatus
-  REACh: ComplianceStatus
-  EUPOP: ComplianceStatus
-  TSCA: ComplianceStatus
-  CP65: ComplianceStatus
-  PFAS: ComplianceStatus
-  CMRT: ComplianceStatus
-  EMRT: ComplianceStatus
 }
 
 export interface Note {
@@ -139,7 +130,7 @@ export interface Product {
   // 文件與認證
   importantDocuments: ImportantDocuments
   partManagement: PartManagement
-  complianceStatus: Record<string, ComplianceStatus>
+  complianceStatus: ComplianceStatus[]
   editNotes: Note[]
 
   // 製程資料

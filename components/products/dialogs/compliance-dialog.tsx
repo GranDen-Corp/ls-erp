@@ -12,19 +12,19 @@ interface ComplianceDialogProps {
   onOpenChange: (open: boolean) => void
   newCompliance: {
     regulation: string
-    status: string
+    regulationType: string
+    status: boolean
     substances: string
     reason: string
     document: string
-    filename: string
   }
   setNewCompliance: (data: {
     regulation: string
-    status: string
+    regulationType: string
+    status: boolean
     substances: string
     reason: string
     document: string
-    filename: string
   }) => void
   onAddCompliance: () => void
 }
@@ -36,7 +36,6 @@ export function ComplianceDialog({
   setNewCompliance,
   onAddCompliance,
 }: ComplianceDialogProps) {
-  const [regulationType, setRegulationType] = useState<string>("standard") // "standard" or "containment"
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -56,7 +55,9 @@ export function ComplianceDialog({
 
           <div className="space-y-2">
             <Label>法規類型</Label>
-            <RadioGroup value={regulationType} onValueChange={setRegulationType} className="flex space-x-4">
+            <RadioGroup value={newCompliance.regulationType} 
+            onValueChange={(value) => setNewCompliance({ ...newCompliance, regulationType: value })} 
+            className="flex space-x-4">
               <div className="flex items-center space-x-1">
                 <RadioGroupItem value="standard" id="type-standard" />
                 <Label htmlFor="type-standard" className="text-sm">
@@ -74,20 +75,20 @@ export function ComplianceDialog({
 
           <div className="space-y-2">
             <Label htmlFor="complianceStatus">符合狀態</Label>
-            {regulationType === "standard" ? (
+            {newCompliance.regulationType === "standard" ? (
               <RadioGroup
-                value={newCompliance.status}
-                onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value })}
+                value={newCompliance.status ? "Yes" : "No"}
+                onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value === "Yes" })}
                 className="flex space-x-4"
               >
                 <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="符合" id="comply" />
+                  <RadioGroupItem value="Yes" id="comply" />
                   <Label htmlFor="comply" className="text-sm">
                     符合
                   </Label>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="不符" id="not-comply" />
+                  <RadioGroupItem value="No" id="not-comply" />
                   <Label htmlFor="not-comply" className="text-sm">
                     不符
                   </Label>
@@ -95,18 +96,18 @@ export function ComplianceDialog({
               </RadioGroup>
             ) : (
               <RadioGroup
-                value={newCompliance.status}
-                onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value })}
+                value={newCompliance.status ? "Yes" : "No"}
+                onValueChange={(value) => setNewCompliance({ ...newCompliance, status: value === "Yes" })}
                 className="flex space-x-4"
               >
                 <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="含有" id="has" />
+                  <RadioGroupItem value="Yes" id="has" />
                   <Label htmlFor="has" className="text-sm">
                     含有
                   </Label>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="不含有" id="not-has" />
+                  <RadioGroupItem value="No" id="not-has" />
                   <Label htmlFor="not-has" className="text-sm">
                     不含有
                   </Label>
