@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,11 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Eye, FileEdit, MoreHorizontal, Trash2, Tag, ArrowUpDown } from "lucide-react"
+import { Eye, FileEdit, MoreHorizontal, Trash2, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { supabaseClient } from "@/lib/supabase-client"
 
 // 客戶資料類型 - 使用Supabase的資料結構
 interface Customer {
@@ -30,9 +31,22 @@ interface Customer {
   invoice_email?: string
   client_contact_person?: string
   sales_representative?: string
+  represent_sales?: string
+  client_sales?: string
   payment_due_date?: string
+  payment_terms?: string
+  trade_terms?: string
   currency?: string
   status?: string
+}
+
+interface TeamMember {
+  id: number
+  ls_employee_id: string
+  name: string
+  role?: string
+  department?: string
+  is_active?: boolean
 }
 
 interface CustomersTableProps {
@@ -46,6 +60,38 @@ type SortDirection = "asc" | "desc"
 export function CustomersTable({ data = [], isLoading = false }: CustomersTableProps) {
   const [sortField, setSortField] = useState<SortField>("customer_id")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+  const [teamMembers, setTeamMembers] = useState<Record<string, string>>({})
+  const [loadingTeamMembers, setLoadingTeamMembers] = useState(true)
+
+  // 獲取團隊成員資料
+  useEffect(() => {
+    async function fetchTeamMembers() {
+      try {
+        setLoadingTeamMembers(true)
+        const { data, error } = await supabaseClient.from("team_members").select("ls_employee_id, name")
+
+        if (error) {
+          console.error("Error fetching team members:", error)
+          return
+        }
+
+        const teamMemberMap: Record<string, string> = {}
+        data.forEach((member) => {
+          if (member.ls_employee_id && member.name) {
+            teamMemberMap[member.ls_employee_id] = member.name
+          }
+        })
+
+        setTeamMembers(teamMemberMap)
+      } catch (error) {
+        console.error("Failed to fetch team members:", error)
+      } finally {
+        setLoadingTeamMembers(false)
+      }
+    }
+
+    fetchTeamMembers()
+  }, [])
 
   // 處理排序
   const handleSort = (field: SortField) => {
@@ -86,7 +132,34 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
     </Button>
   )
 
-  if (isLoading) {
+  // 獲取業務負責人
+  const getSalesRepresentative = (customer: Customer) => {
+    const employeeId = customer.represent_sales || customer.client_sales || customer.sales_representative
+    if (!employeeId) return "-"
+
+    // 從團隊成員中查找名稱
+    const memberName = teamMembers[employeeId]
+    if (memberName) {
+      return `${memberName} (${employeeId})`
+    }
+
+    return employeeId
+  }
+
+  // 獲取聯絡人Email
+  const getContactEmail = (customer: Customer) => {
+    return customer.report_email || customer.invoice_email || "-"
+  }
+
+  // 獲取活躍度狀態
+  const getActivityStatus = (customer: Customer) => {
+    if (customer.status === "inactive") {
+      return { label: "非活躍", variant: "secondary" as const }
+    }
+    return { label: "活躍", variant: "default" as const }
+  }
+
+  if (isLoading || loadingTeamMembers) {
     return (
       <Card>
         <CardHeader>
@@ -113,75 +186,79 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
             <TableRow>
               <TableHead>{renderSortButton("customer_id", "客戶編號")}</TableHead>
               <TableHead>{renderSortButton("customer_short_name", "客戶名稱")}</TableHead>
-              <TableHead>{renderSortButton("group_code", "集團")}</TableHead>
-              <TableHead>{renderSortButton("division_location", "國家/地區")}</TableHead>
               <TableHead>{renderSortButton("client_contact_person", "聯絡人")}</TableHead>
-              <TableHead>{renderSortButton("payment_due_date", "付款條件")}</TableHead>
-              <TableHead>{renderSortButton("currency", "幣別")}</TableHead>
+              <TableHead>聯絡人Email</TableHead>
+              <TableHead>業務負責人</TableHead>
+              <TableHead>{renderSortButton("trade_terms", "貿易條件")}</TableHead>
+              <TableHead>{renderSortButton("payment_terms", "付款條件")}</TableHead>
+              <TableHead>{renderSortButton("status", "活躍度")}</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   沒有找到客戶資料
                 </TableCell>
               </TableRow>
             ) : (
-              sortedCustomers.map((customer) => (
-                <TableRow key={customer.customer_id}>
-                  <TableCell className="font-medium">{customer.customer_id}</TableCell>
-                  <TableCell>
-                    <div>{customer.customer_short_name}</div>
-                    {customer.customer_full_name && (
-                      <div className="text-sm text-muted-foreground">{customer.customer_full_name}</div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {customer.group_code && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Tag className="h-3 w-3" />
-                        {customer.group_code}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{customer.division_location || "-"}</TableCell>
-                  <TableCell>{customer.client_contact_person || "-"}</TableCell>
-                  <TableCell>{customer.payment_due_date ? `${customer.payment_due_date}天` : "-"}</TableCell>
-                  <TableCell>{customer.currency || "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">開啟選單</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>操作</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Link href={`/customers/all/${customer.customer_id}`} className="flex items-center">
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看詳情
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href={`/customers/all/${customer.customer_id}/edit`} className="flex items-center">
-                            <FileEdit className="mr-2 h-4 w-4" />
-                            編輯客戶
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          刪除客戶
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              sortedCustomers.map((customer) => {
+                const activityStatus = getActivityStatus(customer)
+                return (
+                  <TableRow key={customer.customer_id}>
+                    <TableCell className="font-medium">{customer.customer_id}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{customer.customer_short_name}</div>
+                        {customer.customer_full_name && (
+                          <div className="text-sm text-muted-foreground">{customer.customer_full_name}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{customer.client_contact_person || "-"}</TableCell>
+                    <TableCell className="text-sm">{getContactEmail(customer)}</TableCell>
+                    <TableCell>{getSalesRepresentative(customer)}</TableCell>
+                    <TableCell>{customer.trade_terms || "-"}</TableCell>
+                    <TableCell>
+                      {customer.payment_terms || customer.payment_due_date ? `${customer.payment_due_date}天` : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={activityStatus.variant}>{activityStatus.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">開啟選單</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>操作</DropdownMenuLabel>
+                          <DropdownMenuItem>
+                            <Link href={`/customers/all/${customer.customer_id}`} className="flex items-center">
+                              <Eye className="mr-2 h-4 w-4" />
+                              查看詳情
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Link href={`/customers/all/${customer.customer_id}/edit`} className="flex items-center">
+                              <FileEdit className="mr-2 h-4 w-4" />
+                              編輯客戶
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            刪除客戶
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

@@ -35,6 +35,7 @@ export interface Customer {
   client_procurement?: string
   client_sales?: string
   sales_representative?: string
+  represent_sales?: string
   logistics_coordinator?: string
 
   // 財務資訊

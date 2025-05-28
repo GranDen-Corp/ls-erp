@@ -227,10 +227,6 @@ export function TeamCustomerMatrix() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between">
-        <div>
-          <h3 className="text-lg font-medium">團隊客戶矩陣</h3>
-          <p className="text-sm text-muted-foreground">設定團隊成員負責的客戶及工廠（一對多關係）</p>
-        </div>
         <Button onClick={handleAddMember}>
           <Plus className="mr-2 h-4 w-4" />
           新增成員

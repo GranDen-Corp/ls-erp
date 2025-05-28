@@ -54,6 +54,7 @@ export interface OrderStatus {
   status_code: number
   name_zh: string
   description?: string
+  color?: string
   is_active: boolean
   sort_order: number
   created_at: string
@@ -101,6 +102,7 @@ export interface OrderStatusFormData {
   status_code: number
   name_zh: string
   description?: string
+  color?: string
   is_active: boolean
   sort_order: number
 }

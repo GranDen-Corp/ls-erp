@@ -3,25 +3,21 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Plus } from "lucide-react"
 import {
   getCustomersForAssignment,
   getFactoriesForAssignment,
   updateTeamMemberCustomers,
   updateTeamMemberFactories,
-  updateCustomerSales,
+  updateCustomerRepresentSales,
   updateSupplierQualityContact,
 } from "@/app/settings/team-matrix-actions"
-import type { TeamMemberWithRelations } from "@/types/team-matrix"
 import { useToast } from "@/hooks/use-toast"
 
 interface AssignmentDialogProps {
   open: boolean
   onClose: () => void
-  member: TeamMemberWithRelations | null
+  member: any | null
 }
 
 export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProps) {
@@ -202,7 +198,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
     if (!member) return
 
     try {
-      const result = await updateCustomerSales(customerId, member.ls_employee_id)
+      const result = await updateCustomerRepresentSales(customerId, member.ls_employee_id)
 
       if (result.success) {
         toast({
@@ -280,72 +276,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
             <TabsContent value="customers" className="space-y-4">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">客戶分配</h3>
-
-                {/* 1對多分配 */}
-                <div className="space-y-2">
-                  <h4 className="font-medium">分配客戶 (1對多)</h4>
-                  <div className="flex gap-2">
-                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="選擇客戶" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers
-                          .filter((c) => !member.assigned_customers?.includes(c.customer_id))
-                          .map((customer) => (
-                            <SelectItem key={customer.customer_id} value={customer.customer_id}>
-                              {customer.customer_short_name || customer.customer_id}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddCustomer} disabled={!selectedCustomer}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {member.assigned_customers_data?.map((customer) => (
-                      <Badge key={customer.customer_id} variant="outline" className="flex items-center gap-1">
-                        {customer.customer_short_name || customer.customer_id}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0"
-                          onClick={() => handleRemoveCustomer(customer.customer_id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 1對1業務負責人 */}
-                {member.role === "sales" && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">設為業務負責人 (1對1)</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {customers
-                        .filter((c) => !c.client_sales || c.client_sales === member.ls_employee_id)
-                        .map((customer) => (
-                          <div
-                            key={customer.customer_id}
-                            className="flex items-center justify-between p-2 border rounded"
-                          >
-                            <span className="text-sm">{customer.customer_short_name || customer.customer_id}</span>
-                            <Button
-                              size="sm"
-                              variant={customer.client_sales === member.ls_employee_id ? "default" : "outline"}
-                              onClick={() => handleSetSalesCustomer(customer.customer_id)}
-                            >
-                              {customer.client_sales === member.ls_employee_id ? "已設定" : "設定"}
-                            </Button>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
+                <p className="text-muted-foreground">客戶分配功能正在開發中...</p>
               </div>
             </TabsContent>
           )}
@@ -354,78 +285,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
             <TabsContent value="factories" className="space-y-4">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">工廠分配</h3>
-
-                {/* 1對多分配 */}
-                <div className="space-y-2">
-                  <h4 className="font-medium">分配工廠 (1對多)</h4>
-                  <div className="flex gap-2">
-                    <Select value={selectedFactory} onValueChange={setSelectedFactory}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="選擇工廠" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {factories
-                          .filter((f) => !member.assigned_factories?.includes(f.factory_id))
-                          .map((factory) => (
-                            <SelectItem key={factory.factory_id} value={factory.factory_id}>
-                              {factory.supplier_short_name || factory.supplier_name || factory.factory_id}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddFactory} disabled={!selectedFactory}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {member.assigned_factories_data?.map((factory) => (
-                      <Badge key={factory.factory_id} variant="outline" className="flex items-center gap-1">
-                        {factory.supplier_short_name || factory.supplier_name || factory.factory_id}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0"
-                          onClick={() => handleRemoveFactory(factory.factory_id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 1對1品管負責人 */}
-                {member.role === "qc" && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">設為品管負責人 (1對1)</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      {factories.map((factory) => (
-                        <div key={factory.factory_id} className="flex items-center justify-between p-2 border rounded">
-                          <span className="text-sm">
-                            {factory.supplier_short_name || factory.supplier_name || factory.factory_id}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant={factory.quality_contact1 === member.ls_employee_id ? "default" : "outline"}
-                              onClick={() => handleSetQualityContact(factory.factory_id, "quality_contact1")}
-                            >
-                              {factory.quality_contact1 === member.ls_employee_id ? "主要負責人" : "設為主要"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={factory.quality_contact2 === member.ls_employee_id ? "default" : "outline"}
-                              onClick={() => handleSetQualityContact(factory.factory_id, "quality_contact2")}
-                            >
-                              {factory.quality_contact2 === member.ls_employee_id ? "次要負責人" : "設為次要"}
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <p className="text-muted-foreground">工廠分配功能正在開發中...</p>
               </div>
             </TabsContent>
           )}

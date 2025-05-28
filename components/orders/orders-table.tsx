@@ -1,39 +1,62 @@
 "use client"
 
+import React from "react"
+
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Search, FileDown, Eye, Layers } from "lucide-react"
+import {
+  Loader2,
+  Search,
+  FileDown,
+  Eye,
+  FileEdit,
+  Printer,
+  Trash2,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+} from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabaseClient } from "@/lib/supabase-client"
 import { format } from "date-fns"
 import { zhTW } from "date-fns/locale"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // 在 import 部分添加新的引用
 import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
-
-// 狀態映射: 數字到文字
-const statusMap: Record<string, string> = {
-  "0": "待確認",
-  "1": "進行中",
-  "2": "驗貨完成",
-  "3": "已出貨/結案",
-}
-
-// 狀態顏色映射
-const statusColorMap: Record<string, string> = {
-  待確認: "bg-yellow-500",
-  進行中: "bg-blue-500",
-  驗貨完成: "bg-green-500",
-  "已出貨/結案": "bg-purple-500",
-}
 
 // 定義產品項目的介面
 interface PartItem {
   part_no: string
   description?: string
+}
+
+interface OrderStatus {
+  id: number
+  status_code: string
+  status_name: string
+  description?: string
+  color?: string
+  next_statuses?: number[]
 }
 
 export function OrdersTable() {
@@ -43,8 +66,13 @@ export function OrdersTable() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [customers, setCustomers] = useState<Record<string, string>>({})
+  const [customers, setCustomers] = useState<Record<string, any>>({})
   const [products, setProducts] = useState<Record<string, Record<string, string>>>({})
+  const [orderStatuses, setOrderStatuses] = useState<Record<string, OrderStatus>>({})
+  const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({})
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [selectedStatus, setSelectedStatus] = useState<string>("")
 
   // 獲取訂單、客戶和產品資料
   useEffect(() => {
@@ -59,7 +87,7 @@ export function OrdersTable() {
         if (customersError) {
           console.error("獲取客戶資料失敗:", customersError)
         } else if (customersData) {
-          const customerMap: Record<string, string> = {}
+          const customerMap: Record<string, any> = {}
 
           // 嘗試找出客戶ID和名稱欄位
           if (customersData.length > 0) {
@@ -72,19 +100,29 @@ export function OrdersTable() {
                   : Object.keys(firstRow).find((key) => key.includes("id")) || "id"
 
             const nameField =
-              "name" in firstRow
-                ? "name"
-                : "customer_name" in firstRow
-                  ? "customer_name"
+              "customer_short_name" in firstRow
+                ? "customer_short_name"
+                : "name" in firstRow
+                  ? "name"
                   : "company" in firstRow
                     ? "company"
                     : Object.keys(firstRow).find((key) => key.includes("name")) || "name"
 
+            const fullNameField =
+              "customer_full_name" in firstRow
+                ? "customer_full_name"
+                : "full_name" in firstRow
+                  ? "full_name"
+                  : "company_full" in firstRow
+                    ? "company_full"
+                    : null
+
             customersData.forEach((customer) => {
               const id = customer[idField]
               const name = customer[nameField]
-              if (id && name) {
-                customerMap[id] = name
+              const fullName = fullNameField ? customer[fullNameField] : null
+              if (id) {
+                customerMap[id] = { name, fullName }
               }
             })
           }
@@ -116,7 +154,31 @@ export function OrdersTable() {
           setProducts(productMap)
         }
 
-        // 3. 獲取訂單資料 - 使用新的資料表結構
+        // 3. 獲取訂單狀態資料
+        try {
+          const { data: statusesData, error: statusesError } = await supabaseClient.from("order_statuses").select("*")
+
+          if (statusesError) {
+            console.error("獲取訂單狀態資料失敗:", statusesError)
+          } else if (statusesData) {
+            const statusMap: Record<string, any> = {}
+            statusesData.forEach((status) => {
+              statusMap[status.status_code] = {
+                id: status.id,
+                status_code: status.status_code,
+                name_zh: status.name_zh,
+                color: status.color || `bg-gray-500`,
+                description: status.description,
+                is_active: status.is_active,
+              }
+            })
+            setOrderStatuses(statusMap)
+          }
+        } catch (err) {
+          console.error("獲取訂單狀態資料時出錯:", err)
+        }
+
+        // 4. 獲取訂單資料 - 使用新的資料表結構
         try {
           const { data: ordersData, error: ordersError } = await supabaseClient
             .from("orders")
@@ -194,13 +256,21 @@ export function OrdersTable() {
         const orderId = String(order.order_id || "").toLowerCase()
         const poId = String(order.po_id || "").toLowerCase()
         const customerId = String(order.customer_id || "").toLowerCase()
-        const customerName = customers[order.customer_id] ? customers[order.customer_id].toLowerCase() : ""
+        const customerName = customers[order.customer_id]?.name?.toLowerCase() || ""
 
         return orderId.includes(term) || poId.includes(term) || customerId.includes(term) || customerName.includes(term)
       })
       setFilteredOrders(filtered)
     }
   }, [searchTerm, orders, customers])
+
+  // 切換訂單展開狀態
+  const toggleOrderExpand = (orderId: string) => {
+    setExpandedOrders((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }))
+  }
 
   // 解析part_no_list JSON並獲取產品名稱
   const parsePartNoList = (partNoListData: any, customerId: string): string => {
@@ -256,13 +326,13 @@ export function OrdersTable() {
     }
   }
 
-  // 修改 getProductName 函數，使用新的批次項目數據
+  // 獲取產品名稱
   const getProductName = (order: any) => {
     try {
       const customerId = order.customer_id || "unknown"
       const customerProducts = products[customerId] || {}
 
-      // 使用新的批次項目數據
+      // 使用批次項目數據
       if (order.batch_items && order.batch_items.length > 0) {
         // 按產品索引分組
         const productGroups: Record<string, any[]> = {}
@@ -298,6 +368,52 @@ export function OrdersTable() {
     } catch (error) {
       console.error("獲取產品名稱時出錯:", error)
       return "-"
+    }
+  }
+
+  // 獲取組件產品的部件列表
+  const getComponentsList = (order: any) => {
+    try {
+      const customerId = order.customer_id || "unknown"
+      const customerProducts = products[customerId] || {}
+
+      if (order.batch_items && order.batch_items.length > 0) {
+        // 找出是組件的產品
+        const assemblyItems = order.batch_items.filter((item: any) => item.is_assembly)
+
+        if (assemblyItems.length === 0) return null
+
+        // 獲取組件的部件
+        const componentsList = assemblyItems.map((assemblyItem: any) => {
+          // 找出屬於這個組件的所有部件
+          const components = order.batch_items.filter(
+            (item: any) => item.assembly_id === assemblyItem.id && !item.is_assembly,
+          )
+
+          if (components.length === 0) return null
+
+          return (
+            <div key={assemblyItem.id} className="ml-6 mt-1 text-sm">
+              <div className="font-medium">組件部件:</div>
+              <ul className="list-disc pl-5">
+                {components.map((component: any) => (
+                  <li key={component.id}>
+                    {component.description || customerProducts[component.part_no] || component.part_no}
+                    {component.quantity ? ` (${component.quantity}${component.unit || "個"})` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })
+
+        return componentsList
+      }
+
+      return null
+    } catch (error) {
+      console.error("獲取組件部件列表時出錯:", error)
+      return null
     }
   }
 
@@ -391,11 +507,34 @@ export function OrdersTable() {
       // 將status轉換為字符串
       const statusKey = String(order.status)
 
-      // 從映射中獲取狀態文字
-      const statusText = statusMap[statusKey] || statusKey
+      // 從order_statuses表中獲取狀態信息
+      const statusInfo = orderStatuses[statusKey]
 
-      // 獲取狀態顏色
-      const statusColor = statusColorMap[statusText] || "bg-gray-500"
+      if (statusInfo) {
+        return {
+          text: statusInfo.name_zh,
+          color: statusInfo.color || "bg-blue-500",
+        }
+      }
+
+      // 如果在order_statuses中找不到，使用默認映射
+      const defaultStatusMap: Record<string, string> = {
+        "0": "待確認",
+        "1": "進行中",
+        "2": "驗貨完成",
+        "3": "已出貨/結案",
+      }
+
+      const defaultColorMap: Record<string, string> = {
+        "0": "bg-orange-500",
+        "1": "bg-yellow-500",
+        "2": "bg-green-500",
+        "3": "bg-blue-500",
+      }
+
+      // 從映射中獲取狀態文字和顏色
+      const statusText = defaultStatusMap[statusKey] || `狀態${statusKey}`
+      const statusColor = defaultColorMap[statusKey] || "bg-gray-500"
 
       return { text: statusText, color: statusColor }
     } catch (error) {
@@ -404,15 +543,81 @@ export function OrdersTable() {
     }
   }
 
+  // 打開狀態編輯對話框
+  const openStatusDialog = (order: any) => {
+    setSelectedOrder(order)
+    setSelectedStatus(String(order.status || ""))
+    setStatusDialogOpen(true)
+  }
+
+  // 更新訂單狀態
+  const updateOrderStatus = async () => {
+    if (!selectedOrder || !selectedStatus) return
+
+    try {
+      const { error } = await supabaseClient
+        .from("orders")
+        .update({ status: selectedStatus })
+        .eq("order_id", selectedOrder.order_id)
+
+      if (error) {
+        console.error("更新訂單狀態失敗:", error)
+        alert("更新訂單狀態失敗，請稍後再試。")
+        return
+      }
+
+      // 更新本地狀態
+      setOrders(
+        orders.map((order) =>
+          order.order_id === selectedOrder.order_id ? { ...order, status: selectedStatus } : order,
+        ),
+      )
+
+      setFilteredOrders(
+        filteredOrders.map((order) =>
+          order.order_id === selectedOrder.order_id ? { ...order, status: selectedStatus } : order,
+        ),
+      )
+
+      setStatusDialogOpen(false)
+    } catch (error) {
+      console.error("更新訂單狀態時出錯:", error)
+      alert("更新訂單狀態時發生錯誤，請稍後再試。")
+    }
+  }
+
   // 查看訂單詳情 - 使用 order_id 而不是 order_sid
   const viewOrderDetails = (orderId: string) => {
     router.push(`/orders/${orderId}`)
+  }
+
+  // 編輯訂單
+  const editOrder = (orderId: string) => {
+    router.push(`/orders/${orderId}/edit`)
+  }
+
+  // 列印訂單
+  const printOrder = (orderId: string) => {
+    router.push(`/orders/${orderId}/print`)
   }
 
   // 導出訂單資料
   const exportOrders = () => {
     // 實現導出功能
     alert("導出功能尚未實現")
+  }
+
+  // 獲取客戶名稱
+  const getCustomerName = (customerId: string) => {
+    const customer = customers[customerId]
+    if (!customer) return customerId || "-"
+
+    return (
+      <div>
+        <div className="font-medium">{customer.name || customerId}</div>
+        {customer.fullName && <div className="text-sm text-muted-foreground">{customer.fullName}</div>}
+      </div>
+    )
   }
 
   return (
@@ -447,10 +652,9 @@ export function OrdersTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>流水號</TableHead>
                 <TableHead>訂單編號</TableHead>
-                <TableHead>客戶</TableHead>
                 <TableHead>客戶PO編號</TableHead>
+                <TableHead>客戶</TableHead>
                 <TableHead>產品</TableHead>
                 <TableHead>訂單日期</TableHead>
                 <TableHead>狀態</TableHead>
@@ -461,34 +665,121 @@ export function OrdersTable() {
               {filteredOrders.map((order) => {
                 const status = getOrderStatus(order)
                 const isAssembly = hasAssemblyProduct(order)
+                const isExpanded = expandedOrders[order.order_id] || false
+                const componentsList = isAssembly ? getComponentsList(order) : null
+
                 return (
-                  <TableRow key={order.order_sid}>
-                    <TableCell>{order.order_sid}</TableCell>
-                    <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
-                    <TableCell>{customers[order.customer_id] || order.customer_id || "-"}</TableCell>
-                    <TableCell>{order.po_id || "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        {getProductName(order)}
-                        {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getOrderDate(order)}</TableCell>
-                    <TableCell>
-                      <Badge className={`${status.color} text-white`}>{status.text}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => viewOrderDetails(order.order_id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <React.Fragment key={order.order_sid || order.order_id}>
+                    <TableRow>
+                      <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
+                      <TableCell>{order.po_id || "-"}</TableCell>
+                      <TableCell>{getCustomerName(order.customer_id)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          {isAssembly && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="p-0 mr-1"
+                              onClick={() => toggleOrderExpand(order.order_id)}
+                            >
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </Button>
+                          )}
+                          {getProductName(order)}
+                          {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getOrderDate(order)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          className={`${status.color} text-white px-2 py-1 h-auto rounded-md text-xs`}
+                          onClick={() => openStatusDialog(order)}
+                        >
+                          {status.text}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <span className="sr-only">開啟選單</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>操作</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => viewOrderDetails(order.order_id)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              查看詳情
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => editOrder(order.order_id)}>
+                              <FileEdit className="mr-2 h-4 w-4" />
+                              編輯訂單
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => printOrder(order.order_id)}>
+                              <Printer className="mr-2 h-4 w-4" />
+                              列印訂單
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              刪除訂單
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && componentsList && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="bg-gray-50 py-1">
+                          {componentsList}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 )
               })}
             </TableBody>
           </Table>
         </div>
       )}
+
+      {/* 訂單狀態編輯對話框 */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>更新訂單狀態</DialogTitle>
+            <DialogDescription>選擇新的訂單狀態</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="選擇狀態" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(orderStatuses)
+                  .filter(([_, status]) => status.is_active)
+                  .map(([code, status]) => (
+                    <SelectItem key={code} value={code}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${status.color}`}></div>
+                        {status.name_zh}
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={updateOrderStatus}>更新狀態</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

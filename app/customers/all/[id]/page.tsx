@@ -38,11 +38,12 @@ async function getCustomer(id: string): Promise<Customer> {
       address: data.customer_address || "",
       country: data.division_location || "",
       paymentTerms: data.payment_term || "",
-      creditLimit: 0, // 假設數據庫中沒有這個字段
+      creditLimit: 0,
       currency: data.currency || "",
-      status: "active", // 假設默認為活躍
+      status: "active",
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
+      represent_sales: data.represent_sales || "", // 新增這行
       ...data, // 包含所有其他字段
     }
   } catch (error) {
@@ -268,7 +269,7 @@ export default async function CustomerDetailsPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">負責業務</p>
-                  <p>{customer.sales_representative || "-"}</p>
+                  <p>{customer.represent_sales || customer.sales_representative || "-"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">負責船務</p>

@@ -41,7 +41,7 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     client_contact_person: customer.client_contact_person || customer.contact_person || "",
     client_procurement: customer.client_procurement || "",
     client_sales: customer.client_sales || "",
-    sales_representative: customer.sales_representative || "",
+    sales_representative: customer.represent_sales || customer.sales_representative || "",
     logistics_coordinator: customer.logistics_coordinator || "",
 
     // 財務資訊
@@ -96,6 +96,7 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     bankName: customer.bank_name || "",
     bankAccount: customer.bank_account || "",
     groupTag: customer.group_code || customer.group_tag || "",
+    salesRepresentative: customer.represent_sales || customer.sales_representative || "",
   }
 
   return (

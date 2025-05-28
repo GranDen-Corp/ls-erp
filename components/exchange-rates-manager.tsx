@@ -100,8 +100,7 @@ export default function ExchangeRatesManager({ exchangeRates }: ExchangeRatesMan
   return (
     <div className="space-y-6">
       {/* 新增按鈕 */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">匯率管理</h3>
+      <div className="flex justify-end items-center">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openAddDialog}>

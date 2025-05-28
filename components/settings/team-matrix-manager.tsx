@@ -154,11 +154,7 @@ export function TeamMatrixManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">團隊矩陣管理</h2>
-          <p className="text-muted-foreground">管理團隊成員及其負責的客戶和工廠</p>
-        </div>
+      <div className="flex justify-end items-center">
         <Button variant="outline" onClick={() => setDepartmentDialogOpen(true)}>
           <Settings className="h-4 w-4 mr-2" />
           管理部門
@@ -264,6 +260,25 @@ function MemberTable({
   shouldShowCustomers,
   shouldShowFactories,
 }: MemberTableProps) {
+  // Helper function to get supplier display name
+  const getSupplierDisplayName = (supplier: any) => {
+    return (
+      supplier.factory_name ||
+      supplier.supplier_name ||
+      supplier.name ||
+      supplier.factory_short_name ||
+      supplier.supplier_short_name ||
+      supplier.short_name ||
+      supplier.factory_id ||
+      "未知工廠"
+    )
+  }
+
+  // Helper function to get supplier ID
+  const getSupplierId = (supplier: any) => {
+    return supplier.factory_id || supplier.id
+  }
+
   return (
     <div className="border rounded-lg">
       <table className="w-full">
@@ -355,11 +370,11 @@ function MemberTable({
                             {(expandedFactories.has(member.id) ? allFactories : allFactories.slice(0, 2)).map(
                               (factory, index) => (
                                 <Badge
-                                  key={`${factory.id}-${index}`}
+                                  key={`${getSupplierId(factory)}-${index}`}
                                   variant={factory.type === "qc" ? "default" : "outline"}
                                   className="text-xs"
                                 >
-                                  {factory.supplier_short_name || factory.supplier_name || factory.id}
+                                  {getSupplierDisplayName(factory)}
                                   {factory.type === "qc" && <span className="ml-1">(品管)</span>}
                                 </Badge>
                               ),

@@ -210,7 +210,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       )
       setClientProcurement(initialData.client_procurement || "")
       setClientSales(initialData.client_sales || "")
-      setSalesRepresentative(initialData.sales_representative || "")
+      setSalesRepresentative(initialData.represent_sales || initialData.sales_representative || "")
       setLogisticsCoordinator(initialData.logistics_coordinator || "")
 
       // 財務資訊
@@ -298,7 +298,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         client_contact_person: clientContactPerson,
         client_procurement: clientProcurement,
         client_sales: clientSales,
-        sales_representative: salesRepresentative,
+        represent_sales: salesRepresentative,
         logistics_coordinator: logisticsCoordinator,
 
         // 財務資訊
