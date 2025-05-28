@@ -9,4 +9,4 @@ INNER JOIN pg_class ON pg_constraint.conrelid = pg_class.oid
 INNER JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
 WHERE pg_class.relname = 'products'
   AND pg_namespace.nspname = 'public'
-ORDER BY contype; 
+ORDER BY contype;

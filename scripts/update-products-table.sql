@@ -15,4 +15,4 @@ ALTER TABLE products
 ADD CONSTRAINT products_component_name_part_no_key UNIQUE (component_name, part_no);
 
 -- 添加 customer_id 的索引（但不是主鍵）
-CREATE INDEX IF NOT EXISTS idx_products_customer_id ON products(customer_id); 
+CREATE INDEX IF NOT EXISTS idx_products_customer_id ON products(customer_id);

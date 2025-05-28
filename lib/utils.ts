@@ -5,28 +5,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: string | Date | null | undefined): string {
-  if (!date) return "-"
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return ""
 
-  try {
-    const dateObj = typeof date === "string" ? new Date(date) : date
-    if (isNaN(dateObj.getTime())) return "-"
+  const dateObj = typeof date === "string" ? new Date(date) : date
 
-    return dateObj.toLocaleDateString("zh-TW", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-  } catch {
-    return "-"
-  }
+  if (isNaN(dateObj.getTime())) return ""
+
+  return dateObj.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
 }
 
 export function formatCurrency(amount: number | string | null | undefined, currency = "USD"): string {
-  if (amount === null || amount === undefined || amount === "") return "-"
+  if (amount === null || amount === undefined || amount === "") return ""
 
   const numAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount
-  if (isNaN(numAmount)) return "-"
+
+  if (isNaN(numAmount)) return ""
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
