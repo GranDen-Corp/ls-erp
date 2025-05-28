@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -97,8 +96,7 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
   return (
     <div className="space-y-6">
       {/* 新增按鈕 */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">產品單位管理</h3>
+      <div className="flex justify-end items-center">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openAddDialog}>
@@ -188,50 +186,43 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
       </div>
 
       {/* 產品單位列表 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>產品單位列表</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {parameters.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">暫無產品單位資料</p>
-            ) : (
-              parameters.map((parameter) => (
-                <div key={parameter.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{parameter.name}</span>
-                      <Badge variant="outline">{parameter.code}</Badge>
-                      <Badge variant={parameter.is_active ? "default" : "secondary"}>
-                        {parameter.is_active ? "啟用" : "停用"}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <p>換算倍數: {parameter.value}</p>
-                      {parameter.description && <p>描述: {parameter.description}</p>}
-                      <p>排序: {parameter.sort_order}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={parameter.is_active}
-                      onCheckedChange={() => handleToggleStatus(parameter.id, parameter.is_active)}
-                    />
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(parameter)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(parameter.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+      <div className="space-y-4">
+        {parameters.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">暫無產品單位資料</p>
+        ) : (
+          parameters.map((parameter) => (
+            <div key={parameter.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-medium">{parameter.name}</span>
+                  <Badge variant="outline">{parameter.code}</Badge>
+                  <Badge variant={parameter.is_active ? "default" : "secondary"}>
+                    {parameter.is_active ? "啟用" : "停用"}
+                  </Badge>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                <div className="text-sm text-gray-600">
+                  <p>換算倍數: {parameter.value}</p>
+                  {parameter.description && <p>描述: {parameter.description}</p>}
+                  <p>排序: {parameter.sort_order}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={parameter.is_active}
+                  onCheckedChange={() => handleToggleStatus(parameter.id, parameter.is_active)}
+                />
+                <Button variant="outline" size="sm" onClick={() => handleEdit(parameter)}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleDelete(parameter.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }

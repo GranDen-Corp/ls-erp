@@ -182,11 +182,7 @@ export function TranslationsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">系統翻譯表</h3>
-          <p className="text-sm text-muted-foreground">管理系統中的多語言翻譯</p>
-        </div>
+      <div className="flex justify-end items-center">
         <Dialog
           open={isDialogOpen}
           onOpenChange={(open) => {

@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -99,7 +98,6 @@ export default function ExchangeRatesManager({ exchangeRates }: ExchangeRatesMan
 
   return (
     <div className="space-y-6">
-      {/* 新增按鈕 */}
       <div className="flex justify-end items-center">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -190,67 +188,54 @@ export default function ExchangeRatesManager({ exchangeRates }: ExchangeRatesMan
         </Dialog>
       </div>
 
-      {/* 匯率列表 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>匯率列表</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {exchangeRates.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">暫無匯率資料</p>
-            ) : (
-              exchangeRates.map((rate) => (
-                <div key={rate.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{rate.currency_code}</span>
-                      <span className="text-sm text-gray-600">
-                        {rate.currency_name} / {rate.currency_name_zh}
-                      </span>
-                      {rate.is_base_currency && (
-                        <Badge variant="default" className="bg-yellow-500">
-                          <Star className="w-3 h-3 mr-1" />
-                          基準貨幣
-                        </Badge>
-                      )}
-                      <Badge variant={rate.is_active ? "default" : "secondary"}>
-                        {rate.is_active ? "啟用" : "停用"}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <p>對美元匯率: {rate.rate_to_usd}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {!rate.is_base_currency && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSetBaseCurrency(rate.id)}
-                        title="設為基準貨幣"
-                      >
-                        <Star className="w-4 h-4" />
-                      </Button>
-                    )}
-                    <Switch
-                      checked={rate.is_active}
-                      onCheckedChange={() => handleToggleStatus(rate.id, rate.is_active)}
-                    />
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(rate)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(rate.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+      <div className="space-y-4">
+        {exchangeRates.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">暫無匯率資料</p>
+        ) : (
+          exchangeRates.map((rate) => (
+            <div key={rate.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-medium">{rate.currency_code}</span>
+                  <span className="text-sm text-gray-600">
+                    {rate.currency_name} / {rate.currency_name_zh}
+                  </span>
+                  {rate.is_base_currency && (
+                    <Badge variant="default" className="bg-yellow-500">
+                      <Star className="w-3 h-3 mr-1" />
+                      基準貨幣
+                    </Badge>
+                  )}
+                  <Badge variant={rate.is_active ? "default" : "secondary"}>{rate.is_active ? "啟用" : "停用"}</Badge>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                <div className="text-sm text-gray-600">
+                  <p>對美元匯率: {rate.rate_to_usd}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!rate.is_base_currency && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSetBaseCurrency(rate.id)}
+                    title="設為基準貨幣"
+                  >
+                    <Star className="w-4 h-4" />
+                  </Button>
+                )}
+                <Switch checked={rate.is_active} onCheckedChange={() => handleToggleStatus(rate.id, rate.is_active)} />
+                <Button variant="outline" size="sm" onClick={() => handleEdit(rate)}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleDelete(rate.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }

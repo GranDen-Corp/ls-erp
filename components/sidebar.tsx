@@ -160,7 +160,7 @@ export default function Sidebar({ className }: SidebarProps = {}) {
       active: pathname === "/documents" || pathname?.startsWith("/documents/"),
     },
     {
-      label: "系統設置",
+      label: "系統設定",
       icon: Settings,
       href: "/settings",
       active: pathname === "/settings" || pathname?.startsWith("/settings/"),

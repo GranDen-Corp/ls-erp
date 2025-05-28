@@ -36,6 +36,7 @@ interface Customer {
   trade_terms?: string
   currency?: string
   status?: string
+  logistics_coordinator?: string
 }
 
 interface TeamMember {
@@ -144,6 +145,20 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
     return employeeId
   }
 
+  // 獲取船務負責人
+  const getLogisticsCoordinator = (customer: Customer) => {
+    const employeeId = customer.logistics_coordinator
+    if (!employeeId) return "-"
+
+    // 從團隊成員中查找名稱
+    const memberName = teamMembers[employeeId]
+    if (memberName) {
+      return `${memberName} (${employeeId})`
+    }
+
+    return employeeId
+  }
+
   // 獲取聯絡人Email
   const getContactEmail = (customer: Customer) => {
     return customer.report_email || customer.invoice_email || "-"
@@ -186,7 +201,8 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
               <TableHead>{renderSortButton("customer_short_name", "客戶名稱")}</TableHead>
               <TableHead>{renderSortButton("client_contact_person", "聯絡人")}</TableHead>
               <TableHead>聯絡人Email</TableHead>
-              <TableHead>業務負責人</TableHead>
+              <TableHead>負責業務</TableHead>
+              <TableHead>負責船務</TableHead>
               <TableHead>{renderSortButton("trade_terms", "貿易條件")}</TableHead>
               <TableHead>{renderSortButton("payment_terms", "付款條件")}</TableHead>
               <TableHead>{renderSortButton("status", "活躍度")}</TableHead>
@@ -196,7 +212,7 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
           <TableBody>
             {sortedCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   沒有找到客戶資料
                 </TableCell>
               </TableRow>
@@ -217,6 +233,7 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
                     <TableCell>{customer.client_contact_person || "-"}</TableCell>
                     <TableCell className="text-sm">{getContactEmail(customer)}</TableCell>
                     <TableCell>{getSalesRepresentative(customer)}</TableCell>
+                    <TableCell>{getLogisticsCoordinator(customer)}</TableCell>
                     <TableCell>{customer.trade_terms || "-"}</TableCell>
                     <TableCell>
                       {customer.payment_terms || customer.payment_due_date ? `${customer.payment_due_date}天` : "-"}

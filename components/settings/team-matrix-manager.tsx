@@ -141,11 +141,11 @@ export function TeamMatrixManager() {
   }
 
   const shouldShowCustomers = (role: string) => {
-    return role === "admin" || role === "sales"
+    return role === "admin" || role === "sales" || role === "shipping"
   }
 
   const shouldShowFactories = (role: string) => {
-    return role === "admin" || role === "shipping" || role === "qc"
+    return role === "admin" || role === "qc"
   }
 
   if (loading) {
@@ -173,7 +173,10 @@ export function TeamMatrixManager() {
 
         <TabsContent value="all" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">所有團隊成員</h3>
+            <div>
+              <h4 className="text-lg font-medium">所有團隊成員</h4>
+              <p className="text-sm text-muted-foreground">管理所有部門的團隊成員</p>
+            </div>
             <Button onClick={() => setMemberDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               新增成員
@@ -197,7 +200,7 @@ export function TeamMatrixManager() {
           <TabsContent key={dept.department_code} value={dept.department_code} className="space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-semibold">{dept.department_name}</h3>
+                <h4 className="text-lg font-medium">{dept.department_name}</h4>
                 <p className="text-sm text-muted-foreground">{dept.description}</p>
               </div>
               <Button onClick={() => setMemberDialogOpen(true)}>
@@ -296,17 +299,21 @@ function MemberTable({
         </thead>
         <tbody>
           {members.map((member) => {
-            // 合併所有客戶資料（assigned_customers + sales_customers）
+            // 合併所有客戶資料（assigned_customers + sales_customers + shipping_customers）
             const allCustomers = [
               ...member.assigned_customers_data,
               ...member.sales_customers.map((c) => ({ ...c, type: "sales" as const })),
+              ...member.shipping_customers.map((c) => ({ ...c, type: "shipping" as const })),
             ]
 
-            // 合併所有工廠資料（assigned_factories + qc_factories）
-            const allFactories = [
-              ...member.assigned_factories_data,
-              ...member.qc_factories.map((f) => ({ ...f, type: "qc" as const })),
-            ]
+            // 只有QC部門顯示工廠資料
+            const allFactories =
+              member.role === "qc"
+                ? [
+                    ...member.assigned_factories_data,
+                    ...member.qc_factories.map((f) => ({ ...f, type: "qc" as const })),
+                  ]
+                : []
 
             return (
               <tr key={member.id} className="border-t">
@@ -329,6 +336,7 @@ function MemberTable({
                                 >
                                   {customer.customer_short_name || customer.customer_name || customer.customer_id}
                                   {customer.type === "sales" && <span className="ml-1">(業務)</span>}
+                                  {customer.type === "shipping" && <span className="ml-1">(船務)</span>}
                                 </Badge>
                               ),
                             )}

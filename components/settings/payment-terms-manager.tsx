@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -93,11 +93,7 @@ export default function PaymentTermsManager({ paymentTerms }: PaymentTermsManage
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">付款條件管理</h3>
-          <p className="text-sm text-muted-foreground">管理付款條件設定</p>
-        </div>
+      <div className="flex items-center justify-end">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openAddDialog}>
@@ -186,50 +182,43 @@ export default function PaymentTermsManager({ paymentTerms }: PaymentTermsManage
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>付款條件列表</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {paymentTerms.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">暫無付款條件</p>
-            ) : (
-              paymentTerms.map((term) => (
-                <div key={term.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{term.name_zh}</span>
-                      <Badge variant="outline">{term.code}</Badge>
-                      <Badge variant={term.is_active ? "default" : "secondary"}>
-                        {term.is_active ? "啟用" : "停用"}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <p>英文: {term.name_en}</p>
-                      {term.description && <p>描述: {term.description}</p>}
-                      <p>排序: {term.sort_order}</p>
-                    </div>
+      <CardContent>
+        <div className="space-y-4">
+          {paymentTerms.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">暫無付款條件</p>
+          ) : (
+            paymentTerms.map((term) => (
+              <div key={term.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium">{term.name_zh}</span>
+                    <Badge variant="outline">{term.code}</Badge>
+                    <Badge variant={term.is_active ? "default" : "secondary"}>{term.is_active ? "啟用" : "停用"}</Badge>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={term.is_active}
-                      onCheckedChange={() => handleToggleStatus(term.id, term.is_active)}
-                    />
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(term)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(term.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="text-sm text-gray-600">
+                    <p>英文: {term.name_en}</p>
+                    {term.description && <p>描述: {term.description}</p>}
+                    <p>排序: {term.sort_order}</p>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={term.is_active}
+                    onCheckedChange={() => handleToggleStatus(term.id, term.is_active)}
+                  />
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(term)}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDelete(term.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
     </div>
   )
 }

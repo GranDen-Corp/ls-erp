@@ -138,6 +138,9 @@ export default async function CustomerDetailsPage({
   const salesRepresentativeName = customer.sales_representative
     ? await getTeamMemberName(customer.sales_representative)
     : ""
+  const logisticsCoordinatorName = customer.logistics_coordinator
+    ? await getTeamMemberName(customer.logistics_coordinator)
+    : ""
 
   // 格式化日期的輔助函數
   const formatDate = (dateString?: string) => {
@@ -296,6 +299,14 @@ export default async function CustomerDetailsPage({
                     {salesRepresentativeName
                       ? `${salesRepresentativeName} (${customer.sales_representative})`
                       : customer.sales_representative || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">負責船務</p>
+                  <p>
+                    {logisticsCoordinatorName
+                      ? `${logisticsCoordinatorName} (${customer.logistics_coordinator})`
+                      : customer.logistics_coordinator || "-"}
                   </p>
                 </div>
                 <div>

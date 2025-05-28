@@ -70,6 +70,7 @@ export function OrdersTable() {
   const [customers, setCustomers] = useState<Record<string, any>>({})
   const [products, setProducts] = useState<Record<string, Record<string, string>>>({})
   const [orderStatuses, setOrderStatuses] = useState<Record<string, OrderStatus>>({})
+  const [teamMembers, setTeamMembers] = useState<Record<string, string>>({}) // 新增團隊成員映射
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({})
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
@@ -82,7 +83,24 @@ export function OrdersTable() {
         setIsLoading(true)
         setError(null)
 
-        // 1. 獲取客戶資料
+        // 1. 獲取團隊成員資料
+        const { data: teamMembersData, error: teamMembersError } = await supabaseClient
+          .from("team_members")
+          .select("ls_employee_id, name")
+
+        if (teamMembersError) {
+          console.error("獲取團隊成員資料失敗:", teamMembersError)
+        } else if (teamMembersData) {
+          const teamMemberMap: Record<string, string> = {}
+          teamMembersData.forEach((member) => {
+            if (member.ls_employee_id) {
+              teamMemberMap[member.ls_employee_id] = member.name
+            }
+          })
+          setTeamMembers(teamMemberMap)
+        }
+
+        // 2. 獲取客戶資料
         const { data: customersData, error: customersError } = await supabaseClient.from("customers").select("*")
 
         if (customersError) {
@@ -122,8 +140,9 @@ export function OrdersTable() {
               const id = customer[idField]
               const name = customer[nameField]
               const fullName = fullNameField ? customer[fullNameField] : null
+              const salesRepresentative = customer.sales_representative
               if (id) {
-                customerMap[id] = { name, fullName }
+                customerMap[id] = { name, fullName, salesRepresentative }
               }
             })
           }
@@ -131,7 +150,7 @@ export function OrdersTable() {
           setCustomers(customerMap)
         }
 
-        // 2. 獲取產品資料
+        // 3. 獲取產品資料
         const { data: productsData, error: productsError } = await supabaseClient.from("products").select("*")
 
         if (productsError) {
@@ -155,7 +174,7 @@ export function OrdersTable() {
           setProducts(productMap)
         }
 
-        // 3. 獲取訂單狀態資料
+        // 4. 獲取訂單狀態資料
         try {
           const { data: statusesData, error: statusesError } = await supabaseClient.from("order_statuses").select("*")
 
@@ -179,7 +198,7 @@ export function OrdersTable() {
           console.error("獲取訂單狀態資料時出錯:", err)
         }
 
-        // 4. 獲取訂單資料 - 使用新的資料表結構
+        // 5. 獲取訂單資料 - 使用新的資料表結構
         try {
           const { data: ordersData, error: ordersError } = await supabaseClient
             .from("orders")
@@ -608,15 +627,20 @@ export function OrdersTable() {
     alert("導出功能尚未實現")
   }
 
-  // 獲取客戶名稱
+  // 獲取客戶名稱和負責業務
   const getCustomerName = (customerId: string) => {
     const customer = customers[customerId]
     if (!customer) return customerId || "-"
+
+    const salesRepresentativeName = customer.salesRepresentative
+      ? teamMembers[customer.salesRepresentative] || customer.salesRepresentative
+      : ""
 
     return (
       <div>
         <div className="font-medium">{customer.name || customerId}</div>
         {customer.fullName && <div className="text-sm text-muted-foreground">{customer.fullName}</div>}
+        {salesRepresentativeName && <div className="text-xs text-blue-600">負責業務: {salesRepresentativeName}</div>}
       </div>
     )
   }

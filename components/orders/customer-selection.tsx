@@ -20,6 +20,7 @@ interface Customer {
   trade_terms_specification?: string
   currency?: string
   sales_representative?: string
+  logistics_coordinator?: string
 }
 
 interface TeamMember {
@@ -125,6 +126,18 @@ export default function CustomerSelection({
     return customer.sales_representative
   }
 
+  // 獲取船務負責人名稱
+  const getLogisticsCoordinatorName = (customer: Customer) => {
+    if (!customer.logistics_coordinator) return "-"
+
+    const memberName = teamMembers[customer.logistics_coordinator]
+    if (memberName) {
+      return `${memberName} (${customer.logistics_coordinator})`
+    }
+
+    return customer.logistics_coordinator
+  }
+
   const handleCustomerChange = (customerId: string) => {
     setSelectedCustomerId(customerId)
 
@@ -180,9 +193,15 @@ export default function CustomerSelection({
                 <p className="text-blue-800">{selectedCustomer.customer_short_name || "-"}</p>
               </div>
               <div>
-                <span className="text-blue-700 font-medium">業務代表:</span>
+                <span className="text-blue-700 font-medium">負責業務:</span>
                 <p className="text-blue-800">
                   {loadingTeamMembers ? "載入中..." : getSalesRepresentativeName(selectedCustomer)}
+                </p>
+              </div>
+              <div>
+                <span className="text-blue-700 font-medium">負責船務:</span>
+                <p className="text-blue-800">
+                  {loadingTeamMembers ? "載入中..." : getLogisticsCoordinatorName(selectedCustomer)}
                 </p>
               </div>
               <div>

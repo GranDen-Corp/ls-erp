@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -104,11 +104,7 @@ export default function OrderStatusesManager({ orderStatuses }: OrderStatusesMan
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">訂單狀態管理</h3>
-          <p className="text-sm text-muted-foreground">管理訂單狀態設定</p>
-        </div>
+      <div className="flex items-center justify-end">
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openAddDialog}>
@@ -204,50 +200,45 @@ export default function OrderStatusesManager({ orderStatuses }: OrderStatusesMan
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>訂單狀態列表</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {orderStatuses.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">暫無訂單狀態</p>
-            ) : (
-              orderStatuses.map((status) => (
-                <div key={status.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{status.name_zh}</span>
-                      <Badge variant="outline">代碼: {status.status_code}</Badge>
-                      {status.color && <Badge className={`${status.color} text-white`}>顏色預覽</Badge>}
-                      <Badge variant={status.is_active ? "default" : "secondary"}>
-                        {status.is_active ? "啟用" : "停用"}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {status.description && <p>描述: {status.description}</p>}
-                      <p>排序: {status.sort_order}</p>
-                    </div>
+      <CardContent>
+        <div className="space-y-4">
+          {orderStatuses.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">暫無訂單狀態</p>
+          ) : (
+            orderStatuses.map((status) => (
+              <div key={status.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium">{status.name_zh}</span>
+                    <Badge variant="outline">代碼: {status.status_code}</Badge>
+                    {status.color && <Badge className={`${status.color} text-white`}>顏色預覽</Badge>}
+                    <Badge variant={status.is_active ? "default" : "secondary"}>
+                      {status.is_active ? "啟用" : "停用"}
+                    </Badge>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={status.is_active}
-                      onCheckedChange={() => handleToggleStatus(status.id, status.is_active)}
-                    />
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(status)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(status.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="text-sm text-gray-600">
+                    {status.description && <p>描述: {status.description}</p>}
+                    <p>排序: {status.sort_order}</p>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={status.is_active}
+                    onCheckedChange={() => handleToggleStatus(status.id, status.is_active)}
+                  />
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(status)}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDelete(status.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
     </div>
   )
 }

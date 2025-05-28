@@ -55,13 +55,13 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
     try {
       const { data: customersData, error: customersErr } = await supabase
         .from("customers")
-        .select("customer_id, customer_short_name, sales_representative")
+        .select("customer_id, customer_short_name, sales_representative, logistics_coordinator")
 
       if (customersErr) {
         console.warn("sales_representative column not found, trying fallback")
         const { data: fallbackData, error: fallbackError } = await supabase
           .from("customers")
-          .select("customer_id, customer_short_name, represent_sales")
+          .select("customer_id, customer_short_name, represent_sales, logistics_coordinator")
 
         if (!fallbackError) {
           customers = fallbackData || []
@@ -104,6 +104,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
       const assignedFactoriesData =
         suppliers?.filter((supplier) => member.assigned_factories?.includes(supplier.factory_id || supplier.id)) || []
 
+      // 業務部門：透過 sales_representative 關聯的客戶
       const salesCustomers =
         customers?.filter(
           (customer) =>
@@ -111,7 +112,11 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
             customer.represent_sales === member.ls_employee_id,
         ) || []
 
-      // 透過 quality_contact1/2 關聯的工廠 (1對1)
+      // 出貨部門：透過 logistics_coordinator 關聯的客戶
+      const shippingCustomers =
+        customers?.filter((customer) => customer.logistics_coordinator === member.ls_employee_id) || []
+
+      // 品管部門：透過 quality_contact1/2 關聯的工廠
       const qcFactories =
         suppliers?.filter(
           (supplier) =>
@@ -123,6 +128,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
         assigned_customers_data: assignedCustomersData,
         assigned_factories_data: assignedFactoriesData,
         sales_customers: salesCustomers,
+        shipping_customers: shippingCustomers, // 新增出貨客戶
         qc_factories: qcFactories,
       }
     })
@@ -224,13 +230,13 @@ export async function getCustomersForAssignment() {
     let data: any[] = []
     const { data: customersData, error: customersErr } = await supabase
       .from("customers")
-      .select("customer_id, customer_short_name, sales_representative")
+      .select("customer_id, customer_short_name, sales_representative, logistics_coordinator")
       .order("customer_short_name")
 
     if (customersErr) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("customers")
-        .select("customer_id, customer_short_name, represent_sales")
+        .select("customer_id, customer_short_name, represent_sales, logistics_coordinator")
         .order("customer_short_name")
 
       if (!fallbackError) {
@@ -365,6 +371,32 @@ export async function updateCustomerRepresentSales(
   } catch (error) {
     console.error("Error in updateCustomerRepresentSales:", error)
     return { success: false, error: "Failed to update customer represent sales" }
+  }
+}
+
+// 更新客戶的出貨負責人
+export async function updateCustomerLogisticsCoordinator(
+  customerId: string,
+  employeeId: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createServerSupabaseClient()
+
+    const { error } = await supabase
+      .from("customers")
+      .update({ logistics_coordinator: employeeId })
+      .eq("customer_id", customerId)
+
+    if (error) {
+      console.error("Error updating customer logistics coordinator:", error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath("/settings")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in updateCustomerLogisticsCoordinator:", error)
+    return { success: false, error: "Failed to update customer logistics coordinator" }
   }
 }
 
