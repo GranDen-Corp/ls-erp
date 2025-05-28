@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import StaticParametersManager from "@/components/static-parameters-manager"
 import ExchangeRatesManager from "@/components/exchange-rates-manager"
 import { getStaticParameters, getExchangeRates, getTradeTerms, getPaymentTerms, getOrderStatuses } from "./actions"
+import { TeamMatrixManager } from "@/components/settings/team-matrix-manager"
 
 export default async function SettingsPage() {
   // Fetch data on the server side
@@ -61,10 +62,10 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>團隊矩陣管理</CardTitle>
-              <CardDescription>管理團隊成員和權限矩陣</CardDescription>
+              <CardDescription>管理團隊成員和部門設定</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">此功能尚未實現</div>
+              <TeamMatrixManager />
             </CardContent>
           </Card>
         </TabsContent>
