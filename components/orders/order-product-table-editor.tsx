@@ -90,6 +90,7 @@ export function OrderProductTableEditor({
     if (isVisible && orderItems.length > 0) {
       generateTableData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderItems, orderId, isVisible])
 
   // 處理描述變更
@@ -106,12 +107,45 @@ export function OrderProductTableEditor({
     setHasChanges(false)
   }
 
+  // 生成訂單條款內容
+  const generateOrderTerms = () => {
+    const customer = orderData?.customer
+    if (!customer || !orderItems.length) return ""
+
+    // 1. DELIVERY 部分
+    const deliveryLines = orderItems.map((item) => {
+      const etdDate = new Date()
+      etdDate.setDate(etdDate.getDate() + 30)
+      const etdString = etdDate.toISOString().split("T")[0].replace(/-/g, "/")
+      return `${item.productPartNo}: ${item.quantity} ${getUnitDisplayName(item.unit)} ETD ${etdString} XXX`
+    })
+
+    return `1. DELIVERY:
+${deliveryLines.join("\n")}
+
+2. PAYMENT: ${customer.payment_terms_specification || "TBD"}
+
+3. PACKING: ${customer.packaging_details || "Standard Export Packing"}
+
+4. QUANTITY ALLOWANCE PLUS ${customer.qty_allowance_percent || "10"}% / MINUS ${customer.qty_allowance_percent || "10"}%
+
+5. FORWARDER AGENT: -
+
+6. MATERIAL CERTS, INSPECTED REPORT REQUIRED
+
+7. ORDER BY - ${customer.client_contact_person || "TBD"} <${customer.client_contact_person_email || "TBD"}>
+
+
+`
+  }
+
   // 處理預覽列印
   const handlePreviewPrint = () => {
-    console.log("預覽列印 - orderData:", orderData)
-    console.log("預覽列印 - orderItems:", orderItems)
+    if (process.env.NODE_ENV === "development") {
+      console.log("預覽列印 - orderData:", orderData)
+      console.log("預覽列印 - orderItems:", orderItems)
+    }
 
-    // 直接調用列印功能
     const printData = tableData.map((item) => ({
       part_no: item.part_no,
       description: item.description,
@@ -121,172 +155,210 @@ export function OrderProductTableEditor({
       total_price: item.total_price,
     }))
 
-    const printContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Sales Confirmation - ${orderData?.order_id || orderId}</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px;
-            font-size: 12px;
-          }
-          .header-image {
-            width: 100%;
-            max-width: 800px;
-            margin-bottom: 20px;
-          }
-          .title-section {
-            text-align: center;
-            margin-bottom: 30px;
-          }
-          .title-main {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-          }
-          .title-decoration {
-            font-size: 16px;
-            letter-spacing: 2px;
-          }
-          .info-section {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-          }
-          .left-info {
-            width: 45%;
-          }
-          .right-info {
-            width: 45%;
-            text-align: left;
-          }
-          .info-line {
-            margin-bottom: 8px;
-          }
-          .shipping-mark-line {
-            border-bottom: 1px solid #000;
-            padding-bottom: 2px;
-            margin-bottom: 8px;
-          }
-          .products-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 20px; 
-          }
-          .products-table th, .products-table td { 
-            border: 1px solid #000; 
-            padding: 8px; 
-            text-align: left; 
-            vertical-align: top;
-          }
-          .products-table th { 
-            background-color: #f5f5f5; 
-            font-weight: bold;
-          }
-          .description-cell { 
-            font-family: monospace; 
-            font-size: 10px; 
-            white-space: pre-line; 
-            min-height: 200px;
-            width: 300px;
-          }
-          .number-cell { text-align: right; }
-          .center-cell { text-align: center; }
-          @media print {
-            body { margin: 0; }
-            .header-image { max-width: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <!-- Locksure Header -->
-        <img src="/images/LS_print_header.png" alt="Locksure Header" class="header-image" />
-        
-        <!-- Title Section -->
-        <div class="title-section">
-          <div class="title-main">SALES CONFIRMATION</div>
-          <div class="title-decoration">*************************</div>
-        </div>
-        
-        <!-- Information Section -->
-        <div class="info-section">
-          <!-- Left Side -->
-          <div class="left-info">
-            <div class="info-line">Our Ref.: ${orderData?.order_id || orderId}</div>
-            <div class="info-line">Your Ref.: ${orderData?.po_id || ""}</div>
-            <div class="info-line">Date: ${new Date()
-              .toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "2-digit",
-              })
-              .replace(/ /g, "-")}</div>
-            <div class="info-line">&nbsp;</div>
-            <div class="info-line">Messrs.:</div>
-            <div class="info-line">${orderData?.customer?.order_packaging_display || orderData?.customer_name || ""}</div>
-            <div class="info-line">${orderData?.customer?.customer_address || ""}</div>
-          </div>
-          
-          <!-- Right Side -->
-          <div class="right-info">
-            <div class="info-line">Shipping Mark:</div>
-            <div class="shipping-mark-line">---------------</div>
-            <div class="info-line">PO ${orderData?.po_id || ""}</div>
-            <div class="info-line">XXXXX</div>
-            <div class="info-line">C/NO.</div>
-            <div class="info-line">MADE IN TAIWAN</div>
-            <div class="info-line">R.O.C.</div>
-          </div>
-        </div>
+    const customer = orderData?.customer
 
-        <!-- Products Table -->
-        <table class="products-table">
-          <thead>
-            <tr>
-              <th style="width: 120px;">Part No.</th>
-              <th style="width: 300px;">Description</th>
-              <th style="width: 80px;">Quantity</th>
-              <th style="width: 60px;">Unit</th>
-              <th style="width: 100px;">Unit Price</th>
-              <th style="width: 100px;">Total Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${printData
-              .map(
-                (item) => `
-              <tr>
-                <td class="center-cell">${item.part_no}</td>
-                <td class="description-cell">${item.description}</td>
-                <td class="center-cell">${item.quantity}</td>
-                <td class="center-cell">${item.unit}</td>
-                <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
-                <td class="number-cell">$${item.total_price.toFixed(2)}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
+    // 生成交付條款
+    const deliveryTerms = orderItems
+      .map((item) => {
+        const etdDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        const etdString = etdDate.toISOString().split("T")[0].replace(/-/g, "/")
+        return `${item.productPartNo}: ${item.quantity} ${getUnitDisplayName(item.unit)} ETD ${etdString} XXX`
+      })
+      .join("\n")
 
-        ${
-          orderData?.remarks
-            ? `
-          <div style="margin-top: 30px;">
-            <strong>Remarks:</strong><br>
-            ${orderData.remarks}
-          </div>
-        `
-            : ""
-        }
-      </body>
-    </html>
-  `
+    const orderTermsContent = `1. DELIVERY:
+${deliveryTerms}
 
-    // 開啟列印視窗
+2. PAYMENT: ${customer?.payment_terms_specification || "TBD"}
+
+3. PACKING: ${customer?.packaging_details || "Standard Export Packing"}
+
+4. QUANTITY ALLOWANCE PLUS ${customer?.qty_allowance_percent || "10"}% / MINUS ${customer?.qty_allowance_percent || "10"}%
+
+5. FORWARDER AGENT: -
+
+6. MATERIAL CERTS, INSPECTED REPORT REQUIRED
+
+7. ORDER BY - ${customer?.client_contact_person || "TBD"} <${customer?.client_contact_person_email || "TBD"}>`
+
+    const productRows = printData
+      .map(
+        (item) => `
+      <tr>
+        <td class="center-cell">${item.part_no}</td>
+        <td class="description-cell">${item.description}</td>
+        <td class="center-cell">${item.quantity}</td>
+        <td class="center-cell">${item.unit}</td>
+        <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
+        <td class="number-cell">$${item.total_price.toFixed(2)}</td>
+      </tr>
+    `,
+      )
+      .join("")
+
+    const printContent = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Sales Confirmation - ${orderData?.order_id || orderId}</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      padding: 20px;
+      font-size: 12px;
+    }
+    .terms-section {
+      margin-top: 30px;
+      margin-bottom: 30px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      white-space: pre-line;
+      line-height: 1.4;
+      text-align: left;
+    }
+    .title-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .title-main {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .title-decoration {
+      font-size: 16px;
+      letter-spacing: 2px;
+    }
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+    .left-info, .right-info {
+      width: 45%;
+    }
+    .info-line {
+      margin-bottom: 8px;
+    }
+    .shipping-mark-line {
+      border-bottom: 1px solid #000;
+      padding-bottom: 2px;
+      margin-bottom: 8px;
+    }
+    .products-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 20px; 
+    }
+    .products-table th, .products-table td { 
+      border: 1px solid #000; 
+      padding: 8px; 
+      text-align: left; 
+      vertical-align: top;
+    }
+    .products-table th { 
+      background-color: #f5f5f5; 
+      font-weight: bold;
+    }
+    .description-cell { 
+      font-family: monospace; 
+      font-size: 10px; 
+      white-space: pre-line; 
+      min-height: 200px;
+      width: 300px;
+    }
+    .number-cell { text-align: right; }
+    .center-cell { text-align: center; }
+    .signature-section {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-left, .signature-right {
+      width: 45%;
+    }
+    .signature-line {
+      border-bottom: 1px solid #000;
+      margin-top: 40px;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div style="text-align: left; margin-bottom: 20px;">
+    <img src="/images/LS_print_header.png" alt="Locksure Header" style="display: block;" />
+  </div>
+  
+  <div class="title-section">
+    <div class="title-main">SALES CONFIRMATION</div>
+    <div class="title-decoration">*************************</div>
+  </div>
+  
+  <div class="info-section">
+    <div class="left-info">
+      <div class="info-line">Our Ref.: ${orderData?.order_id || orderId}</div>
+      <div class="info-line">Your Ref.: ${orderData?.po_id || ""}</div>
+      <div class="info-line">Date: ${new Date()
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "2-digit",
+        })
+        .replace(/ /g, "-")}</div>
+      <div class="info-line">&nbsp;</div>
+      <div class="info-line">Messrs.:</div>
+      <div class="info-line">${customer?.order_packaging_display || orderData?.customer_name || ""}</div>
+      <div class="info-line">${customer?.customer_address || orderData?.customer_address || ""}</div>
+    </div>
+    
+    <div class="right-info">
+      <div class="info-line">Shipping Mark:</div>
+      <div class="shipping-mark-line">---------------</div>
+      <div class="info-line">PO ${orderData?.po_id || ""}</div>
+      <div class="info-line">XXXXX</div>
+      <div class="info-line">C/NO.</div>
+      <div class="info-line">MADE IN TAIWAN</div>
+      <div class="info-line">R.O.C.</div>
+    </div>
+  </div>
+
+  <table class="products-table">
+    <thead>
+      <tr>
+        <th style="width: 120px;">Part No.</th>
+        <th style="width: 300px;">Description</th>
+        <th style="width: 80px;">Quantity</th>
+        <th style="width: 60px;">Unit</th>
+        <th style="width: 100px;">Unit Price</th>
+        <th style="width: 100px;">Total Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${productRows}
+    </tbody>
+  </table>
+
+  <div class="terms-section">
+    ${orderTermsContent}
+  </div>
+
+  <div class="signature-section">
+    <div class="signature-left">
+      <div>Confirmed by Buyer</div>
+      <div>${customer?.order_packaging_display || orderData?.customer_name || ""}</div>
+      <div class="signature-line"></div>
+      <div>Authorized Signature</div>
+    </div>
+    <div class="signature-right">
+      <div>Confirmed by Seller</div>
+      <div>LOCKSURE INC</div>
+      <div class="signature-line"></div>
+      <div>Authorized Signature</div>
+    </div>
+  </div>
+</body>
+</html>`
+
     const printWindow = window.open("", "_blank")
     if (printWindow) {
       printWindow.document.write(printContent)
@@ -297,7 +369,9 @@ export function OrderProductTableEditor({
 
   // 處理直接列印
   const handleDirectPrint = () => {
-    console.log("直接列印 - orderData:", orderData)
+    if (process.env.NODE_ENV === "development") {
+      console.log("直接列印 - orderData:", orderData)
+    }
     handlePreviewPrint() // 暫時使用相同的列印邏輯
   }
 

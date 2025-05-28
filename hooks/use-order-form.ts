@@ -20,6 +20,10 @@ interface Customer {
   group_code?: string
   division_location?: string
   exchange_rate?: number
+  packaging_details?: string
+  qty_allowance_percent?: string
+  client_contact_person?: string
+  client_contact_person_email?: string
 }
 
 interface Product {
@@ -483,16 +487,52 @@ export function useOrderForm() {
   )
 
   // Other handlers
+  const generateOrderRemarks = useCallback(() => {
+    const selectedCustomer = customers.find((c) => c.customer_id === selectedCustomerId)
+    if (!selectedCustomer || orderItems.length === 0) return ""
+
+    // 1. DELIVERY 部分
+    const deliveryLines = orderItems.map((item) => {
+      const etdDate = new Date()
+      etdDate.setDate(etdDate.getDate() + 30) // 預設30天後
+      const etdString = etdDate.toISOString().split("T")[0].replace(/-/g, "/")
+
+      return `${item.productPartNo}: ${item.quantity} ${getUnitDisplayName(item.unit)} ETD ${etdString} XXX`
+    })
+
+    const remarks = `1. DELIVERY:
+${deliveryLines.join("\n")}
+
+2. PAYMENT: ${selectedCustomer.payment_terms_specification || "TBD"}
+
+3. PACKING: ${selectedCustomer.packaging_details || "Standard Export Packing"}
+
+4. QUANTITY ALLOWANCE PLUS ${selectedCustomer.qty_allowance_percent || "10"}% / MINUS ${selectedCustomer.qty_allowance_percent || "10"}%
+
+5. FORWARDER AGENT: -
+
+6. MATERIAL CERTS, INSPECTED REPORT REQUIRED
+
+7. ORDER BY - ${selectedCustomer.client_contact_person || "TBD"} <${selectedCustomer.client_contact_person_email || "TBD"}>
+
+
+`
+
+    return remarks
+  }, [customers, selectedCustomerId, orderItems, getUnitDisplayName])
+
   const confirmProductsReady = useCallback(() => {
-    setIsProductSettingsConfirmed(!isProductSettingsConfirmed)
-    if (!isProductSettingsConfirmed) {
-      setIsProcurementReady(true)
-    } else {
-      setIsProcurementReady(false)
-      setIsProcurementSettingsConfirmed(false)
-      setOrderTableData([])
+    if (orderItems.length === 0) {
+      alert("請先添加產品到訂單中")
+      return
     }
-  }, [isProductSettingsConfirmed])
+
+    // 生成訂單備註
+    const generatedRemarks = generateOrderRemarks()
+    setRemarks(generatedRemarks)
+
+    setIsProductSettingsConfirmed(true)
+  }, [orderItems.length, generateOrderRemarks])
 
   const handleOrderTableDataChange = useCallback((tableData: ProductTableItem[]) => {
     setOrderTableData(tableData)
@@ -748,5 +788,6 @@ export function useOrderForm() {
     getOrderData,
     getCustomerName,
     checkOrderNumberDuplicate,
+    generateOrderRemarks,
   }
 }
