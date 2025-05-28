@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Users, Settings, ChevronDown, ChevronRight } from "lucide-react"
+import { Plus, Edit, Trash2, Users, Settings, ChevronDown, ChevronRight, Loader2 } from "lucide-react"
 import { TeamMemberDialog } from "./team-member-dialog"
 import { AssignmentDialog } from "./assignment-dialog"
 import { DepartmentManagementDialog } from "./department-management-dialog"
@@ -22,6 +22,7 @@ export function TeamMatrixManager() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [teamMembers, setTeamMembers] = useState<TeamMemberWithRelations[]>([])
   const [loading, setLoading] = useState(true)
+  const [membersLoading, setMembersLoading] = useState(false) // 新增：成員載入狀態
   const [memberDialogOpen, setMemberDialogOpen] = useState(false)
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false)
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false)
@@ -58,6 +59,7 @@ export function TeamMatrixManager() {
 
   const loadMembers = async () => {
     try {
+      setMembersLoading(true) // 開始載入
       let data: TeamMemberWithRelations[]
       if (selectedDepartment === "all") {
         data = await getAllTeamMembers()
@@ -71,6 +73,8 @@ export function TeamMatrixManager() {
         description: "無法載入團隊成員資料",
         variant: "destructive",
       })
+    } finally {
+      setMembersLoading(false) // 結束載入
     }
   }
 
@@ -148,6 +152,14 @@ export function TeamMatrixManager() {
     return role === "admin" || role === "qc"
   }
 
+  // 處理部門切換
+  const handleDepartmentChange = (value: string) => {
+    setSelectedDepartment(value)
+    // 重置展開狀態
+    setExpandedCustomers(new Set())
+    setExpandedFactories(new Set())
+  }
+
   if (loading) {
     return <div className="flex justify-center p-8">載入中...</div>
   }
@@ -161,11 +173,13 @@ export function TeamMatrixManager() {
         </Button>
       </div>
 
-      <Tabs value={selectedDepartment} onValueChange={setSelectedDepartment}>
+      <Tabs value={selectedDepartment} onValueChange={handleDepartmentChange}>
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="all">所有成員</TabsTrigger>
+          <TabsTrigger value="all" disabled={membersLoading}>
+            所有成員
+          </TabsTrigger>
           {departments.map((dept) => (
-            <TabsTrigger key={dept.department_code} value={dept.department_code}>
+            <TabsTrigger key={dept.department_code} value={dept.department_code} disabled={membersLoading}>
               {dept.department_name}
             </TabsTrigger>
           ))}
@@ -177,37 +191,17 @@ export function TeamMatrixManager() {
               <h4 className="text-lg font-medium">所有團隊成員</h4>
               <p className="text-sm text-muted-foreground">管理所有部門的團隊成員</p>
             </div>
-            <Button onClick={() => setMemberDialogOpen(true)}>
+            <Button onClick={() => setMemberDialogOpen(true)} disabled={membersLoading}>
               <Plus className="h-4 w-4 mr-2" />
               新增成員
             </Button>
           </div>
-          <MemberTable
-            members={teamMembers}
-            onEdit={handleEditMember}
-            onDelete={handleDeleteMember}
-            onManageAssignment={handleManageAssignment}
-            expandedCustomers={expandedCustomers}
-            expandedFactories={expandedFactories}
-            onToggleCustomers={toggleCustomersExpanded}
-            onToggleFactories={toggleFactoriesExpanded}
-            shouldShowCustomers={shouldShowCustomers}
-            shouldShowFactories={shouldShowFactories}
-          />
-        </TabsContent>
-
-        {departments.map((dept) => (
-          <TabsContent key={dept.department_code} value={dept.department_code} className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h4 className="text-lg font-medium">{dept.department_name}</h4>
-                <p className="text-sm text-muted-foreground">{dept.description}</p>
-              </div>
-              <Button onClick={() => setMemberDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                新增成員
-              </Button>
+          {membersLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+              <span className="ml-2">載入團隊成員中...</span>
             </div>
+          ) : (
             <MemberTable
               members={teamMembers}
               onEdit={handleEditMember}
@@ -219,7 +213,43 @@ export function TeamMatrixManager() {
               onToggleFactories={toggleFactoriesExpanded}
               shouldShowCustomers={shouldShowCustomers}
               shouldShowFactories={shouldShowFactories}
+              disabled={membersLoading}
             />
+          )}
+        </TabsContent>
+
+        {departments.map((dept) => (
+          <TabsContent key={dept.department_code} value={dept.department_code} className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-lg font-medium">{dept.department_name}</h4>
+                <p className="text-sm text-muted-foreground">{dept.description}</p>
+              </div>
+              <Button onClick={() => setMemberDialogOpen(true)} disabled={membersLoading}>
+                <Plus className="h-4 w-4 mr-2" />
+                新增成員
+              </Button>
+            </div>
+            {membersLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                <span className="ml-2">載入團隊成員中...</span>
+              </div>
+            ) : (
+              <MemberTable
+                members={teamMembers}
+                onEdit={handleEditMember}
+                onDelete={handleDeleteMember}
+                onManageAssignment={handleManageAssignment}
+                expandedCustomers={expandedCustomers}
+                expandedFactories={expandedFactories}
+                onToggleCustomers={toggleCustomersExpanded}
+                onToggleFactories={toggleFactoriesExpanded}
+                shouldShowCustomers={shouldShowCustomers}
+                shouldShowFactories={shouldShowFactories}
+                disabled={membersLoading}
+              />
+            )}
           </TabsContent>
         ))}
       </Tabs>
@@ -249,6 +279,7 @@ interface MemberTableProps {
   onToggleFactories: (memberId: number) => void
   shouldShowCustomers: (role: string) => boolean
   shouldShowFactories: (role: string) => boolean
+  disabled?: boolean // 新增：禁用狀態
 }
 
 function MemberTable({
@@ -262,6 +293,7 @@ function MemberTable({
   onToggleFactories,
   shouldShowCustomers,
   shouldShowFactories,
+  disabled = false,
 }: MemberTableProps) {
   // Helper function to get supplier display name
   const getSupplierDisplayName = (supplier: any) => {
@@ -283,7 +315,7 @@ function MemberTable({
   }
 
   return (
-    <div className="border rounded-lg">
+    <div className={`border rounded-lg ${disabled ? "opacity-50 pointer-events-none" : ""}`}>
       <table className="w-full">
         <thead className="bg-muted/50">
           <tr>
@@ -347,6 +379,7 @@ function MemberTable({
                               size="sm"
                               className="h-6 px-2 text-xs"
                               onClick={() => onToggleCustomers(member.id)}
+                              disabled={disabled}
                             >
                               {expandedCustomers.has(member.id) ? (
                                 <>
@@ -394,6 +427,7 @@ function MemberTable({
                               size="sm"
                               className="h-6 px-2 text-xs"
                               onClick={() => onToggleFactories(member.id)}
+                              disabled={disabled}
                             >
                               {expandedFactories.has(member.id) ? (
                                 <>
@@ -423,13 +457,25 @@ function MemberTable({
                 </td>
                 <td className="p-3">
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => onManageAssignment(member)} title="管理分配">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onManageAssignment(member)}
+                      title="管理分配"
+                      disabled={disabled}
+                    >
                       <Users className="h-3 w-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onEdit(member)} title="編輯">
+                    <Button size="sm" variant="ghost" onClick={() => onEdit(member)} title="編輯" disabled={disabled}>
                       <Edit className="h-3 w-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onDelete(member.id)} title="刪除">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onDelete(member.id)}
+                      title="刪除"
+                      disabled={disabled}
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -437,7 +483,7 @@ function MemberTable({
               </tr>
             )
           })}
-          {members.length === 0 && (
+          {members.length === 0 && !disabled && (
             <tr>
               <td colSpan={8} className="p-8 text-center text-muted-foreground">
                 尚無團隊成員資料

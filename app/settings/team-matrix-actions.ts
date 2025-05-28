@@ -143,7 +143,30 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
 // 根據部門代碼獲取團隊成員
 export async function getTeamMembersByDepartment(departmentCode: string): Promise<TeamMemberWithRelations[]> {
   const allMembers = await getAllTeamMembers()
-  return allMembers.filter((member) => member.role === departmentCode.toLowerCase())
+
+  // 確保正確的部門篩選邏輯
+  const filteredMembers = allMembers.filter((member) => {
+    // 支援多種比較方式
+    const memberRole = member.role?.toLowerCase()
+    const memberDepartment = member.department?.toLowerCase()
+    const targetDepartment = departmentCode.toLowerCase()
+
+    return (
+      memberRole === targetDepartment ||
+      memberDepartment === targetDepartment ||
+      memberRole === targetDepartment.replace("_", "") ||
+      memberDepartment === targetDepartment.replace("_", "")
+    )
+  })
+
+  console.log(`篩選部門 ${departmentCode}:`, {
+    總成員數: allMembers.length,
+    篩選後成員數: filteredMembers.length,
+    篩選條件: departmentCode,
+    成員角色: allMembers.map((m) => ({ name: m.name, role: m.role, department: m.department })),
+  })
+
+  return filteredMembers
 }
 
 // 新增團隊成員

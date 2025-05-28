@@ -142,7 +142,12 @@ export function OrdersTable() {
               const fullName = fullNameField ? customer[fullNameField] : null
               const salesRepresentative = customer.sales_representative
               if (id) {
-                customerMap[id] = { name, fullName, salesRepresentative }
+                customerMap[id] = {
+                  name,
+                  fullName,
+                  sales_representative: salesRepresentative,
+                  salesRepresentative, // 保持向後兼容
+                }
               }
             })
           }
@@ -632,8 +637,10 @@ export function OrdersTable() {
     const customer = customers[customerId]
     if (!customer) return customerId || "-"
 
-    const salesRepresentativeName = customer.salesRepresentative
-      ? teamMembers[customer.salesRepresentative] || customer.salesRepresentative
+    // 修復：使用 sales_representative 欄位正確獲取負責業務名稱
+    const salesRepresentativeId = customer.sales_representative || customer.salesRepresentative
+    const salesRepresentativeName = salesRepresentativeId
+      ? teamMembers[salesRepresentativeId] || salesRepresentativeId
       : ""
 
     return (
