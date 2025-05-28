@@ -96,7 +96,7 @@ export default function PaymentTermsManager({ paymentTerms }: PaymentTermsManage
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium">付款條件管理</h3>
-          <p className="text-sm text-muted-foreground">管理付款方式和條件設定</p>
+          <p className="text-sm text-muted-foreground">管理付款條件設定</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -116,7 +116,7 @@ export default function PaymentTermsManager({ paymentTerms }: PaymentTermsManage
                   id="code"
                   value={formData.code}
                   onChange={(e) => setFormData((prev) => ({ ...prev, code: e.target.value }))}
-                  placeholder="如: L/C, T/T"
+                  placeholder="如: NET30, COD"
                   required
                 />
               </div>
@@ -127,7 +127,7 @@ export default function PaymentTermsManager({ paymentTerms }: PaymentTermsManage
                   id="name_en"
                   value={formData.name_en}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name_en: e.target.value }))}
-                  placeholder="如: Letter of Credit"
+                  placeholder="如: Net 30 Days"
                   required
                 />
               </div>
@@ -138,7 +138,7 @@ export default function PaymentTermsManager({ paymentTerms }: PaymentTermsManage
                   id="name_zh"
                   value={formData.name_zh}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name_zh: e.target.value }))}
-                  placeholder="如: 信用證"
+                  placeholder="如: 30天付款"
                   required
                 />
               </div>

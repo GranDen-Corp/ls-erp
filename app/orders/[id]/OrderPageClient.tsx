@@ -1,6 +1,4 @@
 "use client"
-
-import { useEffect, useState } from "react"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,13 +8,88 @@ import { supabaseClient } from "@/lib/supabase-client"
 import { Badge } from "@/components/ui/badge"
 import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
 import { Button } from "@/components/ui/button"
-import { Printer, Edit, Save, X, Loader2 } from "lucide-react"
+import { Printer, Edit, Save, X } from "lucide-react"
+import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { format } from "date-fns"
-import { zhTW } from "date-fns/locale"
+
+// 從 Supabase 獲取訂單數據
+async function getOrder(orderId: string) {
+  try {
+    // 使用 order_id 欄位查詢訂單
+    const { data, error } = await supabaseClient.from("orders").select("*").eq("order_id", orderId).single()
+
+    if (error) {
+      console.error("獲取訂單數據失敗:", error)
+      return null
+    }
+
+    // 獲取訂單批次項目
+    const batchResult = await getOrderBatchItemsByOrderId(orderId)
+
+    if (batchResult.success && batchResult.data) {
+      // 將批次項目添加到訂單數據中
+      data.batch_items = batchResult.data
+
+      // 計算訂單總數量和總金額
+      let totalQuantity = 0
+      let totalAmount = 0
+
+      batchResult.data.forEach((item) => {
+        totalQuantity += item.quantity || 0
+        totalAmount += item.total_price || item.quantity * item.unit_price || 0
+      })
+
+      data.total_quantity = totalQuantity
+      data.amount = totalAmount
+    }
+
+    return data
+  } catch (error) {
+    console.error("獲取訂單數據時出錯:", error)
+    return null
+  }
+}
+
+// 獲取訂單狀態列表
+async function getOrderStatuses() {
+  try {
+    const { data, error } = await supabaseClient.from("order_statuses").select("*").eq("is_active", true)
+
+    if (error) {
+      console.error("獲取訂單狀態失敗:", error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("獲取訂單狀態時出錯:", error)
+    return []
+  }
+}
+
+// 獲取訂單狀態歷史
+async function getOrderStatusHistory(orderId: string) {
+  try {
+    const { data, error } = await supabaseClient
+      .from("order_status_history")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("獲取訂單狀態歷史失敗:", error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("獲取訂單狀態歷史時出錯:", error)
+    return []
+  }
+}
 
 export default function OrderPageClient({
   params,
@@ -26,115 +99,28 @@ export default function OrderPageClient({
   const [order, setOrder] = useState<any>(null)
   const [orderStatuses, setOrderStatuses] = useState<any[]>([])
   const [statusHistory, setStatusHistory] = useState<any[]>([])
-  const [customers, setCustomers] = useState<Record<string, any>>({})
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  useState(() => {
     const fetchData = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
+      const orderData = await getOrder(params.id)
+      const orderStatusesData = await getOrderStatuses()
+      const statusHistoryData = await getOrderStatusHistory(params.id)
 
-        // 1. 獲取訂單數據
-        const { data: orderData, error: orderError } = await supabaseClient
-          .from("orders")
-          .select("*")
-          .eq("order_id", params.id)
-          .single()
-
-        if (orderError) {
-          console.error("獲取訂單數據失敗:", orderError)
-          setError("獲取訂單數據失敗")
-          return
-        }
-
-        // 2. 獲取客戶數據
-        const { data: customersData, error: customersError } = await supabaseClient.from("customers").select("*")
-
-        if (!customersError && customersData) {
-          const customerMap: Record<string, any> = {}
-          customersData.forEach((customer) => {
-            customerMap[customer.customer_id] = customer
-          })
-          setCustomers(customerMap)
-
-          // 更新訂單中的客戶信息
-          if (orderData && customerMap[orderData.customer_id]) {
-            const customer = customerMap[orderData.customer_id]
-            orderData.customer_name =
-              customer.customer_short_name || customer.customer_full_name || orderData.customer_id
-            orderData.customer_address = customer.invoice_address || customer.ship_to_address
-            orderData.customer_contact = customer.client_contact_person
-          }
-        }
-
-        // 3. 獲取訂單批次項目
-        if (orderData) {
-          const batchResult = await getOrderBatchItemsByOrderId(orderData.order_id)
-          if (batchResult.success && batchResult.data) {
-            orderData.batch_items = batchResult.data
-
-            // 計算訂單總數量和總金額
-            let totalQuantity = 0
-            let totalAmount = 0
-
-            batchResult.data.forEach((item) => {
-              totalQuantity += item.quantity || 0
-              totalAmount += item.total_price || item.quantity * item.unit_price || 0
-            })
-
-            orderData.total_quantity = totalQuantity
-            if (!orderData.amount) {
-              orderData.amount = totalAmount
-            }
-          }
-        }
-
-        // 4. 獲取訂單狀態列表
-        const { data: statusesData, error: statusesError } = await supabaseClient
-          .from("order_statuses")
-          .select("*")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true })
-
-        if (!statusesError && statusesData) {
-          setOrderStatuses(statusesData)
-        }
-
-        // 5. 獲取訂單狀態歷史
-        const { data: historyData, error: historyError } = await supabaseClient
-          .from("order_status_history")
-          .select("*")
-          .eq("order_id", params.id)
-          .order("created_at", { ascending: false })
-
-        if (!historyError && historyData) {
-          setStatusHistory(historyData)
-        }
-
+      if (orderData) {
         setOrder(orderData)
-      } catch (error) {
-        console.error("獲取數據時出錯:", error)
-        setError("獲取數據時發生錯誤")
-      } finally {
-        setIsLoading(false)
       }
+
+      setOrderStatuses(orderStatusesData)
+      setStatusHistory(statusHistoryData)
+      setIsLoading(false)
     }
 
     fetchData()
   }, [params.id])
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return <div className="text-center text-red-500 py-4">{error}</div>
+    return <div>Loading...</div>
   }
 
   if (!order) {
@@ -149,13 +135,11 @@ export default function OrderPageClient({
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">
           訂單 #{order.order_id}
-          <span className="ml-2 text-lg font-normal text-muted-foreground">
-            {order.customer_name || order.customer_id}
-          </span>
+          <span className="ml-2 text-lg font-normal text-muted-foreground">{order.customer_name}</span>
         </h1>
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground">流水號: {order.order_sid}</div>
-          <Button variant="outline" size="sm" onClick={() => (window.location.href = `/orders/${order.order_id}/edit`)}>
+          <Button variant="outline" size="sm">
             <Edit className="h-4 w-4 mr-2" />
             編輯訂單
           </Button>
@@ -198,11 +182,9 @@ export default function OrderPageClient({
           <TabsContent value="details" className="space-y-4">
             <OrderDetailsTab
               order={order}
-              setOrder={setOrder}
               orderStatuses={orderStatuses}
               currentStatus={currentStatus}
               statusHistory={statusHistory}
-              setStatusHistory={setStatusHistory}
             />
           </TabsContent>
 
@@ -211,7 +193,7 @@ export default function OrderPageClient({
           </TabsContent>
 
           <TabsContent value="remarks" className="space-y-4">
-            <OrderRemarksTab order={order} setOrder={setOrder} />
+            <OrderRemarksTab order={order} />
           </TabsContent>
 
           <TabsContent value="shipment" className="space-y-4">
@@ -224,72 +206,22 @@ export default function OrderPageClient({
 }
 
 // 訂單資訊分頁組件
-function OrderDetailsTab({ order, setOrder, orderStatuses, currentStatus, statusHistory, setStatusHistory }: any) {
+function OrderDetailsTab({ order, orderStatuses, currentStatus, statusHistory }: any) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedOrder, setEditedOrder] = useState(order)
 
   const handleSave = async () => {
-    try {
-      const { error } = await supabaseClient
-        .from("orders")
-        .update({
-          po_id: editedOrder.po_id,
-          order_date: editedOrder.order_date,
-          delivery_date: editedOrder.delivery_date,
-          payment_terms: editedOrder.payment_terms,
-          trade_terms: editedOrder.trade_terms,
-          amount: editedOrder.amount,
-          currency: editedOrder.currency,
-        })
-        .eq("order_id", order.order_id)
-
-      if (!error) {
-        setOrder(editedOrder)
-        setIsEditing(false)
-      }
-    } catch (error) {
-      console.error("保存訂單失敗:", error)
-    }
+    // 實現保存邏輯
+    setIsEditing(false)
   }
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      const oldStatus = order.status
-      const statusInfo = orderStatuses.find((s) => s.status_code === Number.parseInt(newStatus))
-
-      // 更新訂單狀態
-      const { error } = await supabaseClient
-        .from("orders")
-        .update({ status: Number.parseInt(newStatus) })
-        .eq("order_id", order.order_id)
+      const { error } = await supabaseClient.from("orders").update({ status: newStatus }).eq("order_id", order.order_id)
 
       if (!error) {
-        // 記錄狀態變更歷史
-        await supabaseClient.from("order_status_history").insert([
-          {
-            order_id: order.order_id,
-            old_status: oldStatus,
-            new_status: Number.parseInt(newStatus),
-            status_name: statusInfo?.name_zh || `狀態${newStatus}`,
-            status_color: statusInfo?.color || "bg-gray-500",
-            notes: `狀態從 ${oldStatus} 更新為 ${newStatus}`,
-            changed_by: "系統用戶", // 這裡應該是當前登入用戶
-          },
-        ])
-
-        // 更新本地狀態
-        setOrder({ ...order, status: Number.parseInt(newStatus) })
-
-        // 重新載入狀態歷史
-        const { data: historyData } = await supabaseClient
-          .from("order_status_history")
-          .select("*")
-          .eq("order_id", order.order_id)
-          .order("created_at", { ascending: false })
-
-        if (historyData) {
-          setStatusHistory(historyData)
-        }
+        // 重新載入頁面或更新狀態
+        window.location.reload()
       }
     } catch (error) {
       console.error("更新狀態失敗:", error)
@@ -342,7 +274,7 @@ function OrderDetailsTab({ order, setOrder, orderStatuses, currentStatus, status
               </div>
               <div>
                 <Label>客戶名稱</Label>
-                <Input value={order.customer_name || order.customer_id || ""} disabled />
+                <Input value={order.customer_name || ""} disabled />
               </div>
               <div>
                 <Label>訂單日期</Label>
@@ -400,7 +332,11 @@ function OrderDetailsTab({ order, setOrder, orderStatuses, currentStatus, status
               </div>
               <div>
                 <Label>訂單狀態</Label>
-                <Select value={String(order.status || "")} onValueChange={handleStatusChange}>
+                <Select
+                  value={String(editedOrder.status || "")}
+                  onValueChange={handleStatusChange}
+                  disabled={!isEditing}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -438,11 +374,8 @@ function OrderDetailsTab({ order, setOrder, orderStatuses, currentStatus, status
                       {history.status_name}
                     </Badge>
                     <span className="text-sm">{history.notes || "狀態更新"}</span>
-                    {history.changed_by && <span className="text-xs text-gray-500">by {history.changed_by}</span>}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {format(new Date(history.created_at), "yyyy/MM/dd HH:mm", { locale: zhTW })}
-                  </div>
+                  <div className="text-sm text-gray-500">{new Date(history.created_at).toLocaleString()}</div>
                 </div>
               ))
             )}
@@ -503,15 +436,6 @@ function OrderProductsTab({ order }: any) {
                 </tr>
               )}
             </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={5} className="px-4 py-2 text-right font-medium">
-                  總計
-                </td>
-                <td className="px-4 py-2 text-right font-medium">${order.amount?.toLocaleString()}</td>
-                <td></td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </CardContent>
@@ -520,7 +444,7 @@ function OrderProductsTab({ order }: any) {
 }
 
 // 訂單備註分頁組件
-function OrderRemarksTab({ order, setOrder }: any) {
+function OrderRemarksTab({ order }: any) {
   const [isEditing, setIsEditing] = useState(false)
   const [remarks, setRemarks] = useState(order.remarks || "")
 
@@ -529,7 +453,6 @@ function OrderRemarksTab({ order, setOrder }: any) {
       const { error } = await supabaseClient.from("orders").update({ remarks }).eq("order_id", order.order_id)
 
       if (!error) {
-        setOrder({ ...order, remarks })
         setIsEditing(false)
       }
     } catch (error) {

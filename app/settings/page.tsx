@@ -4,6 +4,9 @@ import StaticParametersManager from "@/components/static-parameters-manager"
 import ExchangeRatesManager from "@/components/exchange-rates-manager"
 import { getStaticParameters, getExchangeRates, getTradeTerms, getPaymentTerms, getOrderStatuses } from "./actions"
 import { TeamMatrixManager } from "@/components/settings/team-matrix-manager"
+import TradeTermsManager from "@/components/settings/trade-terms-manager"
+import PaymentTermsManager from "@/components/settings/payment-terms-manager"
+import OrderStatusesManager from "@/components/settings/order-statuses-manager"
 
 export default async function SettingsPage() {
   // Fetch data on the server side
@@ -23,10 +26,13 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="system-parameters" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="system-parameters">系統參數設定</TabsTrigger>
           <TabsTrigger value="exchange-rates">匯率設定</TabsTrigger>
           <TabsTrigger value="team-matrix">團隊矩陣</TabsTrigger>
+          <TabsTrigger value="trade-terms">交易條件</TabsTrigger>
+          <TabsTrigger value="payment-terms">付款條件</TabsTrigger>
+          <TabsTrigger value="order-statuses">訂單狀態</TabsTrigger>
         </TabsList>
 
         <TabsContent value="system-parameters">
@@ -66,6 +72,42 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <TeamMatrixManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="trade-terms">
+          <Card>
+            <CardHeader>
+              <CardTitle>交易條件管理</CardTitle>
+              <CardDescription>管理國際貿易條件設定</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TradeTermsManager tradeTerms={tradeTerms} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payment-terms">
+          <Card>
+            <CardHeader>
+              <CardTitle>付款條件管理</CardTitle>
+              <CardDescription>管理付款條件設定</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PaymentTermsManager paymentTerms={paymentTerms} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="order-statuses">
+          <Card>
+            <CardHeader>
+              <CardTitle>訂單狀態管理</CardTitle>
+              <CardDescription>管理訂單狀態設定</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OrderStatusesManager orderStatuses={orderStatuses} />
             </CardContent>
           </Card>
         </TabsContent>

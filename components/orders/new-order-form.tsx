@@ -21,7 +21,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProcurementDataEditor } from "@/components/orders/procurement-data-editor"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
-import { OrderValidation } from "@/components/orders/order-validation"
 import { OrderProductTableEditor } from "@/components/orders/order-product-table-editor"
 import { useOrderForm } from "@/hooks/use-order-form"
 import CustomerSelection from "./customer-selection"
@@ -31,6 +30,7 @@ import { ProductList } from "./product-list"
 import { BatchManagement } from "./batch-management"
 import { OrderInfo } from "./order-info"
 import { EnhancedBatchManagement } from "./enhanced-batch-management"
+import { ProcurementProductList } from "./procurement-product-list"
 
 interface NewOrderFormProps {
   onSubmit: (createPurchaseOrder?: boolean) => void
@@ -173,8 +173,15 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     // Create stable callback functions
     const handleGoToProcurement = () => {
+      console.log("前往設定採購資料 - 設置狀態")
       orderForm.setActiveTab("procurement")
+      orderForm.setIsProcurementReady(true) // 確保設置採購準備狀態
       orderForm.setIsSplitView(true)
+      console.log("採購狀態設置完成:", {
+        activeTab: "procurement",
+        isProcurementReady: true,
+        orderItemsLength: orderForm.orderItems.length,
+      })
     }
 
     const handleGoToProducts = () => {
@@ -251,7 +258,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setOrderNumber={orderForm.setOrderNumber}
           customOrderNumber={orderForm.customOrderNumber}
           setCustomOrderNumber={orderForm.setCustomOrderNumber}
-          useCustomOrderNumber={orderForm.useCustomOrderNumber}
+          useCustomOrderNumber={orderForm.setUseCustomOrderNumber}
           setUseCustomOrderNumber={orderForm.setUseCustomOrderNumber}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
           setOrderNumberStatus={orderForm.setOrderNumberStatus}
@@ -375,8 +382,14 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         )}
 
         {/* 採購資料設定區域 */}
-        {orderForm.activeTab === "procurement" && orderForm.isProcurementReady && (
+        {orderForm.activeTab === "procurement" && (
           <div className="space-y-6">
+            {/* 調試信息 */}
+            <div className="text-sm text-gray-500 p-2 bg-gray-100 rounded">
+              調試信息: activeTab={orderForm.activeTab}, isProcurementReady=
+              {orderForm.isProcurementReady ? "true" : "false"}, orderItems={orderForm.orderItems.length}
+            </div>
+
             {/* 訂單摘要卡片 */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -463,26 +476,78 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               </Button>
             </div>
 
-            {/* 採購資料設定 */}
-            <ProcurementDataEditor
+            {/* 採購產品列表 - 移除 isProcurementReady 條件 */}
+            <ProcurementProductList
               orderItems={orderForm.orderItems}
               onProcurementDataChange={orderForm.handleProcurementDataChange}
-              isCreatingPurchaseOrder={orderForm.isCreatingPurchaseOrder}
-              orderId={createdOrderId}
-              readOnly={orderForm.isProcurementSettingsConfirmed}
-              onConfirmSettings={orderForm.confirmProcurementSettings}
-              isSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+              customerCurrency={orderForm.customerCurrency}
               productUnits={orderForm.productUnits}
               getUnitMultiplier={orderForm.getUnitMultiplier}
             />
 
-            {orderForm.isProcurementSettingsConfirmed && (
-              <OrderValidation
-                orderItems={orderForm.orderItems}
-                procurementItems={orderForm.procurementItems}
-                customerCurrency={orderForm.customerCurrency}
-              />
-            )}
+            {/* 採購設定確認按鈕 */}
+            <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-green-800">採購資料設定</h3>
+                    <p className="text-sm text-green-700">
+                      請確認所有採購產品的供應商、價格、交期等資訊無誤後，點擊確認按鈕完成設定。
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    {!orderForm.isProcurementSettingsConfirmed && (
+                      <Button
+                        onClick={orderForm.confirmProcurementSettings}
+                        className="bg-green-600 hover:bg-green-700"
+                        size="lg"
+                      >
+                        <LucideCheckCircle className="h-5 w-5 mr-2" />
+                        確認採購設定完成
+                      </Button>
+                    )}
+                    {orderForm.isProcurementSettingsConfirmed && (
+                      <Button onClick={orderForm.confirmProcurementSettings} variant="outline" size="lg">
+                        <LucideSettings className="h-5 w-5 mr-2" />
+                        修改採購設定
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 最終提交按鈕 */}
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-blue-800">準備完成</h3>
+                    <p className="text-sm text-blue-700">產品設定和採購設定都已完成，現在可以提交訂單並創建採購單。</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => onSubmit(false)}
+                      disabled={orderForm.isSubmitting}
+                      variant="outline"
+                      size="lg"
+                    >
+                      <LucideSave className="h-5 w-5 mr-2" />
+                      僅建立訂單
+                    </Button>
+                    <Button
+                      onClick={() => onSubmit(true)}
+                      disabled={orderForm.isSubmitting}
+                      className="bg-purple-600 hover:bg-purple-700"
+                      size="lg"
+                    >
+                      <LucideShoppingCart className="h-5 w-5 mr-2" />
+                      建立訂單與採購單
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 

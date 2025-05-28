@@ -185,7 +185,7 @@ export default function Sidebar({ className }: SidebarProps = {}) {
         <div className="flex items-center p-6 border-b">
           {!collapsed && (
             <div className="flex items-center space-x-2 overflow-hidden">
-              <Image src="/images/new-logo.png" alt="Logo" width={64} height={64} className="rounded-sm" />
+              <Image src="/images/logo.jpg" alt="Logo" width={64} height={64} className="rounded-sm" />
               <div className="flex flex-col">
                 <span className="font-semibold text-sm">今湛貿易 ERP 系統</span>
                 <span className="text-xs text-muted-foreground">alpha ver.: v0.1</span>

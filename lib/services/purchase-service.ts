@@ -340,6 +340,108 @@ export async function createPurchasesFromProcurementItems(procurementItems: any[
 }
 
 /**
+ * 從新的採購產品列表創建採購單
+ */
+export async function createPurchasesFromProcurementProductItems(procurementProductItems: any[], orderId: string) {
+  try {
+    // 檢查訂單ID是否存在
+    const orderExists = await checkOrderExists(orderId)
+    if (!orderExists) {
+      console.warn(`訂單 ${orderId} 不存在，將創建不關聯訂單的採購單`)
+      orderId = null
+    }
+
+    // 按供應商分組
+    const itemsBySupplier: Record<string, any[]> = {}
+
+    procurementProductItems.forEach((item) => {
+      if (!item.isSelected || !item.supplierId) return
+
+      if (!itemsBySupplier[item.supplierId]) {
+        itemsBySupplier[item.supplierId] = []
+      }
+
+      itemsBySupplier[item.supplierId].push(item)
+    })
+
+    const results = []
+
+    // 為每個供應商創建採購單
+    for (const supplierId in itemsBySupplier) {
+      const items = itemsBySupplier[supplierId]
+      const firstItem = items[0]
+
+      // 計算總金額
+      const totalAmount = items.reduce((sum, item) => {
+        const actualQuantity = item.procurementQuantity * getUnitMultiplier(item.procurementUnit)
+        return sum + (actualQuantity * item.procurementUnitPrice)
+      }, 0)
+
+      // 準備採購單數據
+      const purchase: Purchase = {
+        order_id: orderId,
+        supplier_id: supplierId,
+        supplier_name: firstItem.supplierName,
+        status: "pending",
+        issue_date: new Date().toISOString().split("T")[0],
+        expected_delivery_date: firstItem.expectedDeliveryDate
+          ? new Date(firstItem.expectedDeliveryDate).toISOString().split("T")[0]
+          : undefined,
+        currency: firstItem.procurementCurrency || "USD",
+        total_amount: totalAmount,
+        notes: orderId ? `從訂單 ${orderId} 自動生成的採購單` : "自動生成的採購單",
+        items: items.map((item) => {
+          const actualQuantity = item.procurementQuantity * getUnitMultiplier(item.procurementUnit)
+          return {
+            product_part_no: item.productPartNo,
+            product_name: item.productName,
+            quantity: actualQuantity, // 使用實際數量（PCS）
+            unit_price: item.procurementUnitPrice,
+            total_price: actualQuantity * item.procurementUnitPrice,
+            expected_delivery_date: item.expectedDeliveryDate
+              ? new Date(item.expectedDeliveryDate).toISOString().split("T")[0]
+              : undefined,
+            notes: item.notes,
+            status: "pending",
+          }
+        }),
+      }
+
+      // 創建採購單
+      const result = await createPurchase(purchase)
+      results.push(result)
+    }
+
+    return {
+      success: true,
+      results,
+    }
+  } catch (error: any) {
+    console.error("從採購產品列表創建採購單時出錯:", error)
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+// 輔助函數：獲取單位乘數（需要根據實際的單位系統調整）
+function getUnitMultiplier(unit: string): number {
+  switch (unit) {
+    case "KPCS":
+      return 1000
+    case "HPCS":
+      return 100
+    case "TPCS":
+      return 10
+    case "PCS":
+    case "MPCS":
+    default:
+      return 1
+  }
+}
+
+/**
  * 創建採購訂單 (alias for createPurchase for backward compatibility)
  */
 export const createPurchaseOrder = createPurchase
