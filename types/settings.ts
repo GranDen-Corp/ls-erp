@@ -8,6 +8,7 @@ export interface StaticParameter {
   value: string
   description?: string
   is_active: boolean
+  is_default: boolean // 使用 is_default 而不是 default
   sort_order: number
   created_at: string
   updated_at: string
@@ -68,6 +69,7 @@ export interface StaticParameterFormData {
   value: string
   description?: string
   is_active: boolean
+  is_default: boolean // 使用 is_default 而不是 default
   sort_order: number
 }
 

@@ -31,6 +31,11 @@ export async function getStaticParameters() {
 export async function createStaticParameter(formData: StaticParameterFormData) {
   const supabase = createServerSupabaseClient()
 
+  // 如果設置為預設單位，先將其他單位的預設狀態設為 false
+  if (formData.is_default && formData.category === "product_unit") {
+    await supabase.from("unit_setting").update({ is_default: false }).eq("category", "product_unit")
+  }
+
   const { error } = await supabase.from("unit_setting").insert([formData])
 
   if (error) {
@@ -45,6 +50,11 @@ export async function createStaticParameter(formData: StaticParameterFormData) {
 export async function updateStaticParameter(id: number, formData: StaticParameterFormData) {
   const supabase = createServerSupabaseClient()
 
+  // 如果設置為預設單位，先將其他單位的預設狀態設為 false
+  if (formData.is_default && formData.category === "product_unit") {
+    await supabase.from("unit_setting").update({ is_default: false }).eq("category", "product_unit").neq("id", id)
+  }
+
   const { error } = await supabase.from("unit_setting").update(formData).eq("id", id)
 
   if (error) {
@@ -58,6 +68,12 @@ export async function updateStaticParameter(id: number, formData: StaticParamete
 
 export async function deleteStaticParameter(id: number) {
   const supabase = createServerSupabaseClient()
+
+  // 檢查是否為預設單位，如果是則不允許刪除
+  const { data } = await supabase.from("unit_setting").select("is_default").eq("id", id).single()
+  if (data?.is_default) {
+    return { success: false, error: "預設單位不能刪除，請先設置其他單位為預設" }
+  }
 
   const { error } = await supabase.from("unit_setting").delete().eq("id", id)
 
@@ -82,6 +98,39 @@ export async function toggleStaticParameterStatus(id: number, isActive: boolean)
 
   revalidatePath("/settings")
   return { success: true }
+}
+
+// 設置預設單位
+export async function setDefaultUnit(id: number) {
+  const supabase = createServerSupabaseClient()
+
+  try {
+    // 使用事務來確保操作的原子性
+    // 首先清除所有產品單位的預設狀態
+    const { error: clearError } = await supabase
+      .from("unit_setting")
+      .update({ is_default: false })
+      .eq("category", "product_unit")
+
+    if (clearError) {
+      console.error("Error clearing default units:", clearError)
+      return { success: false, error: clearError.message }
+    }
+
+    // 然後設置指定單位為預設單位
+    const { error: setError } = await supabase.from("unit_setting").update({ is_default: true }).eq("id", id)
+
+    if (setError) {
+      console.error("Error setting default unit:", setError)
+      return { success: false, error: setError.message }
+    }
+
+    revalidatePath("/settings")
+    return { success: true }
+  } catch (error) {
+    console.error("Unexpected error in setDefaultUnit:", error)
+    return { success: false, error: "發生未知錯誤" }
+  }
 }
 
 // 匯率相關操作

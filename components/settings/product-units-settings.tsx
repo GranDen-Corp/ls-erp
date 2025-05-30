@@ -9,13 +9,15 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, Plus } from "lucide-react"
+import { Trash2, Edit, Plus, Star } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 import type { StaticParameter, StaticParameterFormData } from "@/types/settings"
 import {
   createStaticParameter,
   updateStaticParameter,
   deleteStaticParameter,
   toggleStaticParameterStatus,
+  setDefaultUnit,
 } from "@/app/settings/actions"
 
 interface ProductUnitsSettingsProps {
@@ -32,22 +34,41 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
     value: "",
     description: "",
     is_active: true,
+    is_default: false,
     sort_order: 1,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    let result
-    if (editingParameter) {
-      result = await updateStaticParameter(editingParameter.id, formData)
-    } else {
-      result = await createStaticParameter(formData)
-    }
+    try {
+      let result
+      if (editingParameter) {
+        result = await updateStaticParameter(editingParameter.id, formData)
+      } else {
+        result = await createStaticParameter(formData)
+      }
 
-    if (result.success) {
-      setIsDialogOpen(false)
-      resetForm()
+      if (result.success) {
+        toast({
+          title: editingParameter ? "單位已更新" : "單位已新增",
+          description: `產品單位 ${formData.name} 已成功${editingParameter ? "更新" : "新增"}`,
+        })
+        setIsDialogOpen(false)
+        resetForm()
+      } else {
+        toast({
+          title: "操作失敗",
+          description: result.error || "發生未知錯誤",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "操作失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      })
     }
   }
 
@@ -60,6 +81,7 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
       value: parameter.value,
       description: parameter.description || "",
       is_active: parameter.is_active,
+      is_default: parameter.is_default || false,
       sort_order: parameter.sort_order,
     })
     setIsDialogOpen(true)
@@ -67,12 +89,76 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
 
   const handleDelete = async (id: number) => {
     if (confirm("確定要刪除此產品單位嗎？")) {
-      await deleteStaticParameter(id)
+      try {
+        const result = await deleteStaticParameter(id)
+        if (result.success) {
+          toast({
+            title: "單位已刪除",
+            description: "產品單位已成功刪除",
+          })
+        } else {
+          toast({
+            title: "刪除失敗",
+            description: result.error || "發生未知錯誤",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        toast({
+          title: "刪除失敗",
+          description: "發生未知錯誤",
+          variant: "destructive",
+        })
+      }
     }
   }
 
   const handleToggleStatus = async (id: number, isActive: boolean) => {
-    await toggleStaticParameterStatus(id, !isActive)
+    try {
+      const result = await toggleStaticParameterStatus(id, !isActive)
+      if (result.success) {
+        toast({
+          title: isActive ? "單位已停用" : "單位已啟用",
+          description: `產品單位狀態已更新為${isActive ? "停用" : "啟用"}`,
+        })
+      } else {
+        toast({
+          title: "狀態更新失敗",
+          description: result.error || "發生未知錯誤",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "狀態更新失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSetDefault = async (id: number) => {
+    try {
+      const result = await setDefaultUnit(id)
+      if (result.success) {
+        toast({
+          title: "預設單位已設定",
+          description: "產品預設單位已成功更新",
+        })
+      } else {
+        toast({
+          title: "設定預設單位失敗",
+          description: result.error || "發生未知錯誤",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "設定預設單位失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      })
+    }
   }
 
   const resetForm = () => {
@@ -84,6 +170,7 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
       value: "",
       description: "",
       is_active: true,
+      is_default: false,
       sort_order: 1,
     })
   }
@@ -92,6 +179,9 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
     resetForm()
     setIsDialogOpen(true)
   }
+
+  // 過濾只顯示產品單位類別的參數
+  const productUnitParams = parameters.filter((param) => param.category === "product_unit")
 
   return (
     <div className="space-y-6">
@@ -172,6 +262,15 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
                 <Label htmlFor="is_active">啟用</Label>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="is_default"
+                  checked={formData.is_default}
+                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_default: checked }))}
+                />
+                <Label htmlFor="is_default">設為預設單位</Label>
+              </div>
+
               <div className="flex gap-2">
                 <Button type="submit" className="flex-1">
                   {editingParameter ? "更新" : "新增"}
@@ -187,15 +286,20 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
 
       {/* 產品單位列表 */}
       <div className="space-y-4">
-        {parameters.length === 0 ? (
+        {productUnitParams.length === 0 ? (
           <p className="text-gray-500 text-center py-8">暫無產品單位資料</p>
         ) : (
-          parameters.map((parameter) => (
+          productUnitParams.map((parameter) => (
             <div key={parameter.id} className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="font-medium">{parameter.name}</span>
                   <Badge variant="outline">{parameter.code}</Badge>
+                  {parameter.is_default && (
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+                      預設單位
+                    </Badge>
+                  )}
                   <Badge variant={parameter.is_active ? "default" : "secondary"}>
                     {parameter.is_active ? "啟用" : "停用"}
                   </Badge>
@@ -208,6 +312,16 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
               </div>
 
               <div className="flex items-center gap-2">
+                {!parameter.is_default && (
+                  <Button variant="ghost" size="sm" onClick={() => handleSetDefault(parameter.id)} title="設為預設單位">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                  </Button>
+                )}
+                {parameter.is_default && (
+                  <Button variant="ghost" size="sm" disabled title="目前為預設單位">
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  </Button>
+                )}
                 <Switch
                   checked={parameter.is_active}
                   onCheckedChange={() => handleToggleStatus(parameter.id, parameter.is_active)}
@@ -215,7 +329,12 @@ export function ProductUnitsSettings({ parameters }: ProductUnitsSettingsProps) 
                 <Button variant="outline" size="sm" onClick={() => handleEdit(parameter)}>
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDelete(parameter.id)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(parameter.id)}
+                  disabled={parameter.is_default}
+                >
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>

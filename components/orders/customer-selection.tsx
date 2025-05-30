@@ -149,6 +149,22 @@ export default function CustomerSelection({
     }
   }
 
+  // 處理自訂編號切換
+  const handleCustomOrderNumberToggle = (checked: boolean) => {
+    setUseCustomOrderNumber(checked)
+
+    // 如果從自訂切換到自動，確保顯示自動生成的編號
+    if (!checked && orderNumber) {
+      // 如果已有自動生成的編號，則使用它
+      setCustomOrderNumber("") // 清空自訂編號
+    } else if (checked) {
+      // 如果從自動切換到自訂，可以將當前自動編號作為自訂編號的初始值
+      if (orderNumber && customOrderNumber === "") {
+        setCustomOrderNumber(orderNumber)
+      }
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -220,7 +236,7 @@ export default function CustomerSelection({
               <Switch
                 id="useCustomOrderNumber"
                 checked={useCustomOrderNumber}
-                onCheckedChange={setUseCustomOrderNumber}
+                onCheckedChange={handleCustomOrderNumberToggle}
                 disabled={isProductSettingsConfirmed}
               />
               <Label htmlFor="useCustomOrderNumber" className="text-sm">
@@ -235,10 +251,11 @@ export default function CustomerSelection({
                 id="customOrderNumber"
                 value={customOrderNumber}
                 onChange={(e) => setCustomOrderNumber(e.target.value)}
-                placeholder="請輸入自訂訂單編號"
+                placeholder="請輸入自訂訂單編號 (格式: YYMMXXXXX)"
                 disabled={isProductSettingsConfirmed}
+                maxLength={9}
               />
-              <p className="text-sm text-muted-foreground">請輸入自訂的訂單編號</p>
+              <p className="text-sm text-orange-600">請輸入9位數字格式的訂單編號 (YYMMXXXXX)</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -247,9 +264,9 @@ export default function CustomerSelection({
                   id="orderNumber"
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value)}
-                  placeholder="系統自動生成"
-                  disabled={isProductSettingsConfirmed}
-                  className="flex-1"
+                  placeholder={isLoadingOrderNumber ? "生成中..." : "系統自動生成"}
+                  disabled={true}
+                  className="flex-1 bg-gray-50"
                 />
                 <Button
                   type="button"
@@ -265,7 +282,7 @@ export default function CustomerSelection({
                   )}
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">系統自動生成格式：L-YYMMXXXXX (年月+序號)</p>
+              <p className="text-sm text-muted-foreground">系統自動生成格式：YYMMXXXXX (年月+5位序號，每月重新計算)</p>
             </div>
           )}
         </div>

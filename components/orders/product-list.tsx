@@ -8,6 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatCurrencyAmount } from "@/lib/currency-utils"
 import type { OrderItem } from "@/hooks/use-order-form"
 
+interface ProductUnit {
+  id: number
+  category: string
+  code: string
+  name: string
+  value: string
+  is_active: boolean
+  is_default: boolean
+  sort_order: number
+}
+
 interface ProductListProps {
   orderItems: OrderItem[]
   handleItemChange: (itemId: string, field: keyof OrderItem, value: any) => void
@@ -16,6 +27,7 @@ interface ProductListProps {
   openBatchManagement: (productPartNo: string) => void
   customerCurrency: string
   isProductSettingsConfirmed: boolean
+  productUnits?: ProductUnit[]
 }
 
 export function ProductList({
@@ -26,6 +38,7 @@ export function ProductList({
   openBatchManagement,
   customerCurrency,
   isProductSettingsConfirmed,
+  productUnits = [],
 }: ProductListProps) {
   return (
     <div className="rounded-md border">
@@ -35,7 +48,7 @@ export function ProductList({
             <TableHead className="w-[120px]">產品編號</TableHead>
             <TableHead className="w-[200px]">產品名稱</TableHead>
             <TableHead className="text-center w-[80px]">數量</TableHead>
-            <TableHead className="text-center w-[80px]">貨幣</TableHead>
+            <TableHead className="text-center w-[80px]">單位</TableHead>
             <TableHead className="text-right w-[100px]">單價</TableHead>
             <TableHead className="text-right w-[120px]">金額 ({customerCurrency})</TableHead>
             <TableHead className="text-center w-[100px]">批次</TableHead>
@@ -70,18 +83,20 @@ export function ProductList({
               </TableCell>
               <TableCell className="text-center">
                 {isProductSettingsConfirmed ? (
-                  item.currency
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                    {item.unit}
+                  </Badge>
                 ) : (
-                  <Select value={item.currency} onValueChange={(value) => handleItemChange(item.id, "currency", value)}>
+                  <Select value={item.unit} onValueChange={(value) => handleItemChange(item.id, "unit", value)}>
                     <SelectTrigger className="w-20">
-                      <SelectValue placeholder="貨幣" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="TWD">TWD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="JPY">JPY</SelectItem>
-                      <SelectItem value="CNY">CNY</SelectItem>
+                      {productUnits.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.code}>
+                          {unit.code}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}

@@ -35,6 +35,17 @@ interface OrderItem {
   }>
 }
 
+interface ProductUnit {
+  id: number
+  category: string
+  code: string
+  name: string
+  value: string
+  is_active: boolean
+  is_default: boolean
+  sort_order: number
+}
+
 interface EnhancedProductListProps {
   orderItems: OrderItem[]
   handleItemChange: (id: string, field: string, value: any) => void
@@ -44,7 +55,7 @@ interface EnhancedProductListProps {
   customerCurrency: string
   isProductSettingsConfirmed: boolean
   handleClearAllProducts: () => void
-  productUnits: Array<{ id: string; name: string; multiplier: number }>
+  productUnits: ProductUnit[]
   exchangeRates: Record<string, number>
   getUnitMultiplier: (unitName: string) => number
   calculateActualQuantity: (quantity: number, unit: string) => number
@@ -68,9 +79,9 @@ export function EnhancedProductList({
 }: EnhancedProductListProps) {
   const [editingItem, setEditingItem] = useState<string | null>(null)
 
-  const getUnitDisplayName = (unitName: string) => {
-    const unit = productUnits.find((u) => u.name === unitName)
-    return unit ? unit.name : unitName
+  const getUnitDisplayName = (unitCode: string) => {
+    const unit = productUnits.find((u) => u.code === unitCode)
+    return unit ? unit.code : unitCode
   }
 
   const calculateTotal = () => {
@@ -201,8 +212,8 @@ export function EnhancedProductList({
                         </SelectTrigger>
                         <SelectContent>
                           {productUnits.map((unit) => (
-                            <SelectItem key={unit.id} value={unit.name}>
-                              {unit.name}
+                            <SelectItem key={unit.id} value={unit.code}>
+                              {unit.code}
                             </SelectItem>
                           ))}
                         </SelectContent>

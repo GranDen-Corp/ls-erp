@@ -76,6 +76,17 @@ interface ExchangeRate {
   is_active: boolean
 }
 
+interface ProductUnit {
+  id: number
+  category: string
+  code: string
+  name: string
+  value: string
+  is_active: boolean
+  is_default: boolean
+  sort_order: number
+}
+
 interface ProductTableItem {
   part_no: string
   description: string
@@ -128,6 +139,25 @@ function getUnitMultiplier(unit: string): number {
   }
 }
 
+// 輔助函數：驗證訂單編號格式
+function validateOrderNumber(orderNumber: string): boolean {
+  const orderNumberPattern = /^\d{9}$/
+  return orderNumberPattern.test(orderNumber)
+}
+
+// 輔助函數：檢查訂單編號是否已存在
+async function checkOrderNumberExists(orderNumber: string): Promise<boolean> {
+  const supabase = createClient()
+  const { data, error } = await supabase.from("orders").select("*").eq("order_id", orderNumber)
+
+  if (error) {
+    console.error("Error checking order number existence:", error)
+    return false
+  }
+
+  return data && data.length > 0
+}
+
 export function useOrderForm() {
   // Basic state
   const [loading, setLoading] = useState(true)
@@ -152,7 +182,7 @@ export function useOrderForm() {
   const [assemblyProducts, setAssemblyProducts] = useState<Product[]>([])
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
   const [procurementItems, setProcurementItems] = useState<any[]>([])
-  const [productUnits, setProductUnits] = useState<any[]>([])
+  const [productUnits, setProductUnits] = useState<ProductUnit[]>([])
   const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([])
   const [orderTableData, setOrderTableData] = useState<ProductTableItem[]>([])
 
@@ -205,11 +235,15 @@ export function useOrderForm() {
         setProductUnits(unitsRes.data || [])
         setExchangeRates(ratesRes.data || [])
 
-        // Generate initial order number - 確保這裡正確執行
+        console.log("載入的產品單位:", unitsRes.data)
+
+        // 自動生成初始訂單編號
         console.log("開始生成初始訂單編號...")
+        setIsLoadingOrderNumber(true)
         const newOrderNumber = await generateOrderNumber()
         console.log("生成的訂單編號:", newOrderNumber)
         setOrderNumber(newOrderNumber || "")
+        setIsLoadingOrderNumber(false)
 
         console.log("初始資料載入完成")
       } catch (err: any) {
@@ -295,11 +329,17 @@ export function useOrderForm() {
     return customers.find((c) => c.customer_id === selectedCustomerId) || null
   }, [customers, selectedCustomerId])
 
+  // Get default unit
+  const defaultUnit = useMemo(() => {
+    const defaultUnitItem = productUnits.find((u) => u.is_default === true)
+    return defaultUnitItem?.code || (productUnits.length > 0 ? productUnits[0].code : "PCS")
+  }, [productUnits])
+
   // Utility functions
   const getUnitDisplayName = useCallback(
-    (unitValue: string) => {
-      const unit = productUnits.find((u) => u.value === unitValue)
-      return unit ? unit.code : `${unitValue}PCS`
+    (unitCode: string) => {
+      const unit = productUnits.find((u) => u.code === unitCode)
+      return unit ? unit.code : unitCode
     },
     [productUnits],
   )
@@ -379,7 +419,6 @@ export function useOrderForm() {
       selectedProducts.forEach((partNo) => {
         const product = [...regularProducts, ...assemblyProducts].find((p) => p.part_no === partNo)
         if (product && !checkIsProductAdded(partNo)) {
-          const defaultUnit = productUnits.length > 0 ? productUnits[0].value : "PCS"
           const defaultQuantity = 1
           const actualQuantityInPcs = defaultQuantity * getUnitMultiplier(defaultUnit)
 
@@ -389,7 +428,7 @@ export function useOrderForm() {
             productName: product.component_name || product.part_no,
             productPartNo: product.part_no,
             quantity: defaultQuantity,
-            unit: defaultUnit,
+            unit: defaultUnit, // 使用預設單位
             unitPrice: product.unit_price || product.last_price || 0,
             isAssembly: product.is_assembly || false,
             shipmentBatches: [
@@ -403,7 +442,7 @@ export function useOrderForm() {
               },
             ],
             specifications: product.specification || "",
-            currency: product.currency || customerCurrency || "USD",
+            currency: customerCurrency, // 使用客戶幣別
             product: product,
           }
           newItems.push(newItem)
@@ -420,21 +459,20 @@ export function useOrderForm() {
     } finally {
       setLoadingSelectedProducts(false)
     }
-  }, [selectedProducts, regularProducts, assemblyProducts, checkIsProductAdded, productUnits, customerCurrency])
+  }, [selectedProducts, regularProducts, assemblyProducts, checkIsProductAdded, defaultUnit, customerCurrency])
 
   const handleAddAssemblyProduct = useCallback(() => {
     if (!selectedProductPartNo) return
 
     const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
     if (product && !checkIsProductAdded(selectedProductPartNo)) {
-      const defaultUnit = productUnits.length > 0 ? productUnits[0].value : "PCS"
       const newItem: OrderItem = {
         id: `${Date.now()}-${Math.random()}`,
         productKey: `${product.customer_id}-${product.part_no}`,
         productName: product.component_name || product.part_no,
         productPartNo: product.part_no,
         quantity: 1,
-        unit: defaultUnit,
+        unit: defaultUnit, // 使用預設單位
         unitPrice: product.unit_price || product.last_price || 0,
         isAssembly: true,
         shipmentBatches: [
@@ -447,7 +485,7 @@ export function useOrderForm() {
           },
         ],
         specifications: product.specification || "",
-        currency: product.currency || customerCurrency || "USD",
+        currency: customerCurrency, // 使用客戶幣別
         product: product,
       }
 
@@ -455,7 +493,7 @@ export function useOrderForm() {
       setSelectedProductPartNo("")
       console.log("成功添加組件產品:", product.part_no)
     }
-  }, [selectedProductPartNo, assemblyProducts, checkIsProductAdded, productUnits, customerCurrency])
+  }, [selectedProductPartNo, assemblyProducts, checkIsProductAdded, defaultUnit, customerCurrency])
 
   // Form submission
   const handleSubmitOrder = useCallback(
@@ -468,11 +506,24 @@ export function useOrderForm() {
         if (!poNumber) throw new Error("請輸入客戶PO編號")
         if (orderItems.length === 0) throw new Error("請至少添加一個產品")
 
+        const finalOrderNumber = useCustomOrderNumber ? customOrderNumber : orderNumber
+
+        // 驗證訂單編號格式
+        if (!validateOrderNumber(finalOrderNumber)) {
+          throw new Error("訂單編號格式不正確，應為9位數字(YYMMXXXXX)")
+        }
+
+        // 檢查訂單編號是否已存在
+        const exists = await checkOrderNumberExists(finalOrderNumber)
+        if (exists) {
+          throw new Error(`訂單編號 ${finalOrderNumber} 已存在，請使用其他編號`)
+        }
+
         const supabase = createClient()
 
         // Prepare order data
         const orderData = {
-          order_id: useCustomOrderNumber ? customOrderNumber : orderNumber,
+          order_id: finalOrderNumber,
           customer_id: selectedCustomerId,
           po_id: poNumber,
           payment_terms: paymentTerms || "",
@@ -748,6 +799,7 @@ ${deliveryLines.join("\n")}
     orderNumberMessage,
     isCheckingOrderNumber,
     customerCurrency,
+    defaultUnit,
 
     // Setters
     setSelectedCustomerId: handleCustomerSelection,
