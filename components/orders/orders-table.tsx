@@ -18,6 +18,9 @@ import {
   ChevronDown,
   ChevronRight,
   MoreHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabaseClient } from "@/lib/supabase-client"
@@ -60,7 +63,14 @@ interface OrderStatus {
   next_statuses?: number[]
 }
 
-export function OrdersTable() {
+interface OrdersTableProps {
+  statusFilter?: string
+}
+
+type SortField = "order_id" | "po_id" | "customer_id" | "estimated_delivery_date" | "created_at" | "status"
+type SortDirection = "asc" | "desc" | null
+
+export function OrdersTable({ statusFilter }: OrdersTableProps) {
   const router = useRouter()
   const [orders, setOrders] = useState<any[]>([])
   const [filteredOrders, setFilteredOrders] = useState<any[]>([])
@@ -75,6 +85,10 @@ export function OrdersTable() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [selectedStatus, setSelectedStatus] = useState<string>("")
+
+  // 排序狀態
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
 
   // 獲取訂單、客戶和產品資料
   useEffect(() => {
@@ -205,10 +219,14 @@ export function OrdersTable() {
 
         // 5. 獲取訂單資料 - 使用新的資料表結構
         try {
-          const { data: ordersData, error: ordersError } = await supabaseClient
-            .from("orders")
-            .select("*")
-            .order("order_sid", { ascending: false }) // 使用新的 order_sid 欄位排序
+          let query = supabaseClient.from("orders").select("*").order("order_sid", { ascending: false }) // 使用新的 order_sid 欄位排序
+
+          // 如果有狀態篩選，添加篩選條件
+          if (statusFilter) {
+            query = query.eq("status", statusFilter)
+          }
+
+          const { data: ordersData, error: ordersError } = await query
 
           if (ordersError) {
             console.error("獲取訂單資料失敗:", ordersError)
@@ -269,7 +287,7 @@ export function OrdersTable() {
     }
 
     fetchData()
-  }, [])
+  }, [statusFilter])
 
   // 處理搜尋
   useEffect(() => {
@@ -288,6 +306,88 @@ export function OrdersTable() {
       setFilteredOrders(filtered)
     }
   }, [searchTerm, orders, customers])
+
+  // 排序功能
+  const handleSort = (field: SortField) => {
+    let newDirection: SortDirection = "asc"
+
+    if (sortField === field) {
+      if (sortDirection === "asc") {
+        newDirection = "desc"
+      } else if (sortDirection === "desc") {
+        newDirection = null
+      } else {
+        newDirection = "asc"
+      }
+    }
+
+    setSortField(newDirection ? field : null)
+    setSortDirection(newDirection)
+
+    if (newDirection) {
+      const sorted = [...filteredOrders].sort((a, b) => {
+        let aValue: any
+        let bValue: any
+
+        switch (field) {
+          case "order_id":
+            aValue = a.order_id || ""
+            bValue = b.order_id || ""
+            break
+          case "po_id":
+            aValue = a.po_id || ""
+            bValue = b.po_id || ""
+            break
+          case "customer_id":
+            aValue = customers[a.customer_id]?.name || a.customer_id || ""
+            bValue = customers[b.customer_id]?.name || b.customer_id || ""
+            break
+          case "estimated_delivery_date":
+            aValue = a.estimated_delivery_date || ""
+            bValue = b.estimated_delivery_date || ""
+            break
+          case "created_at":
+            aValue = a.created_at || a.order_id || ""
+            bValue = b.created_at || b.order_id || ""
+            break
+          case "status":
+            aValue = orderStatuses[a.status]?.name_zh || a.status || ""
+            bValue = orderStatuses[b.status]?.name_zh || b.status || ""
+            break
+          default:
+            return 0
+        }
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return newDirection === "asc" ? aValue.localeCompare(bValue, "zh-TW") : bValue.localeCompare(aValue, "zh-TW")
+        }
+
+        if (aValue < bValue) return newDirection === "asc" ? -1 : 1
+        if (aValue > bValue) return newDirection === "asc" ? 1 : -1
+        return 0
+      })
+
+      setFilteredOrders(sorted)
+    } else {
+      // 重置為原始順序
+      setFilteredOrders([...orders])
+    }
+  }
+
+  // 獲取排序圖標
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-2 h-4 w-4" />
+    }
+
+    if (sortDirection === "asc") {
+      return <ArrowUp className="ml-2 h-4 w-4" />
+    } else if (sortDirection === "desc") {
+      return <ArrowDown className="ml-2 h-4 w-4" />
+    }
+
+    return <ArrowUpDown className="ml-2 h-4 w-4" />
+  }
 
   // 切換訂單展開狀態
   const toggleOrderExpand = (orderId: string) => {
@@ -496,9 +596,18 @@ export function OrdersTable() {
     }
   }
 
-  // 獲取訂單日期
-  const getOrderDate = (order: any) => {
-    // 首先嘗試從order_id提取日期
+  // 獲取訂單建立日期
+  const getOrderCreatedDate = (order: any) => {
+    // 首先嘗試從 created_at 欄位獲取
+    if (order.created_at) {
+      try {
+        return format(new Date(order.created_at), "yyyy/MM/dd", { locale: zhTW })
+      } catch (e) {
+        // 忽略錯誤，嘗試下一個方法
+      }
+    }
+
+    // 如果沒有 created_at，嘗試從order_id提取日期
     if (order.order_id) {
       const extractedDate = extractDateFromOrderId(order.order_id)
       if (extractedDate !== "-") {
@@ -506,8 +615,8 @@ export function OrdersTable() {
       }
     }
 
-    // 如果從order_id無法提取有效日期，嘗試其他日期欄位
-    const possibleDateFields = ["order_date", "created_at", "updated_at", "date"]
+    // 如果都無法獲取有效日期，嘗試其他日期欄位
+    const possibleDateFields = ["order_date", "updated_at", "date"]
     for (const field of possibleDateFields) {
       if (order[field]) {
         try {
@@ -518,6 +627,19 @@ export function OrdersTable() {
       }
     }
 
+    return "-"
+  }
+
+  // 獲取預期交貨日期
+  const getEstimatedDeliveryDate = (order: any) => {
+    if (order.estimated_delivery_date) {
+      try {
+        return format(new Date(order.estimated_delivery_date), "yyyy/MM/dd", { locale: zhTW })
+      } catch (e) {
+        console.error("格式化預期交貨日期時出錯:", e)
+        return "-"
+      }
+    }
     return "-"
   }
 
@@ -684,12 +806,51 @@ export function OrdersTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>訂單編號</TableHead>
-                <TableHead>客戶PO編號</TableHead>
-                <TableHead>客戶</TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort("order_id")} className="h-auto p-0 font-semibold">
+                    訂單編號
+                    {getSortIcon("order_id")}
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort("po_id")} className="h-auto p-0 font-semibold">
+                    客戶PO編號
+                    {getSortIcon("po_id")}
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort("customer_id")}
+                    className="h-auto p-0 font-semibold"
+                  >
+                    客戶
+                    {getSortIcon("customer_id")}
+                  </Button>
+                </TableHead>
                 <TableHead>產品</TableHead>
-                <TableHead>訂單日期</TableHead>
-                <TableHead>狀態</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort("estimated_delivery_date")}
+                    className="h-auto p-0 font-semibold"
+                  >
+                    預期(期望)交貨日期
+                    {getSortIcon("estimated_delivery_date")}
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort("created_at")} className="h-auto p-0 font-semibold">
+                    訂單建立日期
+                    {getSortIcon("created_at")}
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => handleSort("status")} className="h-auto p-0 font-semibold">
+                    狀態
+                    {getSortIcon("status")}
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
@@ -722,7 +883,8 @@ export function OrdersTable() {
                           {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
                         </div>
                       </TableCell>
-                      <TableCell>{getOrderDate(order)}</TableCell>
+                      <TableCell>{getEstimatedDeliveryDate(order)}</TableCell>
+                      <TableCell>{getOrderCreatedDate(order)}</TableCell>
                       <TableCell>
                         <Badge
                           className={`${status.color} text-white border-0 px-3 py-1 cursor-pointer hover:opacity-80`}
@@ -764,7 +926,7 @@ export function OrdersTable() {
                     </TableRow>
                     {isExpanded && componentsList && (
                       <TableRow>
-                        <TableCell colSpan={7} className="bg-gray-50 py-1">
+                        <TableCell colSpan={8} className="bg-gray-50 py-1">
                           {componentsList}
                         </TableCell>
                       </TableRow>
