@@ -83,7 +83,7 @@ export function ProcurementProductList({
   // 獲取單位顯示名稱
   const getUnitDisplayName = (unitValue: string) => {
     const unit = productUnits.find((u) => u.value === unitValue)
-    return unit ? unit.code : `${unitValue}PCS`
+    return unit ? unit.code : unitValue || "PCS"
   }
 
   // 計算實際數量（考慮單位換算）
@@ -195,14 +195,14 @@ export function ProcurementProductList({
             orderUnitPrice: orderItem.unitPrice,
             orderCurrency: orderItem.currency,
 
-            // 採購資訊（預設與訂單相同）
+            // 採購資訊（採購數量和單位與訂單完全相同）
             procurementQuantity: orderItem.quantity,
             procurementUnit: orderItem.unit,
             procurementUnitPrice: defaultPrice,
-            procurementCurrency: "USD", // 預設採購幣別為USD
+            procurementCurrency: "USD",
             supplierId: defaultSupplierId,
             supplierName: defaultSupplierName,
-            expectedDeliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 預設14天後交貨
+            expectedDeliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
             notes: "",
             isSelected: true,
 

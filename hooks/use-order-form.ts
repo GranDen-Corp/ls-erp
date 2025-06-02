@@ -176,6 +176,12 @@ export function useOrderForm() {
   const [purchaseInfo, setPurchaseInfo] = useState<string>("")
   const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
 
+  // New label info state
+  const [cartonMarkInfo, setCartonMarkInfo] = useState<string>("")
+  const [palletMarkInfo, setPalletMarkInfo] = useState<string>("")
+  const [jinzhanLabelInfo, setJinzhanLabelInfo] = useState<string>("")
+  const [isJinzhanLabelDisabled, setIsJinzhanLabelDisabled] = useState<boolean>(false)
+
   // Data arrays
   const [customers, setCustomers] = useState<Customer[]>([])
   const [regularProducts, setRegularProducts] = useState<Product[]>([])
@@ -419,7 +425,7 @@ export function useOrderForm() {
       selectedProducts.forEach((partNo) => {
         const product = [...regularProducts, ...assemblyProducts].find((p) => p.part_no === partNo)
         if (product && !checkIsProductAdded(partNo)) {
-          const defaultQuantity = 1
+          const defaultQuantity = 1000 // 修改為預設1000個
           const actualQuantityInPcs = defaultQuantity * getUnitMultiplier(defaultUnit)
 
           const newItem: OrderItem = {
@@ -428,7 +434,7 @@ export function useOrderForm() {
             productName: product.component_name || product.part_no,
             productPartNo: product.part_no,
             quantity: defaultQuantity,
-            unit: defaultUnit, // 使用預設單位
+            unit: defaultUnit,
             unitPrice: product.unit_price || product.last_price || 0,
             isAssembly: product.is_assembly || false,
             shipmentBatches: [
@@ -442,7 +448,7 @@ export function useOrderForm() {
               },
             ],
             specifications: product.specification || "",
-            currency: customerCurrency, // 使用客戶幣別
+            currency: customerCurrency,
             product: product,
           }
           newItems.push(newItem)
@@ -471,21 +477,21 @@ export function useOrderForm() {
         productKey: `${product.customer_id}-${product.part_no}`,
         productName: product.component_name || product.part_no,
         productPartNo: product.part_no,
-        quantity: 1,
-        unit: defaultUnit, // 使用預設單位
+        quantity: 1000, // 修改為預設1000個
+        unit: defaultUnit,
         unitPrice: product.unit_price || product.last_price || 0,
         isAssembly: true,
         shipmentBatches: [
           {
             id: `batch-${Date.now()}`,
             batchNumber: 1,
-            quantity: 1,
+            quantity: 1000,
             plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             status: "pending",
           },
         ],
         specifications: product.specification || "",
-        currency: customerCurrency, // 使用客戶幣別
+        currency: customerCurrency,
         product: product,
       }
 
@@ -606,6 +612,16 @@ ${deliveryLines.join("\n")}
   }, [customers, selectedCustomerId, orderItems, getUnitDisplayName])
 
   const confirmProductsReady = useCallback(() => {
+    if (isProductSettingsConfirmed) {
+      // 如果已確認，則重置為可編輯狀態
+      setIsProductSettingsConfirmed(false)
+      setIsProcurementReady(false)
+      setIsProcurementSettingsConfirmed(false)
+      setActiveTab("products")
+      console.log("重置為產品編輯狀態")
+      return
+    }
+
     if (orderItems.length === 0) {
       alert("請先添加產品到訂單中")
       return
@@ -619,7 +635,7 @@ ${deliveryLines.join("\n")}
 
     setIsProductSettingsConfirmed(true)
     console.log("產品設定已確認")
-  }, [orderItems, generateOrderRemarks])
+  }, [orderItems, generateOrderRemarks, isProductSettingsConfirmed])
 
   const handleOrderTableDataChange = useCallback((tableData: ProductTableItem[]) => {
     setOrderTableData(tableData)
@@ -801,6 +817,12 @@ ${deliveryLines.join("\n")}
     customerCurrency,
     defaultUnit,
 
+    // New label management state
+    cartonMarkInfo,
+    palletMarkInfo,
+    jinzhanLabelInfo,
+    isJinzhanLabelDisabled,
+
     // Setters
     setSelectedCustomerId: handleCustomerSelection,
     setPoNumber,
@@ -829,6 +851,12 @@ ${deliveryLines.join("\n")}
     setLoadingSelectedProducts,
     setOrderNumberStatus,
     setOrderNumberMessage,
+
+    // New label management setters
+    setCartonMarkInfo,
+    setPalletMarkInfo,
+    setJinzhanLabelInfo,
+    setIsJinzhanLabelDisabled,
 
     // Methods
     getUnitDisplayName,

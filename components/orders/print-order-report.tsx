@@ -107,106 +107,123 @@ export function PrintOrderReport({
 
     // 生成列印內容
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>訂單報表 - ${orderData?.order_id || ""}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .order-info { margin-bottom: 20px; }
-            .order-info table { width: 100%; border-collapse: collapse; }
-            .order-info td { padding: 5px; border: 1px solid #ddd; }
-            .products-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            .products-table th, .products-table td { 
-              border: 1px solid #ddd; 
-              padding: 8px; 
-              text-align: left; 
-              vertical-align: top;
-            }
-            .products-table th { background-color: #f5f5f5; }
-            .description-cell { 
-              font-family: monospace; 
-              font-size: 11px; 
-              white-space: pre-line; 
-              min-height: 200px;
-              width: 300px;
-            }
-            .number-cell { text-align: right; }
-            .center-cell { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>訂單報表</h1>
-            <h2>Order Report</h2>
-          </div>
-          
-          <div class="order-info">
-            <table>
-              <tr>
-                <td><strong>訂單編號:</strong></td>
-                <td>${orderData?.order_id || ""}</td>
-                <td><strong>客戶PO:</strong></td>
-                <td>${orderData?.po_id || ""}</td>
-              </tr>
-              <tr>
-                <td><strong>客戶名稱:</strong></td>
-                <td>${orderData?.customer_name || customer?.customer_full_name || ""}</td>
-                <td><strong>建立日期:</strong></td>
-                <td>${orderData?.created_at || orderData?.order_date ? new Date(orderData.created_at || orderData.order_date).toLocaleDateString() : ""}</td>
-              </tr>
-              <tr>
-                <td><strong>付款條件:</strong></td>
-                <td>${orderData?.payment_terms || ""}</td>
-                <td><strong>交付條件:</strong></td>
-                <td>${orderData?.trade_terms || ""}</td>
-              </tr>
-            </table>
-          </div>
-
-          <table class="products-table">
-            <thead>
-              <tr>
-                <th>產品編號</th>
-                <th>產品描述</th>
-                <th>數量</th>
-                <th>單位</th>
-                <th>單價</th>
-                <th>總價</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${printData
-                .map(
-                  (item) => `
-                <tr>
-                  <td class="center-cell">${item.part_no}</td>
-                  <td class="description-cell">${item.description}</td>
-                  <td class="center-cell">${item.quantity}</td>
-                  <td class="center-cell">${item.unit}</td>
-                  <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
-                  <td class="number-cell">$${item.total_price.toFixed(2)}</td>
-                </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-
-          ${
-            orderData?.remarks
-              ? `
-            <div style="margin-top: 30px;">
-              <strong>備註:</strong><br>
-              ${orderData.remarks}
-            </div>
-          `
-              : ""
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>訂單報表 - ${orderData?.order_id || ""}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .order-info { margin-bottom: 20px; }
+          .order-info table { width: 100%; border-collapse: collapse; }
+          .order-info td { padding: 5px; border: 1px solid #ddd; }
+          .products-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          .products-table th, .products-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+            vertical-align: top;
           }
-        </body>
-      </html>
-    `
+          .products-table th { background-color: #f5f5f5; }
+          .description-cell { 
+            font-family: monospace; 
+            font-size: 11px; 
+            white-space: pre-line; 
+            min-height: 200px;
+            width: 300px;
+          }
+          .number-cell { text-align: right; }
+          .center-cell { text-align: center; }
+          .remarks-section {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+          }
+          .remarks-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+          }
+          .remarks-content {
+            white-space: pre-line;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>訂單報表</h1>
+          <h2>Order Report</h2>
+        </div>
+        
+        <div class="order-info">
+          <table>
+            <tr>
+              <td><strong>訂單編號:</strong></td>
+              <td>${orderData?.order_id || ""}</td>
+              <td><strong>客戶PO:</strong></td>
+              <td>${orderData?.po_id || ""}</td>
+            </tr>
+            <tr>
+              <td><strong>客戶名稱:</strong></td>
+              <td>${orderData?.customer_name || customer?.customer_full_name || ""}</td>
+              <td><strong>建立日期:</strong></td>
+              <td>${orderData?.created_at || orderData?.order_date ? new Date(orderData.created_at || orderData.order_date).toLocaleDateString() : ""}</td>
+            </tr>
+            <tr>
+              <td><strong>付款條件:</strong></td>
+              <td>${orderData?.payment_terms || ""}</td>
+              <td><strong>交付條件:</strong></td>
+              <td>${orderData?.trade_terms || ""}</td>
+            </tr>
+          </table>
+        </div>
+
+        <table class="products-table">
+          <thead>
+            <tr>
+              <th>產品編號</th>
+              <th>產品描述</th>
+              <th>數量</th>
+              <th>單位</th>
+              <th>單價</th>
+              <th>總價</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${printData
+              .map(
+                (item) => `
+              <tr>
+                <td class="center-cell">${item.part_no}</td>
+                <td class="description-cell">${item.description}</td>
+                <td class="center-cell">${item.quantity}</td>
+                <td class="center-cell">${item.unit}</td>
+                <td class="number-cell">$${item.unit_price.toFixed(2)}</td>
+                <td class="number-cell">$${item.total_price.toFixed(2)}</td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+
+        ${
+          orderData?.remarks
+            ? `
+          <div class="remarks-section">
+            <div class="remarks-title">訂單備註 / Order Remarks:</div>
+            <div class="remarks-content">${orderData.remarks}</div>
+          </div>
+        `
+            : ""
+        }
+      </body>
+    </html>
+  `
 
     // 開啟列印視窗
     const printWindow = window.open("", "_blank")

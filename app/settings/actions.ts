@@ -10,7 +10,24 @@ import type {
   OrderStatusFormData,
 } from "@/types/settings"
 
-// 靜態參數相關操作
+export async function getPorts() {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase
+    .from("ports")
+    .select("*")
+    .order("region", { ascending: true })
+    .order("port_name_zh", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching ports:", error)
+    return []
+  }
+
+  return data || []
+}
+
+// Static parameter CRUD operations
 export async function getStaticParameters() {
   const supabase = createServerSupabaseClient()
 
@@ -31,7 +48,7 @@ export async function getStaticParameters() {
 export async function createStaticParameter(formData: StaticParameterFormData) {
   const supabase = createServerSupabaseClient()
 
-  // 如果設置為預設單位，先將其他單位的預設狀態設為 false
+  // If setting as default unit, first set all other units to non-default
   if (formData.is_default && formData.category === "product_unit") {
     await supabase.from("unit_setting").update({ is_default: false }).eq("category", "product_unit")
   }
@@ -50,7 +67,7 @@ export async function createStaticParameter(formData: StaticParameterFormData) {
 export async function updateStaticParameter(id: number, formData: StaticParameterFormData) {
   const supabase = createServerSupabaseClient()
 
-  // 如果設置為預設單位，先將其他單位的預設狀態設為 false
+  // If setting as default unit, first set all other units to non-default
   if (formData.is_default && formData.category === "product_unit") {
     await supabase.from("unit_setting").update({ is_default: false }).eq("category", "product_unit").neq("id", id)
   }
@@ -69,7 +86,7 @@ export async function updateStaticParameter(id: number, formData: StaticParamete
 export async function deleteStaticParameter(id: number) {
   const supabase = createServerSupabaseClient()
 
-  // 檢查是否為預設單位，如果是則不允許刪除
+  // Check if it's a default unit, don't allow deletion
   const { data } = await supabase.from("unit_setting").select("is_default").eq("id", id).single()
   if (data?.is_default) {
     return { success: false, error: "預設單位不能刪除，請先設置其他單位為預設" }
@@ -100,13 +117,11 @@ export async function toggleStaticParameterStatus(id: number, isActive: boolean)
   return { success: true }
 }
 
-// 設置預設單位
 export async function setDefaultUnit(id: number) {
   const supabase = createServerSupabaseClient()
 
   try {
-    // 使用事務來確保操作的原子性
-    // 首先清除所有產品單位的預設狀態
+    // Clear all default units first
     const { error: clearError } = await supabase
       .from("unit_setting")
       .update({ is_default: false })
@@ -117,7 +132,7 @@ export async function setDefaultUnit(id: number) {
       return { success: false, error: clearError.message }
     }
 
-    // 然後設置指定單位為預設單位
+    // Set the specified unit as default
     const { error: setError } = await supabase.from("unit_setting").update({ is_default: true }).eq("id", id)
 
     if (setError) {
@@ -133,7 +148,7 @@ export async function setDefaultUnit(id: number) {
   }
 }
 
-// 匯率相關操作
+// Exchange rate CRUD operations
 export async function getExchangeRates() {
   const supabase = createServerSupabaseClient()
 
@@ -150,7 +165,7 @@ export async function getExchangeRates() {
 export async function createExchangeRate(formData: ExchangeRateFormData) {
   const supabase = createServerSupabaseClient()
 
-  // 如果設置為基準貨幣，先將其他貨幣的基準狀態設為 false
+  // If setting as base currency, clear other base currencies
   if (formData.is_base_currency) {
     await supabase
       .from("exchange_rates")
@@ -172,7 +187,7 @@ export async function createExchangeRate(formData: ExchangeRateFormData) {
 export async function updateExchangeRate(id: number, formData: ExchangeRateFormData) {
   const supabase = createServerSupabaseClient()
 
-  // 如果設置為基準貨幣，先將其他貨幣的基準狀態設為 false
+  // If setting as base currency, clear other base currencies
   if (formData.is_base_currency) {
     await supabase.from("exchange_rates").update({ is_base_currency: false }).neq("id", id)
   }
@@ -219,10 +234,10 @@ export async function toggleExchangeRateStatus(id: number, isActive: boolean) {
 export async function setBaseCurrency(id: number) {
   const supabase = createServerSupabaseClient()
 
-  // 先將所有貨幣的基準狀態設為 false
+  // Clear all base currencies first
   await supabase.from("exchange_rates").update({ is_base_currency: false })
 
-  // 然後設置指定貨幣為基準貨幣
+  // Set the specified currency as base
   const { error } = await supabase.from("exchange_rates").update({ is_base_currency: true }).eq("id", id)
 
   if (error) {
@@ -234,7 +249,7 @@ export async function setBaseCurrency(id: number) {
   return { success: true }
 }
 
-// 交易條件相關操作
+// Trade terms CRUD operations
 export async function getTradeTerms() {
   const supabase = createServerSupabaseClient()
 
@@ -304,7 +319,7 @@ export async function toggleTradeTermStatus(id: number, isActive: boolean) {
   return { success: true }
 }
 
-// 付款條件相關操作
+// Payment terms CRUD operations
 export async function getPaymentTerms() {
   const supabase = createServerSupabaseClient()
 
@@ -374,7 +389,7 @@ export async function togglePaymentTermStatus(id: number, isActive: boolean) {
   return { success: true }
 }
 
-// 訂單狀態相關操作
+// Order status CRUD operations
 export async function getOrderStatuses() {
   const supabase = createServerSupabaseClient()
 

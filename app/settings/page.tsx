@@ -8,15 +8,18 @@ import TradeTermsManager from "@/components/settings/trade-terms-manager"
 import PaymentTermsManager from "@/components/settings/payment-terms-manager"
 import OrderStatusesManager from "@/components/settings/order-statuses-manager"
 import { TranslationsManager } from "@/components/settings/translations-manager"
+import { PortsManager } from "@/components/settings/ports-manager"
+import { getPorts } from "./port-actions"
 
 export default async function SettingsPage() {
   // Fetch data on the server side
-  const [staticParameters, exchangeRates, tradeTerms, paymentTerms, orderStatuses] = await Promise.all([
+  const [staticParameters, exchangeRates, tradeTerms, paymentTerms, orderStatuses, ports] = await Promise.all([
     getStaticParameters(),
     getExchangeRates(),
     getTradeTerms(),
     getPaymentTerms(),
     getOrderStatuses(),
+    getPorts(),
   ])
 
   return (
@@ -27,13 +30,14 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="team-matrix" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="team-matrix">團隊矩陣</TabsTrigger>
           <TabsTrigger value="exchange-rates">匯率設定</TabsTrigger>
           <TabsTrigger value="product-units">產品單位設定</TabsTrigger>
           <TabsTrigger value="order-statuses">訂單狀態設定</TabsTrigger>
           <TabsTrigger value="trade-terms">交易條件設定</TabsTrigger>
           <TabsTrigger value="payment-terms">付款條件設定</TabsTrigger>
+          <TabsTrigger value="ports">國際港口設定</TabsTrigger>
           <TabsTrigger value="translations">翻譯表設定</TabsTrigger>
         </TabsList>
 
@@ -105,6 +109,18 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <PaymentTermsManager paymentTerms={paymentTerms} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ports">
+          <Card>
+            <CardHeader>
+              <CardTitle>國際港口設定</CardTitle>
+              <CardDescription>管理國際港口資料，包括港口名稱、UN/LOCODE代碼和地區分類</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PortsManager ports={ports} />
             </CardContent>
           </Card>
         </TabsContent>

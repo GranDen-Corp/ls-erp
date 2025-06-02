@@ -559,6 +559,14 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setPurchaseRemarks={orderForm.setPurchaseRemarks}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
           isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+          cartonMarkInfo={orderForm.cartonMarkInfo}
+          setCartonMarkInfo={orderForm.setCartonMarkInfo}
+          palletMarkInfo={orderForm.palletMarkInfo}
+          setPalletMarkInfo={orderForm.setPalletMarkInfo}
+          jinzhanLabelInfo={orderForm.jinzhanLabelInfo}
+          setJinzhanLabelInfo={orderForm.setJinzhanLabelInfo}
+          isJinzhanLabelDisabled={orderForm.isJinzhanLabelDisabled}
+          setIsJinzhanLabelDisabled={orderForm.setIsJinzhanLabelDisabled}
         />
 
         {/* 批次管理對話框 */}

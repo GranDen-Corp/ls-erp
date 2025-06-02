@@ -196,7 +196,7 @@ export function EnhancedProductList({
                         onChange={(e) => handleItemChange(item.id, "quantity", Number.parseFloat(e.target.value) || 0)}
                         className="w-20 text-center"
                         min="0"
-                        step="0.01"
+                        step="1000"
                       />
                     )}
                   </TableCell>

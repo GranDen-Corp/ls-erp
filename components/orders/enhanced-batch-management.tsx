@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { DatePicker } from "@/components/ui/date-picker"
+import { CustomDatePicker } from "@/components/ui/custom-date-picker"
 import { Plus, Trash2, Package, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -346,7 +346,6 @@ export function EnhancedBatchManagement({
                       <TableHead className="w-16">批次</TableHead>
                       <TableHead className="w-24">數量(件)</TableHead>
                       <TableHead className="w-32">計劃出貨日</TableHead>
-                      <TableHead className="w-32">實際出貨日</TableHead>
                       <TableHead className="w-24">狀態</TableHead>
                       <TableHead>備註</TableHead>
                       <TableHead className="w-16">操作</TableHead>
@@ -366,18 +365,13 @@ export function EnhancedBatchManagement({
                             value={batch.quantity}
                             onChange={(e) => updateBatch(batch.id, "quantity", Number.parseInt(e.target.value) || 0)}
                             className="w-20"
+                            step="1000"
                           />
                         </TableCell>
                         <TableCell>
-                          <DatePicker
+                          <CustomDatePicker
                             date={batch.plannedShipDate}
                             setDate={(date) => updateBatch(batch.id, "plannedShipDate", date)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <DatePicker
-                            date={batch.actualShipDate}
-                            setDate={(date) => updateBatch(batch.id, "actualShipDate", date)}
                           />
                         </TableCell>
                         <TableCell>
