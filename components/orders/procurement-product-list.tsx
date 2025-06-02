@@ -63,6 +63,7 @@ interface ProcurementProductListProps {
   customerCurrency: string
   productUnits: ProductUnit[]
   getUnitMultiplier: (unit: string) => number
+  disabled?: boolean
 }
 
 export function ProcurementProductList({
@@ -71,6 +72,7 @@ export function ProcurementProductList({
   customerCurrency = "USD",
   productUnits = [],
   getUnitMultiplier,
+  disabled = false,
 }: ProcurementProductListProps) {
   const [procurementData, setProcurementData] = useState<ProcurementItem[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -312,12 +314,14 @@ export function ProcurementProductList({
                         className="w-20 text-center"
                         min="0"
                         step="1000"
+                        disabled={disabled}
                       />
                     </TableCell>
                     <TableCell className="text-center">
                       <Select
                         value={item.unit}
                         onValueChange={(value) => updateProcurementItem(item.productPartNo, "unit", value)}
+                        disabled={disabled}
                       >
                         <SelectTrigger className="w-20">
                           <SelectValue />
@@ -335,6 +339,7 @@ export function ProcurementProductList({
                       <Select
                         value={item.supplierId}
                         onValueChange={(value) => handleSupplierChange(item.productPartNo, value)}
+                        disabled={disabled}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder={loadingSuppliers ? "載入中..." : "選擇供應商"} />
@@ -373,6 +378,7 @@ export function ProcurementProductList({
                           className="w-24 text-right"
                           min="0"
                           step="0.01"
+                          disabled={disabled}
                         />
                         <span className="text-sm text-muted-foreground">{item.currency}</span>
                       </div>
@@ -389,6 +395,7 @@ export function ProcurementProductList({
                               "w-full justify-start text-left font-normal",
                               !item.expectedDeliveryDate && "text-muted-foreground",
                             )}
+                            disabled={disabled}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {item.expectedDeliveryDate ? (
@@ -417,6 +424,7 @@ export function ProcurementProductList({
                         placeholder="採購備註..."
                         rows={2}
                         className="min-w-[180px]"
+                        disabled={disabled}
                       />
                     </TableCell>
                   </TableRow>

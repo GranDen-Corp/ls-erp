@@ -37,6 +37,7 @@ interface Port {
   un_locode: string
   port_name_en: string
   port_name_zh: string
+  port_type?: string
 }
 
 interface CustomerSelectionProps {
@@ -65,7 +66,7 @@ interface CustomerSelectionProps {
   setPortOfLoading: (port: string) => void
   portOfDischarge: string
   setPortOfDischarge: (port: string) => void
-  ports: Array<{ un_locode: string; port_name_en: string; port_name_zh: string }> | undefined
+  ports: Array<{ un_locode: string; port_name_en: string; port_name_zh: string; port_type?: string }> | undefined
   onCreateOrder: () => Promise<void>
   isCreatingOrder: boolean
   orderCreated: boolean
@@ -108,9 +109,7 @@ export default function CustomerSelection({
   const [loadingTeamMembers, setLoadingTeamMembers] = useState(true)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [loadingPorts, setLoadingPorts] = useState<boolean>(false)
-  const [localPorts, setLocalPorts] = useState<
-    Array<{ un_locode: string; port_name_en: string; port_name_zh: string }>
-  >([])
+  const [localPorts, setLocalPorts] = useState<Port[]>([])
 
   // 如果外部沒有提供 ports，則自行加載
   useEffect(() => {
@@ -125,7 +124,7 @@ export default function CustomerSelection({
         const supabase = supabaseClient
         const { data, error } = await supabase
           .from("ports")
-          .select("un_locode, port_name_en, port_name_zh")
+          .select("un_locode, port_name_en, port_name_zh, port_type")
           .order("port_name_en")
 
         if (error) {
@@ -133,6 +132,7 @@ export default function CustomerSelection({
           return
         }
 
+        console.log("載入的港口資料:", data)
         setLocalPorts(data || [])
       } catch (error) {
         console.error("Failed to fetch ports:", error)
@@ -143,6 +143,34 @@ export default function CustomerSelection({
 
     loadPorts()
   }, [ports])
+
+  // 設置高雄港為預設出貨港
+  useEffect(() => {
+    if (!portOfLoading && !loadingPorts && localPorts.length > 0) {
+      // 尋找高雄港 - 使用多種方式查找
+      const kaohsiungPort = localPorts.find(
+        (port) =>
+          port.un_locode === "TWKHH" ||
+          port.port_name_zh?.includes("高雄") ||
+          port.port_name_en?.toLowerCase().includes("kaohsiung"),
+      )
+
+      console.log("尋找高雄港:", kaohsiungPort)
+      console.log("所有港口:", localPorts)
+
+      if (kaohsiungPort) {
+        console.log("設置高雄港為預設出貨港:", kaohsiungPort.un_locode)
+        setPortOfLoading(kaohsiungPort.un_locode)
+      } else {
+        console.log("未找到高雄港，使用第一個主要出貨港")
+        // 如果找不到高雄港，使用第一個主要出貨港
+        const mainShippingPort = localPorts.find((port) => port.port_type === "主要出貨港")
+        if (mainShippingPort) {
+          setPortOfLoading(mainShippingPort.un_locode)
+        }
+      }
+    }
+  }, [loadingPorts, localPorts, portOfLoading, setPortOfLoading])
 
   const validateRequiredFields = () => {
     const errors: Record<string, string> = {}
@@ -253,6 +281,30 @@ export default function CustomerSelection({
   // 使用本地加載的港口數據
   const portsToDisplay = localPorts.length > 0 ? localPorts : []
 
+  // 根據港口類型分類港口
+  const getPortsByType = (portType: string) => {
+    return portsToDisplay.filter((port) => port.port_type === portType)
+  }
+
+  const mainShippingPorts = getPortsByType("主要出貨港")
+  const secondaryShippingPorts = getPortsByType("次要出貨港")
+  const mainDestinationPorts = getPortsByType("主要到貨港")
+  const secondaryDestinationPorts = getPortsByType("次要到貨港")
+  const transitPorts = getPortsByType("轉運港")
+  const otherPorts = portsToDisplay.filter(
+    (port) =>
+      !port.port_type || !["主要出貨港", "次要出貨港", "主要到貨港", "次要到貨港", "轉運港"].includes(port.port_type),
+  )
+
+  console.log("港口分類:", {
+    mainShippingPorts,
+    secondaryShippingPorts,
+    mainDestinationPorts,
+    secondaryDestinationPorts,
+    transitPorts,
+    otherPorts,
+  })
+
   return (
     <Card>
       <CardHeader>
@@ -353,11 +405,11 @@ export default function CustomerSelection({
                 id="customOrderNumber"
                 value={customOrderNumber}
                 onChange={(e) => setCustomOrderNumber(e.target.value)}
-                placeholder="請輸入自訂訂單編號 (格式: YYMMXXXXX)"
+                placeholder="請輸入自訂訂單編號 (格式: L-YYMMXXXXX)"
                 disabled={orderCreated}
-                maxLength={9}
+                maxLength={11}
               />
-              <p className="text-sm text-orange-600">請輸入9位數字格式的訂單編號 (YYMMXXXXX)</p>
+              <p className="text-sm text-orange-600">請輸入格式為 L-YYMMXXXXX 的訂單編號</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -384,7 +436,9 @@ export default function CustomerSelection({
                   )}
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">系統自動生成格式：YYMMXXXXX (年月+5位序號，每月重新計算)</p>
+              <p className="text-sm text-muted-foreground">
+                系統自動生成格式：L-YYMMXXXXX (L-年月+5位序號，每月重新計算)
+              </p>
             </div>
           )}
           {validationErrors.orderNumber && <p className="text-sm text-red-500">{validationErrors.orderNumber}</p>}
@@ -403,16 +457,55 @@ export default function CustomerSelection({
                   <SelectItem value="loading" disabled>
                     載入中...
                   </SelectItem>
-                ) : portsToDisplay.length > 0 ? (
-                  portsToDisplay.map((port) => (
-                    <SelectItem key={port.un_locode} value={port.un_locode}>
-                      {port.port_name_en}
-                    </SelectItem>
-                  ))
                 ) : (
-                  <SelectItem value="no-ports" disabled>
-                    無可用港口
-                  </SelectItem>
+                  <>
+                    {/* 主要出貨港 */}
+                    {mainShippingPorts.length > 0 && (
+                      <>
+                        <SelectItem value="main-shipping-header" disabled className="font-semibold text-blue-600">
+                          -- 主要出貨港 --
+                        </SelectItem>
+                        {mainShippingPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* 次要出貨港 */}
+                    {secondaryShippingPorts.length > 0 && (
+                      <>
+                        <SelectItem value="secondary-shipping-header" disabled className="font-semibold text-blue-600">
+                          -- 次要出貨港 --
+                        </SelectItem>
+                        {secondaryShippingPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* 其他港口 */}
+                    {(otherPorts.length > 0 || transitPorts.length > 0) && (
+                      <>
+                        <SelectItem value="other-ports-header" disabled className="font-semibold text-blue-600">
+                          -- 其他港口 --
+                        </SelectItem>
+                        {transitPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en}) - 轉運港
+                          </SelectItem>
+                        ))}
+                        {otherPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </SelectContent>
             </Select>
@@ -430,16 +523,59 @@ export default function CustomerSelection({
                   <SelectItem value="loading" disabled>
                     載入中...
                   </SelectItem>
-                ) : portsToDisplay.length > 0 ? (
-                  portsToDisplay.map((port) => (
-                    <SelectItem key={port.un_locode} value={port.un_locode}>
-                      {port.port_name_en}
-                    </SelectItem>
-                  ))
                 ) : (
-                  <SelectItem value="no-ports" disabled>
-                    無可用港口
-                  </SelectItem>
+                  <>
+                    {/* 主要到貨港 */}
+                    {mainDestinationPorts.length > 0 && (
+                      <>
+                        <SelectItem value="main-destination-header" disabled className="font-semibold text-blue-600">
+                          -- 主要到貨港 --
+                        </SelectItem>
+                        {mainDestinationPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* 次要到貨港 */}
+                    {secondaryDestinationPorts.length > 0 && (
+                      <>
+                        <SelectItem
+                          value="secondary-destination-header"
+                          disabled
+                          className="font-semibold text-blue-600"
+                        >
+                          -- 次要到貨港 --
+                        </SelectItem>
+                        {secondaryDestinationPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* 其他港口 */}
+                    {(otherPorts.length > 0 || transitPorts.length > 0) && (
+                      <>
+                        <SelectItem value="other-destination-header" disabled className="font-semibold text-blue-600">
+                          -- 其他港口 --
+                        </SelectItem>
+                        {transitPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en}) - 轉運港
+                          </SelectItem>
+                        ))}
+                        {otherPorts.map((port) => (
+                          <SelectItem key={port.un_locode} value={port.un_locode}>
+                            {port.port_name_zh} ({port.port_name_en})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </SelectContent>
             </Select>

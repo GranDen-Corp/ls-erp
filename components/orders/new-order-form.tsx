@@ -296,11 +296,15 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                       size="sm"
                     >
                       <LucideSave className="h-4 w-4 mr-2" />
-                      僅建立訂單
+                      僅更新訂單內容
                     </Button>
                     <Button
                       onClick={() => onSubmit(true)}
-                      disabled={orderForm.isSubmitting || orderForm.isCreatingPurchaseOrder}
+                      disabled={
+                        orderForm.isSubmitting ||
+                        orderForm.isCreatingPurchaseOrder ||
+                        !orderForm.isProcurementSettingsConfirmed
+                      }
                       className="bg-green-600 hover:bg-green-700"
                       size="sm"
                     >
@@ -553,6 +557,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               customerCurrency={orderForm.customerCurrency}
               productUnits={orderForm.productUnits || []}
               getUnitMultiplier={orderForm.getUnitMultiplier}
+              disabled={orderForm.isProcurementSettingsConfirmed}
             />
 
             {/* 採購設定確認按鈕 */}
@@ -603,11 +608,11 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                       size="lg"
                     >
                       <LucideSave className="h-5 w-5 mr-2" />
-                      僅建立訂單
+                      僅更新訂單內容
                     </Button>
                     <Button
                       onClick={() => onSubmit(true)}
-                      disabled={orderForm.isSubmitting}
+                      disabled={orderForm.isSubmitting || !orderForm.isProcurementSettingsConfirmed}
                       className="bg-purple-600 hover:bg-purple-700"
                       size="lg"
                     >
@@ -637,6 +642,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setJinzhanLabelInfo={orderForm.setJinzhanLabelInfo}
           isJinzhanLabelDisabled={orderForm.isJinzhanLabelDisabled}
           setIsJinzhanLabelDisabled={orderForm.setIsJinzhanLabelDisabled}
+          isCartonMarkDisabled={orderForm.isCartonMarkDisabled}
+          setIsCartonMarkDisabled={orderForm.setIsCartonMarkDisabled}
         />
 
         {/* 批次管理對話框 */}

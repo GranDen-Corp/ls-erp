@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase-client"
-import { generateOrderNumber } from "@/lib/order-number-generator"
+import { generateOrderNumber, validateOrderNumber } from "@/lib/order-number-generator"
 
 interface Customer {
   customer_id: string
@@ -24,6 +24,7 @@ interface Customer {
   qty_allowance_percent?: string
   client_contact_person?: string
   client_contact_person_email?: string
+  port_of_discharge_default?: string
 }
 
 interface Product {
@@ -139,12 +140,6 @@ function getUnitMultiplier(unit: string): number {
   }
 }
 
-// 輔助函數：驗證訂單編號格式
-function validateOrderNumber(orderNumber: string): boolean {
-  const orderNumberPattern = /^\d{9}$/
-  return orderNumberPattern.test(orderNumber)
-}
-
 // 輔助函數：檢查訂單編號是否已存在
 async function checkOrderNumberExists(orderNumber: string): Promise<boolean> {
   const supabase = createClient()
@@ -162,6 +157,9 @@ export function useOrderForm() {
   // Basic state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Add this line with other state declarations
+  const [isCartonMarkDisabled, setIsCartonMarkDisabled] = useState<boolean>(false)
 
   // Form data with proper string initialization
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("")
@@ -183,9 +181,11 @@ export function useOrderForm() {
   const [isJinzhanLabelDisabled, setIsJinzhanLabelDisabled] = useState<boolean>(false)
 
   // 在現有狀態後添加
-  const [portOfLoading, setPortOfLoading] = useState<string>("KAOSHIANG") // 預設為高雄港
+  const [portOfLoading, setPortOfLoading] = useState<string>("TWKHH") // 預設為高雄港的UN/LOCODE
   const [portOfDischarge, setPortOfDischarge] = useState<string>("")
-  const [ports, setPorts] = useState<Array<{ un_locode: string; port_name_en: string; port_name_zh: string }>>([])
+  const [ports, setPorts] = useState<
+    Array<{ un_locode: string; port_name_en: string; port_name_zh: string; port_type?: string }>
+  >([])
   const [orderCreated, setOrderCreated] = useState<boolean>(false)
   const [isCreatingOrder, setIsCreatingOrder] = useState<boolean>(false)
   const [createdOrderId, setCreatedOrderId] = useState<string>("")
@@ -229,7 +229,7 @@ export function useOrderForm() {
 
         const supabase = createClient()
 
-        // Load data from correct tables
+        // Load data from correct tables - include port_type for ports
         const [customersRes, unitsRes, ratesRes, portsRes] = await Promise.all([
           supabase.from("customers").select("*").order("customer_full_name"),
           supabase
@@ -239,7 +239,7 @@ export function useOrderForm() {
             .eq("is_active", true)
             .order("sort_order"),
           supabase.from("exchange_rates").select("*").eq("is_active", true).order("currency_code"),
-          supabase.from("ports").select("un_locode, port_name_en, port_name_zh").order("port_name_en"),
+          supabase.from("ports").select("un_locode, port_name_en, port_name_zh, port_type").order("port_name_en"),
         ])
 
         if (customersRes.error) throw customersRes.error
@@ -253,6 +253,7 @@ export function useOrderForm() {
         setPorts(portsRes.data || [])
 
         console.log("載入的產品單位:", unitsRes.data)
+        console.log("載入的港口資料:", portsRes.data)
 
         // 自動生成初始訂單編號
         console.log("開始生成初始訂單編號...")
@@ -317,11 +318,18 @@ export function useOrderForm() {
           // Ensure we always set strings, never null/undefined
           setPaymentTerms(customer.payment_terms_specification || customer.payment_due_date || "")
           setTradeTerms(customer.trade_terms_specification || "")
+
+          // Set default port of discharge if available
+          if (customer.port_of_discharge_default) {
+            setPortOfDischarge(customer.port_of_discharge_default)
+          }
+
           loadCustomerProducts(customerId)
         }
       } else {
         setPaymentTerms("")
         setTradeTerms("")
+        setPortOfDischarge("")
         setRegularProducts([])
         setAssemblyProducts([])
         setOrderItems([])
@@ -525,9 +533,9 @@ export function useOrderForm() {
 
         const finalOrderNumber = useCustomOrderNumber ? customOrderNumber : orderNumber
 
-        // 驗證訂單編號格式
+        // 使用更新後的驗證函數
         if (!validateOrderNumber(finalOrderNumber)) {
-          throw new Error("訂單編號格式不正確，應為9位數字(YYMMXXXXX)")
+          throw new Error("訂單編號格式不正確，應為 L-YYMMXXXXX 格式")
         }
 
         // 檢查訂單編號是否已存在
@@ -607,9 +615,9 @@ export function useOrderForm() {
       const finalOrderNumber = useCustomOrderNumber ? customOrderNumber : orderNumber
       if (!finalOrderNumber.trim()) throw new Error("請設定訂單編號")
 
-      // 驗證訂單編號格式
+      // 使用更新後的驗證函數
       if (!validateOrderNumber(finalOrderNumber)) {
-        throw new Error("訂單編號格式不正確，應為9位數字(YYMMXXXXX)")
+        throw new Error("訂單編號格式不正確，應為 L-YYMMXXXXX 格式")
       }
 
       // 檢查訂單編號是否已存在
@@ -812,9 +820,33 @@ ${deliveryLines.join("\n")}
     return []
   }, [])
 
+  const getPortDisplayName = useCallback(
+    (unLocode: string) => {
+      const port = ports.find((p) => p.un_locode === unLocode)
+      return port ? port.port_name_en : unLocode
+    },
+    [ports],
+  )
+
+  // Define generateCartonMarkInfo before it's used in confirmProcurementSettings
+  const generateCartonMarkInfo = useCallback(() => {
+    if (isCartonMarkDisabled) return ""
+
+    const portName = getPortDisplayName(portOfDischarge)
+
+    return `紙箱：\n\nPO ${poNumber}\n${portName}\nC/NO.\nMADE IN TAIWAN\nR.O.C.`
+  }, [isCartonMarkDisabled, poNumber, portOfDischarge, getPortDisplayName])
+
+  // Update the confirmProcurementSettings function to generate carton mark info
   const confirmProcurementSettings = useCallback(() => {
-    setIsProcurementSettingsConfirmed(!isProcurementSettingsConfirmed)
-  }, [isProcurementSettingsConfirmed])
+    const newSettingsState = !isProcurementSettingsConfirmed
+    setIsProcurementSettingsConfirmed(newSettingsState)
+
+    // Generate carton mark info when confirming procurement settings
+    if (newSettingsState) {
+      setCartonMarkInfo(generateCartonMarkInfo())
+    }
+  }, [isProcurementSettingsConfirmed, generateCartonMarkInfo])
 
   const getOrderData = useCallback(
     async (skipValidation = false) => {
@@ -856,14 +888,6 @@ ${deliveryLines.join("\n")}
   const checkOrderNumberDuplicate = useCallback(async (orderNumber: string) => {
     // TODO: 實現訂單編號重複檢查
   }, [])
-
-  const getPortDisplayName = useCallback(
-    (unLocode: string) => {
-      const port = ports.find((p) => p.un_locode === unLocode)
-      return port ? port.port_name_en : unLocode
-    },
-    [ports],
-  )
 
   return {
     // State
@@ -999,5 +1023,11 @@ ${deliveryLines.join("\n")}
 
     // 新增的方法
     createInitialOrder,
+
+    // Add isCartonMarkDisabled to the return object
+    isCartonMarkDisabled,
+    setIsCartonMarkDisabled,
+    // ... existing methods
+    generateCartonMarkInfo,
   }
 }

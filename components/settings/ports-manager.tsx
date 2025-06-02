@@ -15,7 +15,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, Trash2 } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Lock } from "lucide-react"
 import type { Port } from "@/types/port"
 import { addPort, updatePort, deletePort } from "@/app/settings/port-actions"
 import { toast } from "@/hooks/use-toast"
@@ -84,7 +84,13 @@ export function PortsManager({ ports: initialPorts }: PortsManagerProps) {
 
     setIsLoading(true)
     try {
-      const result = await updatePort(currentPort.id, formData)
+      // 如果是高雄港，保留原有的port_type
+      const updatedData = { ...formData }
+      if (currentPort.un_locode === "TWKHH") {
+        updatedData.port_type = currentPort.port_type
+      }
+
+      const result = await updatePort(currentPort.id, updatedData)
       if (result.success && result.data) {
         setPorts(ports.map((port) => (port.id === currentPort.id ? result.data! : port)))
         setIsEditDialogOpen(false)
@@ -114,6 +120,17 @@ export function PortsManager({ ports: initialPorts }: PortsManagerProps) {
 
   const handleDeletePort = async () => {
     if (!currentPort) return
+
+    // 禁止刪除高雄港
+    if (currentPort.un_locode === "TWKHH") {
+      toast({
+        title: "錯誤",
+        description: "高雄港為系統預設主要出貨港，不可刪除",
+        variant: "destructive",
+      })
+      setIsDeleteDialogOpen(false)
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -185,8 +202,25 @@ export function PortsManager({ ports: initialPorts }: PortsManagerProps) {
     return regionColors[region] || "bg-gray-100 text-gray-800"
   }
 
+  const getPortTypeColor = (portType: string) => {
+    const portTypeColors: Record<string, string> = {
+      主要出貨港: "bg-red-100 text-red-800",
+      次要出貨港: "bg-orange-100 text-orange-800",
+      主要到貨港: "bg-green-100 text-green-800",
+      次要到貨港: "bg-blue-100 text-blue-800",
+      轉運港: "bg-purple-100 text-purple-800",
+    }
+
+    return portTypeColors[portType] || "bg-gray-100 text-gray-800"
+  }
+
   const isFormValid = () => {
     return formData.region && formData.port_name_zh && formData.port_name_en && formData.un_locode && formData.port_type
+  }
+
+  // 檢查是否為高雄港
+  const isKaohsiungPort = (port: Port) => {
+    return port.un_locode === "TWKHH"
   }
 
   return (
@@ -236,12 +270,23 @@ export function PortsManager({ ports: initialPorts }: PortsManagerProps) {
                   <TableCell>
                     <code className="bg-gray-100 px-2 py-1 rounded text-sm">{port.un_locode}</code>
                   </TableCell>
-                  <TableCell>{port.port_type}</TableCell>
+                  <TableCell>
+                    <Badge className={getPortTypeColor(port.port_type)}>
+                      {port.port_type}
+                      {isKaohsiungPort(port) && <Lock className="ml-1 h-3 w-3 inline" />}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(port)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(port)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openDeleteDialog(port)}
+                      disabled={isKaohsiungPort(port)}
+                      title={isKaohsiungPort(port) ? "高雄港為系統預設主要出貨港，不可刪除" : "刪除港口"}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -324,6 +369,8 @@ export function PortsManager({ ports: initialPorts }: PortsManagerProps) {
                   <SelectValue placeholder="選擇港口類型" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="主要出貨港">主要出貨港</SelectItem>
+                  <SelectItem value="次要出貨港">次要出貨港</SelectItem>
                   <SelectItem value="主要到貨港">主要到貨港</SelectItem>
                   <SelectItem value="次要到貨港">次要到貨港</SelectItem>
                   <SelectItem value="轉運港">轉運港</SelectItem>
@@ -405,19 +452,33 @@ export function PortsManager({ ports: initialPorts }: PortsManagerProps) {
               <Label htmlFor="edit-port_type" className="text-right">
                 類型
               </Label>
-              <Select
-                value={formData.port_type}
-                onValueChange={(value) => setFormData({ ...formData, port_type: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="選擇港口類型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="主要到貨港">主要到貨港</SelectItem>
-                  <SelectItem value="次要到貨港">次要到貨港</SelectItem>
-                  <SelectItem value="轉運港">轉運港</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3">
+                {currentPort && isKaohsiungPort(currentPort) ? (
+                  <div className="flex items-center space-x-2">
+                    <Input value={formData.port_type} disabled className="bg-gray-100" />
+                    <div className="text-sm text-amber-600 flex items-center">
+                      <Lock className="h-3 w-3 mr-1" />
+                      高雄港類型不可修改
+                    </div>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.port_type}
+                    onValueChange={(value) => setFormData({ ...formData, port_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇港口類型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="主要出貨港">主要出貨港</SelectItem>
+                      <SelectItem value="次要出貨港">次要出貨港</SelectItem>
+                      <SelectItem value="主要到貨港">主要到貨港</SelectItem>
+                      <SelectItem value="次要到貨港">次要到貨港</SelectItem>
+                      <SelectItem value="轉運港">轉運港</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
