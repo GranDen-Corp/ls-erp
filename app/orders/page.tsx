@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrdersTable } from "@/components/orders/orders-table"
 import Link from "next/link"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { supabaseClient } from "@/lib/supabase-client"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 interface OrderStatus {
   id: number
@@ -49,7 +50,7 @@ export default function OrdersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="container mx-auto py-6 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">訂單管理</h1>
           <div className="flex gap-2">
@@ -61,13 +62,29 @@ export default function OrdersPage() {
             </Link>
           </div>
         </div>
-        <div className="text-center py-4">載入中...</div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
+  // 計算合適的列數，避免頁籤過多時擠在一行
+  const calculateGridCols = () => {
+    const totalTabs = orderStatuses.length + 1 // +1 是因為還有"全部"頁籤
+    if (totalTabs <= 6) return totalTabs
+    if (totalTabs <= 8) return Math.ceil(totalTabs / 2)
+    return Math.ceil(totalTabs / 3)
+  }
+
+  const gridCols = calculateGridCols()
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="container mx-auto py-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">訂單管理</h1>
         <div className="flex gap-2">
@@ -80,26 +97,30 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className={`grid w-full grid-cols-${Math.min(orderStatuses.length + 1, 6)}`}>
-          <TabsTrigger value="all">全部</TabsTrigger>
-          {orderStatuses.map((status) => (
-            <TabsTrigger key={status.status_code} value={status.status_code}>
-              {status.name_zh}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-0">
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className={`grid w-full grid-cols-${gridCols}`}>
+              <TabsTrigger value="all">全部</TabsTrigger>
+              {orderStatuses.map((status) => (
+                <TabsTrigger key={status.status_code} value={status.status_code}>
+                  {status.name_zh}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        <TabsContent value="all">
-          <OrdersTable />
-        </TabsContent>
+            <TabsContent value="all" className="pt-4">
+              <OrdersTable />
+            </TabsContent>
 
-        {orderStatuses.map((status) => (
-          <TabsContent key={status.status_code} value={status.status_code}>
-            <OrdersTable statusFilter={status.status_code} />
-          </TabsContent>
-        ))}
-      </Tabs>
+            {orderStatuses.map((status) => (
+              <TabsContent key={status.status_code} value={status.status_code} className="pt-4">
+                <OrdersTable statusFilter={status.status_code} />
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardHeader>
+      </Card>
     </div>
   )
 }

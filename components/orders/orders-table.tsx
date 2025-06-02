@@ -5,11 +5,8 @@ import React from "react"
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Loader2,
-  Search,
-  FileDown,
   Eye,
   FileEdit,
   Printer,
@@ -44,6 +41,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import { AdvancedFilter, type FilterOption } from "@/components/ui/advanced-filter"
 
 // 在 import 部分添加新的引用
 import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
@@ -85,6 +84,7 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [selectedStatus, setSelectedStatus] = useState<string>("")
+  const [filterOptions, setFilterOptions] = useState<FilterOption[]>([])
 
   // 排序狀態
   const [sortField, setSortField] = useState<SortField | null>(null)
@@ -167,6 +167,22 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
           }
 
           setCustomers(customerMap)
+
+          // 設置客戶篩選選項
+          const customerOptions = customersData.map((customer) => ({
+            value: customer.customer_id,
+            label: customer.customer_short_name || customer.customer_id,
+          }))
+
+          setFilterOptions((prev) => [
+            ...prev,
+            {
+              id: "customer_id",
+              label: "客戶",
+              options: customerOptions,
+              type: "select",
+            },
+          ])
         }
 
         // 3. 獲取產品資料
@@ -212,6 +228,24 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
               }
             })
             setOrderStatuses(statusMap)
+
+            // 設置狀態篩選選項
+            const statusOptions = statusesData
+              .filter((status) => status.is_active)
+              .map((status) => ({
+                value: status.status_code,
+                label: status.name_zh,
+              }))
+
+            setFilterOptions((prev) => [
+              ...prev,
+              {
+                id: "status",
+                label: "狀態",
+                options: statusOptions,
+                type: "select",
+              },
+            ])
           }
         } catch (err) {
           console.error("獲取訂單狀態資料時出錯:", err)
@@ -289,13 +323,16 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
     fetchData()
   }, [statusFilter])
 
-  // 處理搜尋
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredOrders(orders)
-    } else {
-      const term = searchTerm.toLowerCase()
-      const filtered = orders.filter((order) => {
+  // 處理搜尋和篩選
+  const handleFilterChange = (filters: Record<string, any>) => {
+    const { search, ...otherFilters } = filters
+
+    let filtered = [...orders]
+
+    // 處理搜尋
+    if (search && search.trim() !== "") {
+      const term = search.toLowerCase()
+      filtered = filtered.filter((order) => {
         const orderId = String(order.order_id || "").toLowerCase()
         const poId = String(order.po_id || "").toLowerCase()
         const customerId = String(order.customer_id || "").toLowerCase()
@@ -303,9 +340,26 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
 
         return orderId.includes(term) || poId.includes(term) || customerId.includes(term) || customerName.includes(term)
       })
-      setFilteredOrders(filtered)
     }
-  }, [searchTerm, orders, customers])
+
+    // 處理其他篩選條件
+    Object.entries(otherFilters).forEach(([key, value]) => {
+      if (value && value !== "all") {
+        filtered = filtered.filter((order) => {
+          if (key === "customer_id") {
+            return order.customer_id === value
+          }
+          if (key === "status") {
+            return String(order.status) === String(value)
+          }
+          return true
+        })
+      }
+    })
+
+    setFilteredOrders(filtered)
+    setSearchTerm(search || "")
+  }
 
   // 排序功能
   const handleSort = (field: SortField) => {
@@ -774,169 +828,156 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
     )
   }
 
+  // 渲染排序按鈕
+  const renderSortButton = (field: SortField, label: string) => (
+    <Button
+      variant="ghost"
+      onClick={() => handleSort(field)}
+      className="h-auto p-0 font-semibold hover:bg-transparent hover:text-primary"
+    >
+      {label}
+      {getSortIcon(field)}
+    </Button>
+  )
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            type="search"
-            placeholder="搜尋訂單..."
-            className="pl-8 w-64"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+    <div className="space-y-4">
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <AdvancedFilter
+            options={filterOptions}
+            onFilterChange={handleFilterChange}
+            placeholder="搜尋訂單編號、客戶PO編號、客戶..."
           />
-        </div>
-        <Button variant="outline" onClick={exportOrders}>
-          <FileDown className="mr-2 h-4 w-4" />
-          導出
-        </Button>
-      </div>
+        </CardContent>
+      </Card>
 
       {error ? (
-        <div className="text-center text-red-500 py-4">{error}</div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="text-center text-red-500">{error}</div>
+          </CardContent>
+        </Card>
       ) : isLoading ? (
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-        </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          </CardContent>
+        </Card>
       ) : filteredOrders.length === 0 ? (
-        <div className="text-center text-gray-500 py-4">沒有找到訂單資料</div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="text-center text-gray-500 py-4">沒有找到訂單資料</div>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="overflow-x-auto border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort("order_id")} className="h-auto p-0 font-semibold">
-                    訂單編號
-                    {getSortIcon("order_id")}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort("po_id")} className="h-auto p-0 font-semibold">
-                    客戶PO編號
-                    {getSortIcon("po_id")}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort("customer_id")}
-                    className="h-auto p-0 font-semibold"
-                  >
-                    客戶
-                    {getSortIcon("customer_id")}
-                  </Button>
-                </TableHead>
-                <TableHead>產品</TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort("estimated_delivery_date")}
-                    className="h-auto p-0 font-semibold"
-                  >
-                    預期(期望)交貨日期
-                    {getSortIcon("estimated_delivery_date")}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort("created_at")} className="h-auto p-0 font-semibold">
-                    訂單建立日期
-                    {getSortIcon("created_at")}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort("status")} className="h-auto p-0 font-semibold">
-                    狀態
-                    {getSortIcon("status")}
-                  </Button>
-                </TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.map((order) => {
-                const status = getOrderStatus(order)
-                const isAssembly = hasAssemblyProduct(order)
-                const isExpanded = expandedOrders[order.order_id] || false
-                const componentsList = isAssembly ? getComponentsList(order) : null
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead>{renderSortButton("order_id", "訂單編號")}</TableHead>
+                    <TableHead>{renderSortButton("po_id", "客戶PO編號")}</TableHead>
+                    <TableHead>{renderSortButton("customer_id", "客戶")}</TableHead>
+                    <TableHead>產品</TableHead>
+                    <TableHead>{renderSortButton("estimated_delivery_date", "預期交貨日期")}</TableHead>
+                    <TableHead>{renderSortButton("created_at", "訂單建立日期")}</TableHead>
+                    <TableHead>{renderSortButton("status", "狀態")}</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((order) => {
+                    const status = getOrderStatus(order)
+                    const isAssembly = hasAssemblyProduct(order)
+                    const isExpanded = expandedOrders[order.order_id] || false
+                    const componentsList = isAssembly ? getComponentsList(order) : null
 
-                return (
-                  <React.Fragment key={order.order_sid || order.order_id}>
-                    <TableRow>
-                      <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
-                      <TableCell>{order.po_id || "-"}</TableCell>
-                      <TableCell>{getCustomerName(order.customer_id)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          {isAssembly && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="p-0 mr-1"
-                              onClick={() => toggleOrderExpand(order.order_id)}
+                    return (
+                      <React.Fragment key={order.order_sid || order.order_id}>
+                        <TableRow className="hover:bg-muted/30">
+                          <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
+                          <TableCell>{order.po_id || "-"}</TableCell>
+                          <TableCell>{getCustomerName(order.customer_id)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {isAssembly && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="p-0 mr-1"
+                                  onClick={() => toggleOrderExpand(order.order_id)}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                              {getProductName(order)}
+                              {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
+                            </div>
+                          </TableCell>
+                          <TableCell>{getEstimatedDeliveryDate(order)}</TableCell>
+                          <TableCell>{getOrderCreatedDate(order)}</TableCell>
+                          <TableCell>
+                            <Badge
+                              className={`${status.color} text-white border-0 px-3 py-1 cursor-pointer hover:opacity-80`}
+                              onClick={() => openStatusDialog(order)}
                             >
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </Button>
-                          )}
-                          {getProductName(order)}
-                          {isAssembly && <Layers className="ml-2 h-4 w-4 text-purple-500" title="組件產品" />}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getEstimatedDeliveryDate(order)}</TableCell>
-                      <TableCell>{getOrderCreatedDate(order)}</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`${status.color} text-white border-0 px-3 py-1 cursor-pointer hover:opacity-80`}
-                          onClick={() => openStatusDialog(order)}
-                        >
-                          {status.text}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <span className="sr-only">開啟選單</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>操作</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => viewOrderDetails(order.order_id)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              查看詳情
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => editOrder(order.order_id)}>
-                              <FileEdit className="mr-2 h-4 w-4" />
-                              編輯訂單
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => printOrder(order.order_id)}>
-                              <Printer className="mr-2 h-4 w-4" />
-                              列印訂單
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              刪除訂單
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded && componentsList && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="bg-gray-50 py-1">
-                          {componentsList}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                              {status.text}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <span className="sr-only">開啟選單</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>操作</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => viewOrderDetails(order.order_id)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  查看詳情
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => editOrder(order.order_id)}>
+                                  <FileEdit className="mr-2 h-4 w-4" />
+                                  編輯訂單
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => printOrder(order.order_id)}>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  列印訂單
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  刪除訂單
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && componentsList && (
+                          <TableRow className="bg-muted/20">
+                            <TableCell colSpan={8} className="py-1">
+                              {componentsList}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* 訂單狀態編輯對話框 */}
