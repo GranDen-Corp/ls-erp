@@ -28,7 +28,7 @@ import { ProductSelection } from "./product-selection"
 import { EnhancedProductList } from "./enhanced-product-list"
 import { ProductList } from "./product-list"
 import { BatchManagement } from "./batch-management"
-import { OrderInfo } from "./order-info"
+import { OrderInfo } from "./order-info" // Changed from default import to named import
 import { EnhancedBatchManagement } from "./enhanced-batch-management"
 import { ProcurementProductList } from "./procurement-product-list"
 
@@ -100,7 +100,9 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         customer_address: selectedCustomer?.customer_address || "",
         customer_contact: selectedCustomer?.customer_phone || "",
         order_date: new Date().toISOString(),
-        delivery_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        delivery_date: orderForm.deliveryDate
+          ? orderForm.deliveryDate.toISOString()
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         payment_terms: orderForm.paymentTerms || "",
         trade_terms: orderForm.tradeTerms || "",
         remarks: orderForm.remarks || "",
@@ -165,6 +167,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             isCreatingOrder={orderForm.isCreatingOrder}
             orderCreated={orderForm.orderCreated}
             getPortDisplayName={orderForm.getPortDisplayName}
+            deliveryDate={orderForm.deliveryDate}
+            setDeliveryDate={orderForm.setDeliveryDate}
           />
         </div>
       )
@@ -350,6 +354,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           isCreatingOrder={orderForm.isCreatingOrder}
           orderCreated={orderForm.orderCreated}
           getPortDisplayName={orderForm.getPortDisplayName}
+          deliveryDate={orderForm.deliveryDate}
+          setDeliveryDate={orderForm.setDeliveryDate}
         />
 
         {/* 產品設定區域 */}

@@ -172,6 +172,9 @@ export function useOrderForm() {
   const [orderInfo, setOrderInfo] = useState<Record<string, any>>({})
   const [purchaseInfo, setPurchaseInfo] = useState<string>("")
 
+  // 新增交貨日期狀態
+  const [deliveryDate, setDeliveryDate] = useState<Date>(new Date())
+
   // 移除這些舊的狀態
   // const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
   // const [cartonMarkInfo, setCartonMarkInfo] = useState<string>("")
@@ -568,6 +571,7 @@ export function useOrderForm() {
           port_of_discharge: portOfDischarge,
           payment_terms: paymentTerms || "",
           trade_terms: tradeTerms || "",
+          estimated_delivery_date: deliveryDate.toISOString().split("T")[0], // 格式化為 YYYY-MM-DD
           remarks: remarks || "",
           order_info: orderInfo,
           status: 0,
@@ -609,6 +613,7 @@ export function useOrderForm() {
       tradeTerms,
       remarks,
       orderInfo,
+      deliveryDate,
     ],
   )
 
@@ -650,6 +655,7 @@ export function useOrderForm() {
         port_of_discharge: portOfDischarge, // 這裡存儲的是un_locode
         payment_terms: paymentTerms.trim(),
         trade_terms: tradeTerms.trim(),
+        estimated_delivery_date: deliveryDate.toISOString().split("T")[0], // 格式化為 YYYY-MM-DD
         status: 0,
         created_at: new Date().toISOString(),
       }
@@ -680,6 +686,7 @@ export function useOrderForm() {
     useCustomOrderNumber,
     customOrderNumber,
     orderNumber,
+    deliveryDate,
   ])
 
   // Other handlers
@@ -918,10 +925,18 @@ ${deliveryLines.join("\n")}
     remarks,
     orderInfo,
     purchaseInfo,
+    deliveryDate, // 新增
     // 移除舊的返回項目
     // purchaseRemarks,
     // setPurchaseRemarks,
     // cartonMarkInfo,
+    // palletMarkInfo,
+    // jinzhanLabelInfo,
+    // isJinzhanLabelDisabled,
+    // setCartonMarkInfo,
+    // setPalletMarkInfo,
+    // setJinzhanLabelInfo,
+    // setIsJinzhanLabelDisabled,
     // palletMarkInfo,
     // jinzhanLabelInfo,
     // isJinzhanLabelDisabled,
@@ -986,6 +1001,7 @@ ${deliveryLines.join("\n")}
     setRemarks,
     setOrderInfo,
     setPurchaseInfo,
+    setDeliveryDate, // 新增
     setOrderItems,
     setActiveTab,
     setProductSelectionTab,
