@@ -630,20 +630,12 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         <MemoizedOrderInfo
           remarks={orderForm.remarks}
           setRemarks={orderForm.setRemarks}
-          purchaseRemarks={orderForm.purchaseRemarks}
-          setPurchaseRemarks={orderForm.setPurchaseRemarks}
+          orderItems={orderForm.orderItems || []}
+          productProcurementInfo={orderForm.productProcurementInfo || {}}
+          setProductProcurementInfo={orderForm.setProductProcurementInfo}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
           isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
-          cartonMarkInfo={orderForm.cartonMarkInfo}
-          setCartonMarkInfo={orderForm.setCartonMarkInfo}
-          palletMarkInfo={orderForm.palletMarkInfo}
-          setPalletMarkInfo={orderForm.setPalletMarkInfo}
-          jinzhanLabelInfo={orderForm.jinzhanLabelInfo}
-          setJinzhanLabelInfo={orderForm.setJinzhanLabelInfo}
-          isJinzhanLabelDisabled={orderForm.isJinzhanLabelDisabled}
-          setIsJinzhanLabelDisabled={orderForm.setIsJinzhanLabelDisabled}
-          isCartonMarkDisabled={orderForm.isCartonMarkDisabled}
-          setIsCartonMarkDisabled={orderForm.setIsCartonMarkDisabled}
+          disabled={false}
         />
 
         {/* 批次管理對話框 */}

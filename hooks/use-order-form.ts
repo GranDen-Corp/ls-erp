@@ -159,7 +159,6 @@ export function useOrderForm() {
   const [error, setError] = useState<string | null>(null)
 
   // Add this line with other state declarations
-  const [isCartonMarkDisabled, setIsCartonMarkDisabled] = useState<boolean>(false)
 
   // Form data with proper string initialization
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("")
@@ -172,13 +171,28 @@ export function useOrderForm() {
   const [remarks, setRemarks] = useState<string>("")
   const [orderInfo, setOrderInfo] = useState<Record<string, any>>({})
   const [purchaseInfo, setPurchaseInfo] = useState<string>("")
-  const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
 
-  // New label info state
-  const [cartonMarkInfo, setCartonMarkInfo] = useState<string>("")
-  const [palletMarkInfo, setPalletMarkInfo] = useState<string>("")
-  const [jinzhanLabelInfo, setJinzhanLabelInfo] = useState<string>("")
-  const [isJinzhanLabelDisabled, setIsJinzhanLabelDisabled] = useState<boolean>(false)
+  // 移除這些舊的狀態
+  // const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
+  // const [cartonMarkInfo, setCartonMarkInfo] = useState<string>("")
+  // const [palletMarkInfo, setPalletMarkInfo] = useState<string>("")
+  // const [jinzhanLabelInfo, setJinzhanLabelInfo] = useState<string>("")
+  // const [isJinzhanLabelDisabled, setIsJinzhanLabelDisabled] = useState<boolean>(false)
+  // const [isCartonMarkDisabled, setIsCartonMarkDisabled] = useState<boolean>(false)
+
+  // 添加新的狀態
+  const [productProcurementInfo, setProductProcurementInfo] = useState<
+    Record<
+      string,
+      {
+        productPartNo: string
+        procurementRemarks: string
+        cartonMarkInfo: string
+        palletMarkInfo: string
+        jinzhanLabelInfo: string
+      }
+    >
+  >({})
 
   // 在現有狀態後添加
   const [portOfLoading, setPortOfLoading] = useState<string>("TWKHH") // 預設為高雄港的UN/LOCODE
@@ -244,8 +258,7 @@ export function useOrderForm() {
 
         if (customersRes.error) throw customersRes.error
         if (unitsRes.error) throw unitsRes.error
-        if (ratesRes.error) throw ratesRes.error
-        if (portsRes.error) throw portsRes.error
+        if (ratesRes.error) throw portsRes.error
 
         setCustomers(customersRes.data || [])
         setProductUnits(unitsRes.data || [])
@@ -829,24 +842,25 @@ ${deliveryLines.join("\n")}
   )
 
   // Define generateCartonMarkInfo before it's used in confirmProcurementSettings
-  const generateCartonMarkInfo = useCallback(() => {
-    if (isCartonMarkDisabled) return ""
+  // 移除 generateCartonMarkInfo 函數，或者改為針對特定產品生成
+  // const generateCartonMarkInfo = useCallback(() => {
+  //   if (isCartonMarkDisabled) return ""
 
-    const portName = getPortDisplayName(portOfDischarge)
+  //   const portName = getPortDisplayName(portOfDischarge)
 
-    return `紙箱：\n\nPO ${poNumber}\n${portName}\nC/NO.\nMADE IN TAIWAN\nR.O.C.`
-  }, [isCartonMarkDisabled, poNumber, portOfDischarge, getPortDisplayName])
+  //   return `紙箱：\n\nPO ${poNumber}\n${portName}\nC/NO.\nMADE IN TAIWAN\nR.O.C.`
+  // }, [isCartonMarkDisabled, poNumber, portOfDischarge, getPortDisplayName])
 
   // Update the confirmProcurementSettings function to generate carton mark info
   const confirmProcurementSettings = useCallback(() => {
     const newSettingsState = !isProcurementSettingsConfirmed
     setIsProcurementSettingsConfirmed(newSettingsState)
 
-    // Generate carton mark info when confirming procurement settings
-    if (newSettingsState) {
-      setCartonMarkInfo(generateCartonMarkInfo())
-    }
-  }, [isProcurementSettingsConfirmed, generateCartonMarkInfo])
+    // 移除自動生成嘜頭的邏輯
+    // if (newSettingsState) {
+    //   setCartonMarkInfo(generateCartonMarkInfo())
+    // }
+  }, [isProcurementSettingsConfirmed])
 
   const getOrderData = useCallback(
     async (skipValidation = false) => {
@@ -904,7 +918,23 @@ ${deliveryLines.join("\n")}
     remarks,
     orderInfo,
     purchaseInfo,
-    purchaseRemarks,
+    // 移除舊的返回項目
+    // purchaseRemarks,
+    // setPurchaseRemarks,
+    // cartonMarkInfo,
+    // palletMarkInfo,
+    // jinzhanLabelInfo,
+    // isJinzhanLabelDisabled,
+    // setCartonMarkInfo,
+    // setPalletMarkInfo,
+    // setJinzhanLabelInfo,
+    // setIsJinzhanLabelDisabled,
+    // isCartonMarkDisabled,
+    // setIsCartonMarkDisabled,
+
+    // 添加新的返回項目
+    productProcurementInfo,
+    setProductProcurementInfo,
     customers,
     regularProducts,
     assemblyProducts,
@@ -934,12 +964,6 @@ ${deliveryLines.join("\n")}
     customerCurrency,
     defaultUnit,
 
-    // New label management state
-    cartonMarkInfo,
-    palletMarkInfo,
-    jinzhanLabelInfo,
-    isJinzhanLabelDisabled,
-
     // 新增的港口相關狀態
     portOfLoading,
     setPortOfLoading,
@@ -962,7 +986,6 @@ ${deliveryLines.join("\n")}
     setRemarks,
     setOrderInfo,
     setPurchaseInfo,
-    setPurchaseRemarks,
     setOrderItems,
     setActiveTab,
     setProductSelectionTab,
@@ -979,12 +1002,6 @@ ${deliveryLines.join("\n")}
     setLoadingSelectedProducts,
     setOrderNumberStatus,
     setOrderNumberMessage,
-
-    // New label management setters
-    setCartonMarkInfo,
-    setPalletMarkInfo,
-    setJinzhanLabelInfo,
-    setIsJinzhanLabelDisabled,
 
     // Methods
     getUnitDisplayName,
@@ -1023,11 +1040,5 @@ ${deliveryLines.join("\n")}
 
     // 新增的方法
     createInitialOrder,
-
-    // Add isCartonMarkDisabled to the return object
-    isCartonMarkDisabled,
-    setIsCartonMarkDisabled,
-    // ... existing methods
-    generateCartonMarkInfo,
   }
 }
