@@ -182,6 +182,14 @@ export function useOrderForm() {
   const [jinzhanLabelInfo, setJinzhanLabelInfo] = useState<string>("")
   const [isJinzhanLabelDisabled, setIsJinzhanLabelDisabled] = useState<boolean>(false)
 
+  // 在現有狀態後添加
+  const [portOfLoading, setPortOfLoading] = useState<string>("KAOSHIANG") // 預設為高雄港
+  const [portOfDischarge, setPortOfDischarge] = useState<string>("")
+  const [ports, setPorts] = useState<Array<{ un_locode: string; port_name_en: string; port_name_zh: string }>>([])
+  const [orderCreated, setOrderCreated] = useState<boolean>(false)
+  const [isCreatingOrder, setIsCreatingOrder] = useState<boolean>(false)
+  const [createdOrderId, setCreatedOrderId] = useState<string>("")
+
   // Data arrays
   const [customers, setCustomers] = useState<Customer[]>([])
   const [regularProducts, setRegularProducts] = useState<Product[]>([])
@@ -222,7 +230,7 @@ export function useOrderForm() {
         const supabase = createClient()
 
         // Load data from correct tables
-        const [customersRes, unitsRes, ratesRes] = await Promise.all([
+        const [customersRes, unitsRes, ratesRes, portsRes] = await Promise.all([
           supabase.from("customers").select("*").order("customer_full_name"),
           supabase
             .from("unit_setting")
@@ -231,15 +239,18 @@ export function useOrderForm() {
             .eq("is_active", true)
             .order("sort_order"),
           supabase.from("exchange_rates").select("*").eq("is_active", true).order("currency_code"),
+          supabase.from("ports").select("un_locode, port_name_en, port_name_zh").order("port_name_en"),
         ])
 
         if (customersRes.error) throw customersRes.error
         if (unitsRes.error) throw unitsRes.error
         if (ratesRes.error) throw ratesRes.error
+        if (portsRes.error) throw portsRes.error
 
         setCustomers(customersRes.data || [])
         setProductUnits(unitsRes.data || [])
         setExchangeRates(ratesRes.data || [])
+        setPorts(portsRes.data || [])
 
         console.log("載入的產品單位:", unitsRes.data)
 
@@ -532,6 +543,8 @@ export function useOrderForm() {
           order_id: finalOrderNumber,
           customer_id: selectedCustomerId,
           po_id: poNumber,
+          port_of_loading: portOfLoading,
+          port_of_discharge: portOfDischarge,
           payment_terms: paymentTerms || "",
           trade_terms: tradeTerms || "",
           remarks: remarks || "",
@@ -569,12 +582,84 @@ export function useOrderForm() {
       useCustomOrderNumber,
       customOrderNumber,
       orderNumber,
+      portOfLoading,
+      portOfDischarge,
       paymentTerms,
       tradeTerms,
       remarks,
       orderInfo,
     ],
   )
+
+  // 其他處理程序
+  const createInitialOrder = useCallback(async () => {
+    try {
+      setIsCreatingOrder(true)
+
+      // 驗證必填欄位
+      if (!selectedCustomerId) throw new Error("請選擇客戶")
+      if (!poNumber.trim()) throw new Error("請輸入客戶PO編號")
+      if (!portOfLoading) throw new Error("請選擇出貨港")
+      if (!portOfDischarge) throw new Error("請選擇到貨港")
+      if (!paymentTerms.trim()) throw new Error("請輸入付款條件")
+      if (!tradeTerms.trim()) throw new Error("請輸入交貨條件")
+
+      const finalOrderNumber = useCustomOrderNumber ? customOrderNumber : orderNumber
+      if (!finalOrderNumber.trim()) throw new Error("請設定訂單編號")
+
+      // 驗證訂單編號格式
+      if (!validateOrderNumber(finalOrderNumber)) {
+        throw new Error("訂單編號格式不正確，應為9位數字(YYMMXXXXX)")
+      }
+
+      // 檢查訂單編號是否已存在
+      const exists = await checkOrderNumberExists(finalOrderNumber)
+      if (exists) {
+        throw new Error(`訂單編號 ${finalOrderNumber} 已存在，請使用其他編號`)
+      }
+
+      const supabase = createClient()
+
+      // 準備訂單基本資料
+      const orderData = {
+        order_id: finalOrderNumber,
+        customer_id: selectedCustomerId,
+        po_id: poNumber.trim(),
+        port_of_loading: portOfLoading, // 這裡存儲的是un_locode
+        port_of_discharge: portOfDischarge, // 這裡存儲的是un_locode
+        payment_terms: paymentTerms.trim(),
+        trade_terms: tradeTerms.trim(),
+        status: 0,
+        created_at: new Date().toISOString(),
+      }
+
+      // 插入訂單
+      const { data, error } = await supabase.from("orders").insert([orderData]).select().single()
+
+      if (error) throw error
+
+      setOrderCreated(true)
+      setCreatedOrderId(finalOrderNumber)
+      console.log("訂單已成功建立:", data)
+
+      return data
+    } catch (err: any) {
+      console.error("建立訂單失敗:", err)
+      throw err
+    } finally {
+      setIsCreatingOrder(false)
+    }
+  }, [
+    selectedCustomerId,
+    poNumber,
+    portOfLoading,
+    portOfDischarge,
+    paymentTerms,
+    tradeTerms,
+    useCustomOrderNumber,
+    customOrderNumber,
+    orderNumber,
+  ])
 
   // Other handlers
   const generateOrderRemarks = useCallback(() => {
@@ -772,6 +857,14 @@ ${deliveryLines.join("\n")}
     // TODO: 實現訂單編號重複檢查
   }, [])
 
+  const getPortDisplayName = useCallback(
+    (unLocode: string) => {
+      const port = ports.find((p) => p.un_locode === unLocode)
+      return port ? port.port_name_en : unLocode
+    },
+    [ports],
+  )
+
   return {
     // State
     loading,
@@ -822,6 +915,17 @@ ${deliveryLines.join("\n")}
     palletMarkInfo,
     jinzhanLabelInfo,
     isJinzhanLabelDisabled,
+
+    // 新增的港口相關狀態
+    portOfLoading,
+    setPortOfLoading,
+    portOfDischarge,
+    setPortOfDischarge,
+    ports,
+    orderCreated,
+    setOrderCreated,
+    isCreatingOrder,
+    createdOrderId,
 
     // Setters
     setSelectedCustomerId: handleCustomerSelection,
@@ -891,5 +995,9 @@ ${deliveryLines.join("\n")}
     getCustomerName,
     checkOrderNumberDuplicate,
     generateOrderRemarks,
+    getPortDisplayName,
+
+    // 新增的方法
+    createInitialOrder,
   }
 }

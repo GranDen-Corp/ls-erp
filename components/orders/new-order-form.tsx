@@ -107,7 +107,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         amount: orderForm.calculateTotal(),
         currency: orderForm.customerCurrency,
         order_info: orderForm.orderInfo || "",
-        batch_items: orderForm.orderItems.map((item) => ({
+        batch_items: (orderForm.orderItems || []).map((item) => ({
           part_no: item.productPartNo,
           description: item.productName,
           quantity: item.quantity,
@@ -116,6 +116,58 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           unit: orderForm.getUnitDisplayName(item.unit),
         })),
       }
+    }
+
+    // 如果訂單尚未建立，只顯示基本資訊表單
+    if (!orderForm.orderCreated) {
+      return (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LucidePackage className="h-5 w-5" />
+                建立新訂單 - 基本資訊
+              </CardTitle>
+              <CardDescription>
+                請填寫完整的基本訊息後點擊「開立訂單」按鈕建立訂單，之後才能繼續添加產品。
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <MemoizedCustomerSelection
+            customers={orderForm.customers || []}
+            selectedCustomerId={orderForm.selectedCustomerId}
+            setSelectedCustomerId={orderForm.setSelectedCustomerId}
+            poNumber={orderForm.poNumber}
+            setPoNumber={orderForm.setPoNumber}
+            orderNumber={orderForm.orderNumber}
+            setOrderNumber={orderForm.setOrderNumber}
+            customOrderNumber={orderForm.customOrderNumber}
+            setCustomOrderNumber={orderForm.setCustomOrderNumber}
+            useCustomOrderNumber={orderForm.useCustomOrderNumber}
+            setUseCustomOrderNumber={orderForm.setUseCustomOrderNumber}
+            isProductSettingsConfirmed={false}
+            setOrderNumberStatus={orderForm.setOrderNumberStatus}
+            setOrderNumberMessage={orderForm.setOrderNumberMessage}
+            orderItems={[]}
+            paymentTerms={orderForm.paymentTerms}
+            setPaymentTerms={orderForm.setPaymentTerms}
+            tradeTerms={orderForm.tradeTerms}
+            setTradeTerms={orderForm.setTradeTerms}
+            isLoadingOrderNumber={orderForm.isLoadingOrderNumber}
+            generateNewOrderNumber={orderForm.generateNewOrderNumber}
+            portOfLoading={orderForm.portOfLoading}
+            setPortOfLoading={orderForm.setPortOfLoading}
+            portOfDischarge={orderForm.portOfDischarge}
+            setPortOfDischarge={orderForm.setPortOfDischarge}
+            ports={orderForm.ports || []}
+            onCreateOrder={orderForm.createInitialOrder}
+            isCreatingOrder={orderForm.isCreatingOrder}
+            orderCreated={orderForm.orderCreated}
+            getPortDisplayName={orderForm.getPortDisplayName}
+          />
+        </div>
+      )
     }
 
     // 根據當前步驟渲染不同的內容
@@ -138,12 +190,12 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           </Card>
 
           <ProcurementDataEditor
-            orderItems={orderForm.orderItems}
+            orderItems={orderForm.orderItems || []}
             onProcurementDataChange={orderForm.handleProcurementDataChange}
             isCreatingPurchaseOrder={orderForm.isCreatingPurchaseOrder}
             orderId={createdOrderId || orderData?.order_id}
             readOnly={false}
-            productUnits={orderForm.productUnits}
+            productUnits={orderForm.productUnits || []}
             getUnitMultiplier={orderForm.getUnitMultiplier}
           />
         </div>
@@ -180,7 +232,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
       console.log("採購狀態設置完成:", {
         activeTab: "procurement",
         isProcurementReady: true,
-        orderItemsLength: orderForm.orderItems.length,
+        orderItemsLength: (orderForm.orderItems || []).length,
       })
     }
 
@@ -190,6 +242,21 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
     return (
       <div className="space-y-6">
+        {/* 訂單已建立後的進度指示器 */}
+        {orderForm.orderCreated && (
+          <Card className="bg-green-50 border-green-200">
+            <CardHeader>
+              <CardTitle className="text-green-800 flex items-center gap-2">
+                <LucideCheckCircle className="h-5 w-5" />
+                訂單已建立 - {orderForm.createdOrderId}
+              </CardTitle>
+              <CardDescription className="text-green-700">
+                基本訂單資訊已保存，現在可以繼續添加產品和設定採購資料。
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
         {/* 進度指示器 */}
         <Card>
           <CardContent className="p-4">
@@ -249,7 +316,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
         {/* 基本訂單資訊區域 */}
         <MemoizedCustomerSelection
-          customers={orderForm.customers}
+          customers={orderForm.customers || []}
           selectedCustomerId={orderForm.selectedCustomerId}
           setSelectedCustomerId={orderForm.setSelectedCustomerId}
           poNumber={orderForm.poNumber}
@@ -258,33 +325,42 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           setOrderNumber={orderForm.setOrderNumber}
           customOrderNumber={orderForm.customOrderNumber}
           setCustomOrderNumber={orderForm.setCustomOrderNumber}
-          useCustomOrderNumber={orderForm.setUseCustomOrderNumber}
+          useCustomOrderNumber={orderForm.useCustomOrderNumber}
           setUseCustomOrderNumber={orderForm.setUseCustomOrderNumber}
           isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
           setOrderNumberStatus={orderForm.setOrderNumberStatus}
           setOrderNumberMessage={orderForm.setOrderNumberMessage}
-          orderItems={orderForm.orderItems}
+          orderItems={orderForm.orderItems || []}
           paymentTerms={orderForm.paymentTerms}
           setPaymentTerms={orderForm.setPaymentTerms}
           tradeTerms={orderForm.tradeTerms}
           setTradeTerms={orderForm.setTradeTerms}
           isLoadingOrderNumber={orderForm.isLoadingOrderNumber}
           generateNewOrderNumber={orderForm.generateNewOrderNumber}
+          portOfLoading={orderForm.portOfLoading}
+          setPortOfLoading={orderForm.setPortOfLoading}
+          portOfDischarge={orderForm.portOfDischarge}
+          setPortOfDischarge={orderForm.setPortOfDischarge}
+          ports={orderForm.ports || []}
+          onCreateOrder={orderForm.createInitialOrder}
+          isCreatingOrder={orderForm.isCreatingOrder}
+          orderCreated={orderForm.orderCreated}
+          getPortDisplayName={orderForm.getPortDisplayName}
         />
 
         {/* 產品設定區域 */}
         {orderForm.activeTab === "products" && (
           <div className="space-y-6">
             <MemoizedProductSelection
-              regularProducts={orderForm.regularProducts}
-              assemblyProducts={orderForm.assemblyProducts}
+              regularProducts={orderForm.regularProducts || []}
+              assemblyProducts={orderForm.assemblyProducts || []}
               selectedCustomerId={orderForm.selectedCustomerId}
               isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
               productSelectionTab={orderForm.productSelectionTab}
               setProductSelectionTab={orderForm.setProductSelectionTab}
               productSearchTerm={orderForm.productSearchTerm}
               setProductSearchTerm={orderForm.setProductSearchTerm}
-              selectedProducts={orderForm.selectedProducts}
+              selectedProducts={orderForm.selectedProducts || []}
               selectedProductPartNo={orderForm.selectedProductPartNo}
               setSelectedProductPartNo={orderForm.setSelectedProductPartNo}
               customerCurrency={orderForm.customerCurrency}
@@ -302,7 +378,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             />
 
             <MemoizedEnhancedProductList
-              orderItems={orderForm.orderItems}
+              orderItems={orderForm.orderItems || []}
               handleItemChange={orderForm.handleItemChange}
               handleRemoveProduct={orderForm.handleRemoveProduct}
               calculateItemTotal={orderForm.calculateItemTotal}
@@ -310,8 +386,8 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               customerCurrency={orderForm.customerCurrency}
               isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
               handleClearAllProducts={orderForm.handleClearAllProducts}
-              productUnits={orderForm.productUnits}
-              exchangeRates={orderForm.exchangeRates}
+              productUnits={orderForm.productUnits || []}
+              exchangeRates={orderForm.exchangeRates || []}
               getUnitMultiplier={orderForm.getUnitMultiplier}
               calculateActualQuantity={orderForm.calculateActualQuantity}
               calculateActualUnitPrice={orderForm.calculateActualUnitPrice}
@@ -324,7 +400,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                   <div className="space-y-2">
                     <div className="flex items-center gap-4">
                       <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                        {orderForm.orderItems.length} 項產品
+                        {(orderForm.orderItems || []).length} 項產品
                       </Badge>
                       <span className="text-2xl font-bold text-green-700">
                         總計: {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
@@ -336,7 +412,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                   </div>
 
                   <div className="flex gap-3">
-                    {orderForm.orderItems.length > 0 && (
+                    {(orderForm.orderItems || []).length > 0 && (
                       <Button
                         onClick={orderForm.confirmProductsReady}
                         variant={orderForm.isProductSettingsConfirmed ? "outline" : "default"}
@@ -355,7 +431,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                         )}
                       </Button>
                     )}
-                    {orderForm.orderItems.length > 0 && orderForm.isProductSettingsConfirmed && (
+                    {(orderForm.orderItems || []).length > 0 && orderForm.isProductSettingsConfirmed && (
                       <Button onClick={handleGoToProcurement} className="gap-2" size="lg">
                         <LucideArrowRight className="h-5 w-5" />
                         前往設定採購資料
@@ -368,7 +444,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
 
             {/* 訂單產品表格編輯器 */}
             <MemoizedOrderProductTableEditor
-              orderItems={orderForm.orderItems}
+              orderItems={orderForm.orderItems || []}
               orderId={orderForm.useCustomOrderNumber ? orderForm.customOrderNumber : orderForm.orderNumber}
               customerCurrency={orderForm.customerCurrency}
               onTableDataChange={orderForm.handleOrderTableDataChange}
@@ -384,12 +460,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         {/* 採購資料設定區域 */}
         {orderForm.activeTab === "procurement" && (
           <div className="space-y-6">
-            {/* 調試信息 */}
-            <div className="text-sm text-gray-500 p-2 bg-gray-100 rounded">
-              調試信息: activeTab={orderForm.activeTab}, isProcurementReady=
-              {orderForm.isProcurementReady ? "true" : "false"}, orderItems={orderForm.orderItems.length}
-            </div>
-
             {/* 訂單摘要卡片 */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -402,7 +472,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                    {orderForm.orderItems.length} 項產品
+                    {(orderForm.orderItems || []).length} 項產品
                   </Badge>
                   <Badge variant="outline" className="bg-green-50 text-green-700">
                     總金額: {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
@@ -424,7 +494,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {orderForm.orderItems.map((item) => (
+                      {(orderForm.orderItems || []).map((item) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">
                             {item.productPartNo}
@@ -449,7 +519,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                             {orderForm.calculateItemTotal(item).toFixed(2)} {item.currency}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline">{item.shipmentBatches.length}</Badge>
+                            <Badge variant="outline">{item.shipmentBatches?.length || 0}</Badge>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -476,12 +546,12 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               </Button>
             </div>
 
-            {/* 採購產品列表 - 移除 isProcurementReady 條件 */}
+            {/* 採購產品列表 */}
             <ProcurementProductList
-              orderItems={orderForm.orderItems}
+              orderItems={orderForm.orderItems || []}
               onProcurementDataChange={orderForm.handleProcurementDataChange}
               customerCurrency={orderForm.customerCurrency}
-              productUnits={orderForm.productUnits}
+              productUnits={orderForm.productUnits || []}
               getUnitMultiplier={orderForm.getUnitMultiplier}
             />
 
@@ -577,7 +647,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
           onUpdateBatches={(productPartNo, batches) => {
             // 更新指定產品的批次資料
             orderForm.setOrderItems((prevItems) =>
-              prevItems.map((item) =>
+              (prevItems || []).map((item) =>
                 item.productPartNo === productPartNo ? { ...item, shipmentBatches: batches } : item,
               ),
             )

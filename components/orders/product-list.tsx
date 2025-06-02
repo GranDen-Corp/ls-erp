@@ -31,15 +31,47 @@ interface ProductListProps {
 }
 
 export function ProductList({
-  orderItems,
+  orderItems = [], // 添加默認值
   handleItemChange,
   handleRemoveProduct,
   calculateItemTotal,
   openBatchManagement,
-  customerCurrency,
+  customerCurrency = "USD", // 添加默認值
   isProductSettingsConfirmed,
-  productUnits = [],
+  productUnits = [], // 添加默認值
 }: ProductListProps) {
+  // 確保所有必要的數據都存在
+  if (!orderItems || !Array.isArray(orderItems)) {
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[120px]">產品編號</TableHead>
+              <TableHead className="w-[200px]">產品名稱</TableHead>
+              <TableHead className="text-center w-[80px]">數量</TableHead>
+              <TableHead className="text-center w-[80px]">單位</TableHead>
+              <TableHead className="text-right w-[100px]">單價</TableHead>
+              <TableHead className="text-right w-[120px]">金額 ({customerCurrency})</TableHead>
+              <TableHead className="text-center w-[100px]">批次</TableHead>
+              <TableHead className="text-center w-[80px]">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={8} className="h-24 text-center">
+                <div className="flex flex-col items-center justify-center text-muted-foreground">
+                  <Package className="h-8 w-8 mb-2 opacity-50" />
+                  <p>載入中...</p>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -127,7 +159,7 @@ export function ProductList({
                   disabled={isProductSettingsConfirmed}
                 >
                   <Clock className="h-3.5 w-3.5 mr-1" />
-                  批次 ({item.shipmentBatches.length})
+                  批次 ({item.shipmentBatches?.length || 0})
                 </Button>
               </TableCell>
               <TableCell className="text-center">

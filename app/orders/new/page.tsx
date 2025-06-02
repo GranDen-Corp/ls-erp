@@ -33,7 +33,6 @@ const generateOrderNumber = dynamic(
 
 export default function NewOrderPage() {
   const router = useRouter()
-  const [formattedDate, setFormattedDate] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [isCreatingPurchaseOrder, setIsCreatingPurchaseOrder] = useState<boolean>(false)
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false)
@@ -50,22 +49,11 @@ export default function NewOrderPage() {
   const [orderData, setOrderData] = useState<any>(null)
   const [canCreatePurchase, setCanCreatePurchase] = useState<boolean>(false)
   const [isClient, setIsClient] = useState(false)
+  const [orderForm, setOrderForm] = useState<any>(null)
 
   // Ensure we're on the client side
   useEffect(() => {
     setIsClient(true)
-
-    // Format date
-    const now = new Date()
-    setFormattedDate(now.toLocaleString("zh-TW"))
-
-    // Update time every second
-    const interval = setInterval(() => {
-      const now = new Date()
-      setFormattedDate(now.toLocaleString("zh-TW"))
-    }, 1000)
-
-    return () => clearInterval(interval)
   }, [])
 
   // Generate order number
@@ -114,6 +102,10 @@ export default function NewOrderPage() {
           setOrderData(result[0])
           setCanCreatePurchase(true)
           hasSetOrderData.current = true
+          setOrderForm({
+            orderCreated: true,
+            createdOrderId: result[0].order_id,
+          })
         }
 
         // 3秒後跳轉到訂單列表
@@ -197,7 +189,7 @@ export default function NewOrderPage() {
         <CardHeader>
           <CardTitle>新建訂單</CardTitle>
           <CardDescription>
-            當前時間: {formattedDate} | 訂單編號: {isLoadingOrderNumber ? "生成中..." : orderNumber}
+            {orderForm?.orderCreated ? `訂單編號: ${orderForm.createdOrderId}` : "建立新的訂單"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -252,10 +244,10 @@ export default function NewOrderPage() {
           </Tabs>
 
           <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-            {!submitSuccess && (
+            {orderForm?.orderCreated && !submitSuccess && (
               <>
                 <Button onClick={() => handleSubmit(false)} disabled={isSubmitting} className="min-w-[120px]">
-                  {isSubmitting ? "提交中..." : "提交訂單"}
+                  {isSubmitting ? "提交中..." : "完成訂單"}
                 </Button>
                 <Button
                   onClick={() => handleSubmit(true)}
@@ -263,7 +255,7 @@ export default function NewOrderPage() {
                   variant="secondary"
                   className="min-w-[140px]"
                 >
-                  {isSubmitting ? "處理中..." : "提交並創建採購單"}
+                  {isSubmitting ? "處理中..." : "完成並創建採購單"}
                 </Button>
               </>
             )}
