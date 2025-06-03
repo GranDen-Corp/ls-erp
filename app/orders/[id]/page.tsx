@@ -11,5 +11,6 @@ export default async function OrderPage({
 }: {
   params: { id: string }
 }) {
-  return <OrderPageClient params={params} />
+  const orderId = decodeURIComponent(params.id)
+  return <OrderPageClient orderId={orderId} />
 }

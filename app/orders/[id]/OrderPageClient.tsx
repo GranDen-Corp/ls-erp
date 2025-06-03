@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { getOrderBatchItemsByOrderId } from "@/lib/services/order-batch-service"
 import { Button } from "@/components/ui/button"
 import { Printer, Edit, Save, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -92,20 +92,20 @@ async function getOrderStatusHistory(orderId: string) {
 }
 
 export default function OrderPageClient({
-  params,
+  orderId,
 }: {
-  params: { id: string }
-}) {
+  orderId: string
+}) {  
   const [order, setOrder] = useState<any>(null)
   const [orderStatuses, setOrderStatuses] = useState<any[]>([])
   const [statusHistory, setStatusHistory] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useState(() => {
+  useEffect(() => {
     const fetchData = async () => {
-      const orderData = await getOrder(params.id)
+      const orderData = await getOrder(orderId)
       const orderStatusesData = await getOrderStatuses()
-      const statusHistoryData = await getOrderStatusHistory(params.id)
+      const statusHistoryData = await getOrderStatusHistory(orderId)
 
       if (orderData) {
         setOrder(orderData)
@@ -117,7 +117,7 @@ export default function OrderPageClient({
     }
 
     fetchData()
-  }, [params.id])
+  }, [orderId])
 
   if (isLoading) {
     return <div>Loading...</div>
