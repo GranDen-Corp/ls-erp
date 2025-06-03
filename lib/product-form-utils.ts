@@ -1,56 +1,7 @@
 import type { ProcessRecord } from "@/types/product-form-types"
 
 // 預設製程資料
-const defaultProcesses = [
-  {
-    id: "proc_1",
-    process: "材料",
-    vendor: "中鋼",
-    capacity: "",
-    requirements: "SAE 10B21",
-    report: "材證",
-  },
-  {
-    id: "proc_2",
-    process: "成型",
-    vendor: "岡岩",
-    capacity: "",
-    requirements: "",
-    report: "",
-  },
-  {
-    id: "proc_3",
-    process: "搓牙",
-    vendor: "岡岩",
-    capacity: "",
-    requirements: "",
-    report: "",
-  },
-  {
-    id: "proc_4",
-    process: "熱處理",
-    vendor: "力大",
-    capacity: "",
-    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640",
-    report: "硬度，拉力",
-  },
-  {
-    id: "proc_5",
-    process: "電鍍",
-    vendor: "頂上興",
-    capacity: "",
-    requirements: "三價鉻鋅SUM MIN，鹽測12/48",
-    report: "膜厚，鹽測，除氫",
-  },
-  {
-    id: "proc_6",
-    process: "篩選",
-    vendor: "聖鼎",
-    capacity: "",
-    requirements: "50 PPM：混料、總長",
-    report: "篩選報告",
-  },
-]
+const defaultProcesses: ProcessRecord[] = []
 
 // Default empty file object
 export const emptyFileObject = {
@@ -143,7 +94,7 @@ export const getDefaultProduct = (isAssembly = false) => ({
   // Edit notes related fields
   editNotes: [],
   // Process data related fields
-  processData: defaultProcesses,
+  processData: [],
   // Order and purchase order requirements
   orderRequirements: "",
   purchaseRequirements: "",

@@ -772,47 +772,36 @@ export function ProductReadOnlyForm({
                 </div>
               </CardContent>
             </Card>
-
+            
             {/* 編輯備註 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">編輯備註</h3>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>備註內容</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>日期</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>使用者</Label>
-                    </div>
-                  </div>
-
-                  {product.editNotes && product.editNotes.length > 0 ? (
-                    product.editNotes.map((note, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div>
-                          <p className="text-sm">{note.content}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.date}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm">{note.user}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">尚未添加任何備註</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">編輯備註</h3>
+              <div className="border rounded-md">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {product.editNotes && product.editNotes.length > 0 ? (
+                      product.editNotes.map((note: any, index: number) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm">{note.content}</td>
+                          <td className="px-4 py-2 text-sm">{note.date}</td>
+                          <td className="px-4 py-2 text-sm">{note.user}</td>
+                        </tr>
+                    ))):(
+                      <tr>
+                        <td colSpan={3} className="text-center py-4 text-gray-500">尚未添加任何備註</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </TabsContent>
 

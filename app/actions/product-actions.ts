@@ -71,7 +71,7 @@ export async function saveProduct(formData: any) {
     }
 
     // 在保存產品之前
-    console.log("Saving product with data:", productData)
+    //console.log("Saving product with data:", productData)
 
     // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄
     // 修改 onConflict 參數，移除 factory_id
@@ -81,7 +81,7 @@ export async function saveProduct(formData: any) {
     })
 
     // 在 API 調用之後
-    console.log("Save product response:", { data, error })
+    //console.log("Save product response:", { data, error })
 
     if (error) {
       console.error("保存產品時出錯:", error)

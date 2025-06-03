@@ -943,12 +943,12 @@ export function ProductForm({
         subPartNo: isCompositeProduct ? selectedComponents : null,
       }
 
-      console.log("Saving product with data:", productData)
+      //console.log("Saving product with data:", productData)
 
       // 使用 Server Action
       const result = await saveProduct(productData)
 
-      console.log("Save product response:", result)
+      //console.log("Save product response:", result)
 
       if (!result.success) {
         toast({

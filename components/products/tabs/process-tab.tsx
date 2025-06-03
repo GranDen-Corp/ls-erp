@@ -15,56 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
 // 預設製程資料 - 根據提供的圖片更新
-export const defaultProcesses = [
-  {
-    id: "proc_1",
-    process: "材料",
-    vendor: "中鋼",
-    capacity: "產能數值",
-    requirements: "SAE 10B21",
-    report: "材證",
-  },
-  {
-    id: "proc_2",
-    process: "成型",
-    vendor: "岡岩",
-    capacity: "產能數值",
-    requirements: "",
-    report: "",
-  },
-  {
-    id: "proc_3",
-    process: "搓牙",
-    vendor: "岡岩",
-    capacity: "產能數值",
-    requirements: "",
-    report: "",
-  },
-  {
-    id: "proc_4",
-    process: "熱處理",
-    vendor: "力大",
-    capacity: "產能數值",
-    requirements: "硬度HRC 28-32，拉力800Mpa，降伏640Mpa",
-    report: "硬度，拉力",
-  },
-  {
-    id: "proc_5",
-    process: "電鍍",
-    vendor: "頂上興",
-    capacity: "產能數值",
-    requirements: "三價鉻鋅SUM MIN，鹽測12/48",
-    report: "膜厚，鹽測，除氫",
-  },
-  {
-    id: "proc_6",
-    process: "篩選",
-    vendor: "聖鼎",
-    capacity: "產能數值",
-    requirements: "50 PPM：混料、總長",
-    report: "篩選報告",
-  },
-]
+export const defaultProcesses: any[] = []
 
 interface ProcessTabProps {
   product?: any
@@ -108,10 +59,10 @@ export function ProcessTab({
 
   // 初始化製程列表
   useEffect(() => {
-    console.log("product:", product)
+    //console.log("product:", product)
     if (updateFormData && (!safeFormData.processes || safeFormData.processes.length === 0)) {
       //console.log("updateFormData:",safeFormData);
-      updateFormData({ ...safeFormData, processes: defaultProcesses })
+      updateFormData({ ...safeFormData, processes: [] })
     } else if (setProduct && (!safeProduct.processData || safeProduct.processData.length === 0)) {
       //console.log("設置默認製程數據:",safeProduct);
       // 設置默認製程數據
@@ -119,7 +70,7 @@ export function ProcessTab({
         if (!prev.processData || prev.processData.length === 0) {
           return {
             ...prev,
-            processData: defaultProcesses,
+            processData: [],
           }
         }
         return prev
@@ -429,6 +380,17 @@ export function ProcessTab({
     setEditingNoteIndex(null)
   }
 
+  // 處理對話框關閉
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      // 當對話框關閉時，重置所有狀態
+      setNewProcessNote({ content: "", date: "", user: "" })
+      setIsEditingNote(false)
+      setEditingNoteIndex(null)
+    }
+    setIsProcessNoteDialogOpen(open)
+  }
+
   // 處理編輯備註
   const handleEditNote = (e: React.MouseEvent, note: any, index: number) => {
     e.preventDefault()
@@ -442,17 +404,6 @@ export function ProcessTab({
     setIsEditingNote(true)
     setEditingNoteIndex(index)
     setIsProcessNoteDialogOpen(true)
-  }
-
-  // 處理對話框關閉
-  const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      // 當對話框關閉時，重置所有狀態
-      setNewProcessNote({ content: "", date: "", user: "" })
-      setIsEditingNote(false)
-      setEditingNoteIndex(null)
-    }
-    setIsProcessNoteDialogOpen(open)
   }
 
   // 處理添加製程備註
@@ -984,6 +935,7 @@ export function ProcessTab({
               size="sm"
               onClick={(e) => {
                 e.preventDefault()
+                setNewSpecialReq({ content: "", date: new Date().toLocaleDateString("zh-TW"), user: "" })
                 setIsSpecialReqDialogOpen(true)
               }}
             >
@@ -1082,6 +1034,11 @@ export function ProcessTab({
               size="sm"
               onClick={(e) => {
                 e.preventDefault()
+                setNewProcessNote({
+                  content: "",
+                  date: new Date().toLocaleDateString("zh-TW"),
+                  user: "",
+                })
                 setIsProcessNoteDialogOpen(true)
               }}
             >

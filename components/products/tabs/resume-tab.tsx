@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Plus, Trash2, FileText } from "lucide-react"
+import { Plus, Trash2, FileText, X } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { toast } from "@/hooks/use-toast"
 
@@ -294,7 +294,7 @@ export function ResumeTab({
               <TableBody>
                 {purchaseOrders.length > 0 ? (
                   purchaseOrders.map((order) => (
-                    <TableRow key={order.id}>
+                    <TableRow key={`${order.purchases.purchase_id}-${order.quantity}`}>
                       <TableCell>{order.purchases.order_id}</TableCell>
                       <TableCell>{order.quantity}</TableCell>
                       <TableCell className="text-right">
@@ -394,109 +394,134 @@ export function ResumeTab({
               }}
               type="button"
             >
-              <Plus className="h-4 w-4 mr-1" /> 新增備註
+              <Plus className="h-4 w-4 mr-2" />
+              添加備註
             </Button>
           )}
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>日期</TableHead>
-                <TableHead>使用者</TableHead>
-                <TableHead>內容</TableHead>
-                <TableHead className="w-[80px]">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {product.resumeNotes && product.resumeNotes.length > 0 ? (
-                product.resumeNotes.map((note: any, index: number) => (
-                  <TableRow key={index}>
-                    <TableCell>{note.date}</TableCell>
-                    <TableCell>{note.user}</TableCell>
-                    <TableCell>{note.content}</TableCell>
-                    <TableCell>
+          <div className="border rounded-md">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">備註內容</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">日期</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 w-[120px]">使用者</th>
+                  {!isReadOnly && (
+                    <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 w-[100px]">操作</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {product.resumeNotes && product.resumeNotes.length > 0 ? (
+                  product.resumeNotes.map((note: any, index: number) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm">{note.content}</td>
+                      <td className="px-4 py-2 text-sm">{note.date}</td>
+                      <td className="px-4 py-2 text-sm">{note.user}</td>
                       {!isReadOnly && (
-                        <Button variant="ghost" size="sm" onClick={() => handleRemoveNote(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <td className="px-4 py-2">
+                          <div className="flex justify-center space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setNewNote({
+                                  content: note.content || "",
+                                  user: note.user || "",
+                                  date: note.date || "",
+                                })
+                                setIsAddNoteDialogOpen(true)
+                              }}
+                              className="h-7 w-7"
+                              type="button"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                <path d="m15 5 4 4" />
+                              </svg>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveNote(index)}
+                              className="h-7 w-7 text-red-500 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center">
-                    無備註記錄
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={isReadOnly ? 3 : 4} className="text-center py-4 text-gray-500">
+                      尚未添加編輯備註
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
       {/* 新增備註對話框 */}
       {!isReadOnly && (
         <Dialog open={isAddNoteDialogOpen} onOpenChange={setIsAddNoteDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>新增備註</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="noteDate">日期</Label>
-                <Input
-                  id="noteDate"
-                  type="date"
-                  value={newNote.date}
-                  onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="noteUser">使用者</Label>
-                <Input
-                  id="noteUser"
-                  value={newNote.user}
-                  onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="noteContent">內容</Label>
+                <Label htmlFor="noteContent">備註內容</Label>
                 <Textarea
                   id="noteContent"
                   value={newNote.content}
                   onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
+                  placeholder="輸入備註內容"
                   rows={4}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && e.ctrlKey) {
-                      e.preventDefault()
-                    }
-                  }}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="noteDate">日期</Label>
+                  <Input
+                    id="noteDate"
+                    type="text"
+                    value={newNote.date}
+                    onChange={(e) => setNewNote({ ...newNote, date: e.target.value })}
+                    placeholder="YYYY/MM/DD"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="noteUser">使用者</Label>
+                  <Input
+                    id="noteUser"
+                    value={newNote.user}
+                    onChange={(e) => setNewNote({ ...newNote, user: e.target.value })}
+                    placeholder="輸入使用者名稱"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setIsAddNoteDialogOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setIsAddNoteDialogOpen(false)}>
                 取消
               </Button>
-              <Button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleAddNote()
-                }}
-              >
+              <Button type="button" onClick={handleAddNote}>
                 新增
               </Button>
             </DialogFooter>
