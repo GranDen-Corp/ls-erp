@@ -51,10 +51,16 @@ export function ResumeTab({
       setIsLoadingOrders(true)
       try {
         const { data, error } = await supabase
-          .from("purchases")
-          .select("*")
-          .eq("product_id", product.partNo)
-          .order("purchase_date", { ascending: false })
+          .from("purchase_items")
+          .select(`
+            quantity,
+            purchases!fk_purchase (
+              *,
+              updated_at
+            )
+          `)
+          .eq("product_part_no", product.partNo)
+          //.order("purchases.updated_at", { ascending: false })
 
         if (error) {
           console.error("Error fetching purchase orders:", error)
@@ -64,7 +70,14 @@ export function ResumeTab({
             variant: "destructive",
           })
         } else {
+          // 前端排序
+          const sorted = (data || []).sort(
+            (a, b) => new Date(b.purchases?.updated_at || 0).getTime() - new Date(a.purchases?.updated_at || 0).getTime())
+
           setPurchaseOrders(data || [])
+
+          // console.log("product.partNo:", product.partNo)
+          // console.log("Fetched purchase orders:", data)
         }
       } catch (error) {
         console.error("Error fetching purchase orders:", error)
@@ -281,10 +294,10 @@ export function ResumeTab({
                 {purchaseOrders.length > 0 ? (
                   purchaseOrders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell>{order.purchase_number}</TableCell>
+                      <TableCell>{order.purchases.order_id}</TableCell>
                       <TableCell>{order.quantity}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => viewPurchaseOrder(order.id)}>
+                        <Button variant="ghost" size="sm" onClick={() => viewPurchaseOrder(order.purchases.purchase_id)}>
                           <FileText className="h-4 w-4" />
                         </Button>
                       </TableCell>
