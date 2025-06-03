@@ -13,8 +13,6 @@ interface DatePickerProps {
   placeholder?: string
   disabled?: boolean
   className?: string
-  fromDate?: Date // 新增：最小可選日期
-  toDate?: Date // 新增：最大可選日期
 }
 
 export function DatePicker({
@@ -23,8 +21,6 @@ export function DatePicker({
   placeholder = "Pick a date",
   disabled = false,
   className,
-  fromDate,
-  toDate,
 }: DatePickerProps) {
   return (
     <Popover>
@@ -39,19 +35,7 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onDateChange}
-          initialFocus
-          fromDate={fromDate}
-          toDate={toDate}
-          disabled={(date) => {
-            if (fromDate && date < fromDate) return true
-            if (toDate && date > toDate) return true
-            return false
-          }}
-        />
+        <Calendar mode="single" selected={date} onSelect={onDateChange} initialFocus />
       </PopoverContent>
     </Popover>
   )
