@@ -8,44 +8,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, Search, AlertCircle, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase-client"
-import { SupplierInfoCard } from "./supplier-info-card"
+import { FactoryInfoCard } from "./factory-info-card"
 
-interface SupplierSelectorDialogProps {
+interface FactoriesSelectorDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (supplier: any) => void
+  onSelect: (factory: any) => void
   productPartNo?: string
   productName?: string
-  currentSupplierId?: string
+  currentFactoryId?: string
 }
 
-export function SupplierSelectorDialog({
+export function FactorySelectorDialog({
   open,
   onOpenChange,
   onSelect,
   productPartNo,
   productName,
-  currentSupplierId,
-}: SupplierSelectorDialogProps) {
-  const [suppliers, setSuppliers] = useState<any[]>([])
-  const [recentSuppliers, setRecentSuppliers] = useState<any[]>([])
+  currentFactoryId: currentFactoryId,
+}: FactoriesSelectorDialogProps) {
+  const [factories, setFactories] = useState<any[]>([])
+  const [recentFactories, setRecentFactories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState("all")
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(currentSupplierId || null)
+  const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(currentFactoryId || null)
 
   // 載入供應商資料
   useEffect(() => {
     if (!open) return
 
-    const fetchSuppliers = async () => {
+    const fetchFactories = async () => {
       try {
         setLoading(true)
         const supabase = createClient()
 
         // 先獲取表結構以了解可用的列
-        const { data: tableInfo, error: tableError } = await supabase.from("suppliers").select("*").limit(1)
+        const { data: tableInfo, error: tableError } = await supabase.from("factories").select("*").limit(1)
 
         if (tableError) {
           throw new Error(`獲取供應商表結構失敗: ${tableError.message}`)
@@ -54,8 +54,8 @@ export function SupplierSelectorDialog({
         // 檢查表是否為空
         if (!tableInfo || tableInfo.length === 0) {
           console.warn("供應商資料表為空")
-          setSuppliers([])
-          setRecentSuppliers([])
+          setFactories([])
+          setRecentFactories([])
           setLoading(false)
           return
         }
@@ -65,40 +65,40 @@ export function SupplierSelectorDialog({
         console.log("供應商表結構:", Object.keys(firstRow))
 
         // 獲取所有供應商數據
-        const { data: suppliersData, error: suppliersError } = await supabase.from("suppliers").select("*")
+        const { data: factoriesData, error: factoriesError } = await supabase.from("factories").select("*")
 
-        if (suppliersError) {
-          throw new Error(`獲取供應商資料失敗: ${suppliersError.message}`)
+        if (factoriesError) {
+          throw new Error(`獲取供應商資料失敗: ${factoriesError.message}`)
         }
 
-        if (!suppliersData || suppliersData.length === 0) {
-          setSuppliers([])
-          setRecentSuppliers([])
+        if (!factoriesData || factoriesData.length === 0) {
+          setFactories([])
+          setRecentFactories([])
         } else {
-          // 將suppliers資料轉換為標準格式，使用動態欄位名稱
-          const convertedData = suppliersData.map((supplier) => {
+          // 將factories資料轉換為標準格式，使用動態欄位名稱
+          const convertedData = factoriesData.map((factory) => {
             // 嘗試找出ID和名稱欄位
-            const id = supplier.id || supplier.supplier_id || supplier.factory_id || ""
-            const name = supplier.name || supplier.supplier_name || supplier.factory_name || `供應商 ${id}`
+            const id = factory.id || factory.factory_id || ""
+            const name = factory.name || factory.factory_name || `供應商 ${id}`
 
             return {
-              ...supplier,
+              ...factory,
               factory_id: id,
               factory_name: name,
               factory_full_name:
-                supplier.full_name || supplier.supplier_full_name || supplier.factory_full_name || name,
-              quality_contact1: supplier.contact_person || supplier.contact_name || "",
-              factory_phone: supplier.phone || supplier.contact_phone || "",
-              factory_address: supplier.address || "",
-              payment_term: supplier.payment_term || "",
-              delivery_term: supplier.delivery_term || "",
-              legacy_notes: supplier.notes || "",
+                factory.full_name || factory.factory_full_name || name,
+              quality_contact1: factory.contact_person || factory.contact_name || "",
+              factory_phone: factory.phone || factory.contact_phone || "",
+              factory_address: factory.address || "",
+              payment_term: factory.payment_term || "",
+              delivery_term: factory.delivery_term || "",
+              legacy_notes: factory.notes || "",
             }
           })
 
-          setSuppliers(convertedData)
+          setFactories(convertedData)
           // 模擬最近使用的供應商
-          setRecentSuppliers(convertedData.slice(0, 5))
+          setRecentFactories(convertedData.slice(0, 5))
         }
       } catch (err: any) {
         console.error("獲取供應商資料失敗:", err)
@@ -108,29 +108,29 @@ export function SupplierSelectorDialog({
       }
     }
 
-    fetchSuppliers()
+    fetchFactories()
   }, [open])
 
   // 過濾供應商
-  const filteredSuppliers = suppliers.filter((supplier) => {
+  const filteredFactories = factories.filter((factory) => {
     if (!searchTerm) return true
 
-    const supplierName = supplier.factory_name || supplier.factory_full_name || ""
-    const supplierId = supplier.factory_id || ""
-    const contactPerson = supplier.quality_contact1 || supplier.contact_person || ""
+    const factoryName = factory.factory_name || factory.factory_full_name || ""
+    const factoryId = factory.factory_id || ""
+    const contactPerson = factory.quality_contact1 || factory.contact_person || ""
 
     const term = searchTerm.toLowerCase()
     return (
-      supplierName.toLowerCase().includes(term) ||
-      supplierId.toLowerCase().includes(term) ||
+      factoryName.toLowerCase().includes(term) ||
+      factoryId.toLowerCase().includes(term) ||
       contactPerson.toLowerCase().includes(term)
     )
   })
 
   // 處理選擇供應商
-  const handleSelectSupplier = (supplier: any) => {
-    setSelectedSupplierId(supplier.factory_id)
-    onSelect(supplier)
+  const handleSelectFactory = (factory: any) => {
+    setSelectedFactoryId(factory.factory_id)
+    onSelect(factory)
     onOpenChange(false)
   }
 
@@ -175,18 +175,18 @@ export function SupplierSelectorDialog({
                   <AlertTitle>錯誤</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
-              ) : filteredSuppliers.length === 0 ? (
+              ) : filteredFactories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   {searchTerm ? "沒有符合搜尋條件的供應商" : "沒有供應商資料"}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                  {filteredSuppliers.map((supplier) => (
-                    <SupplierInfoCard
-                      key={supplier.factory_id}
-                      supplier={supplier}
-                      onSelect={() => handleSelectSupplier(supplier)}
-                      isSelected={selectedSupplierId === supplier.factory_id}
+                  {filteredFactories.map((factory) => (
+                    <FactoryInfoCard
+                      key={factory.factory_id}
+                      factory={factory}
+                      onSelect={() => handleSelectFactory(factory)}
+                      isSelected={selectedFactoryId === factory.factory_id}
                     />
                   ))}
                 </div>
@@ -199,16 +199,16 @@ export function SupplierSelectorDialog({
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-2">載入供應商資料中...</span>
                 </div>
-              ) : recentSuppliers.length === 0 ? (
+              ) : recentFactories.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">沒有最近使用的供應商</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                  {recentSuppliers.map((supplier) => (
-                    <SupplierInfoCard
-                      key={supplier.factory_id}
-                      supplier={supplier}
-                      onSelect={() => handleSelectSupplier(supplier)}
-                      isSelected={selectedSupplierId === supplier.factory_id}
+                  {recentFactories.map((factory) => (
+                    <FactoryInfoCard
+                      key={factory.factory_id}
+                      factory={factory}
+                      onSelect={() => handleSelectFactory(factory)}
+                      isSelected={selectedFactoryId === factory.factory_id}
                     />
                   ))}
                 </div>
@@ -223,13 +223,13 @@ export function SupplierSelectorDialog({
           </Button>
           <Button
             onClick={() => {
-              const selectedSupplier = suppliers.find((s) => s.factory_id === selectedSupplierId)
-              if (selectedSupplier) {
-                onSelect(selectedSupplier)
+              const selectedFactory = factories.find((s) => s.factory_id === selectedFactoryId)
+              if (selectedFactory) {
+                onSelect(selectedFactory)
                 onOpenChange(false)
               }
             }}
-            disabled={!selectedSupplierId}
+            disabled={!selectedFactoryId}
           >
             <Check className="h-4 w-4 mr-2" />
             確認選擇

@@ -57,8 +57,8 @@ export interface Customer {
   code: string
 }
 
-// Supplier type
-export interface Supplier {
+// Factory type
+export interface Factory {
   id: string
   name: string
   code: string
@@ -254,7 +254,7 @@ export interface ProductFormState {
     filename: string
   }
   customersData: Customer[]
-  factories: Supplier[]
+  factories: Factory[]
   productTypes: ProductType[]
   dataLoading: boolean
   dataError: string | null

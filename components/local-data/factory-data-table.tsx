@@ -38,7 +38,7 @@ const renderCertificationStatus = (status: string, expiry: string) => {
   )
 }
 
-export function SupplierDataTable() {
+export function FactoryDataTable() {
   // 定義供應商資料表的欄位
   const columns = [
     {
@@ -57,7 +57,7 @@ export function SupplierDataTable() {
       sortable: true,
     },
     {
-      key: "supplier_type",
+      key: "factory_type",
       title: "類型",
       render: (value: string) => (
         <Badge
@@ -267,7 +267,7 @@ export function SupplierDataTable() {
         { label: "供應商編號", key: "factory_id" },
         { label: "供應商簡稱", key: "factory_name" },
         { label: "供應商全名", key: "factory_full_name" },
-        { label: "供應商類型", key: "supplier_type" },
+        { label: "供應商類型", key: "factory_type" },
         { label: "統一編號", key: "tax_id" },
         { label: "地址", key: "factory_address" },
         { label: "發票地址", key: "invoice_address" },
@@ -376,7 +376,7 @@ export function SupplierDataTable() {
   // 定義篩選選項
   const filterOptions = [
     {
-      field: "supplier_type",
+      field: "factory_type",
       label: "供應商類型",
       options: [
         { value: "製造商", label: "製造商" },
@@ -401,7 +401,7 @@ export function SupplierDataTable() {
   return (
     <DataTable
       title="供應商資料表"
-      tableName="suppliers"
+      tableName="factories"
       columns={columns}
       detailTabs={detailTabs}
       filterOptions={filterOptions}

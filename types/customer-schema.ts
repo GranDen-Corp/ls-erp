@@ -18,11 +18,11 @@ export interface Customer {
   invoice_address: string
   customer_fax: string
   invoice_email: string
-  supplier_phone: string
-  supplier_fax: string
+  factory_phone: string
+  factory_fax: string
   client_lead_person: string
   client_contact_person: string
-  supplier_contact_person: string
+  factory_contact_person: string
   client_procurement: string
   client_sales: string
   logistics_coordinator: string

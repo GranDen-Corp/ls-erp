@@ -15,7 +15,7 @@ export default async function FactoryDetailsPage({ params }: { params: { id: str
   const supabase = createServerSupabaseClient()
 
   // 獲取供應商資料
-  const { data: factory, error } = await supabase.from("suppliers").select("*").eq("factory_id", factoryId).single()
+  const { data: factory, error } = await supabase.from("factories").select("*").eq("factory_id", factoryId).single()
 
   if (error || !factory) {
     console.error("獲取供應商資料時出錯:", error)
@@ -90,12 +90,12 @@ export default async function FactoryDetailsPage({ params }: { params: { id: str
                   <p className="text-sm font-medium text-muted-foreground">供應商類型</p>
                   <p>
                     <Badge variant="outline">
-                      {factory.supplier_type === "assembly" && "組裝廠"}
-                      {factory.supplier_type === "production" && "生產廠"}
-                      {factory.supplier_type === "parts" && "零件廠"}
-                      {factory.supplier_type === "material" && "材料供應商"}
-                      {factory.supplier_type === "service" && "服務供應商"}
-                      {!factory.supplier_type && "-"}
+                      {factory.factory_type === "assembly" && "組裝廠"}
+                      {factory.factory_type === "production" && "生產廠"}
+                      {factory.factory_type === "parts" && "零件廠"}
+                      {factory.factory_type === "material" && "材料供應商"}
+                      {factory.factory_type === "service" && "服務供應商"}
+                      {!factory.factory_type && "-"}
                     </Badge>
                   </p>
                 </div>

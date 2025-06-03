@@ -244,7 +244,7 @@ export function ProductForm({
     }
   }, [product.customer_id, product.factory_id])
 
-  // Load customer and supplier data
+  // Load customer and factory data
   useEffect(() => {
     async function fetchOptions() {
       setDataLoading(true)
@@ -267,19 +267,19 @@ export function ProductForm({
             code: customer.customer_id || "",
           })) || []
 
-        // Try to get supplier data
+        // Try to get factory data
         let formattedFactories = []
         try {
           const { data: factoriesData, error: factoriesError } = await supabase
-            .from("suppliers")
+            .from("factories")
             .select("factory_id, factory_name")
             .order("factory_id")
 
           if (!factoriesError && factoriesData) {
-            formattedFactories = factoriesData.map((supplier) => ({
-              id: supplier.factory_id,
-              name: supplier.factory_name,
-              code: supplier.factory_id || "",
+            formattedFactories = factoriesData.map((factory) => ({
+              id: factory.factory_id,
+              name: factory.factory_name,
+              code: factory.factory_id || "",
             }))
           }
         } catch (factoryError) {

@@ -41,8 +41,8 @@ const statusDisplayMap: Record<string, string> = {
 interface Purchase {
   purchase_sid: number
   purchase_id: string
-  supplier_id: string
-  supplier_name: string
+  factory_id: string
+  factory_name: string
   order_id: string | null
   status: string
   issue_date: string
@@ -109,7 +109,7 @@ export function PurchasesTable({ status }: PurchasesTableProps) {
   const filteredPurchases = purchases.filter((purchase) => {
     const matchesSearch =
       purchase.purchase_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      purchase.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.factory_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (purchase.order_id && purchase.order_id.toLowerCase().includes(searchTerm.toLowerCase()))
 
     return matchesSearch
@@ -223,7 +223,7 @@ export function PurchasesTable({ status }: PurchasesTableProps) {
               filteredPurchases.map((purchase) => (
                 <TableRow key={purchase.purchase_sid}>
                   <TableCell className="font-medium">{purchase.purchase_id}</TableCell>
-                  <TableCell>{purchase.supplier_name}</TableCell>
+                  <TableCell>{purchase.factory_name}</TableCell>
                   <TableCell>{purchase.order_id || "無關聯訂單"}</TableCell>
                   <TableCell>{formatDate(purchase.issue_date)}</TableCell>
                   <TableCell>{formatDate(purchase.expected_delivery_date)}</TableCell>

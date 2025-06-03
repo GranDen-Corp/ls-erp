@@ -45,8 +45,8 @@ interface PurchaseOrderItem {
 // 定義採購訂單類型
 interface PurchaseOrder {
   orderId: string
-  supplierId: string
-  supplierName: string
+  factoryId: string
+  factoryName: string
   issueDate: Date
   expectedDeliveryDate?: Date | null
   paymentTerm: string
@@ -60,8 +60,8 @@ interface PurchaseOrder {
 // 定義組件屬性
 interface PurchaseOrderProps {
   orderId: string
-  supplierId: string
-  supplierName: string
+  factoryId: string
+  factoryName: string
   items: any[]
   onSuccess?: () => void
   onCancel?: () => void
@@ -69,8 +69,8 @@ interface PurchaseOrderProps {
 
 export const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
   orderId,
-  supplierId,
-  supplierName,
+  factoryId: factoryId,
+  factoryName: factoryName,
   items,
   onSuccess,
   onCancel,
@@ -78,8 +78,8 @@ export const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
   // 狀態管理
   const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrder>({
     orderId,
-    supplierId,
-    supplierName,
+    factoryId: factoryId,
+    factoryName: factoryName,
     issueDate: new Date(),
     expectedDeliveryDate: null,
     paymentTerm: "Net 30",
@@ -293,7 +293,7 @@ export const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
         <CardHeader>
           <CardTitle>創建採購訂單</CardTitle>
           <CardDescription>
-            訂單編號: {orderId} | 供應商: {supplierName}
+            訂單編號: {orderId} | 供應商: {factoryName}
           </CardDescription>
         </CardHeader>
 

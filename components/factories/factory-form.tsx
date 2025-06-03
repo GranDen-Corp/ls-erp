@@ -17,7 +17,7 @@ import { supabaseClient } from "@/lib/supabase-client"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-// 表單驗證 schema - 對應 suppliers 表結構
+// 表單驗證 schema - 對應 factories 表結構
 const factoryFormSchema = z.object({
   factory_id: z.string().min(1, { message: "供應商編號不能為空" }),
   factory_name: z.string().min(1, { message: "供應商名稱不能為空" }),
@@ -26,7 +26,7 @@ const factoryFormSchema = z.object({
   factory_phone: z.string().optional(),
   factory_fax: z.string().optional(),
   tax_id: z.string().optional(),
-  supplier_type: z.string().min(1, { message: "請選擇供應商類型" }),
+  factory_type: z.string().min(1, { message: "請選擇供應商類型" }),
   category1: z.string().optional(),
   category2: z.string().optional(),
   category3: z.string().optional(),
@@ -60,7 +60,7 @@ const defaultValues: Partial<FactoryFormValues> = {
   factory_phone: "",
   factory_fax: "",
   tax_id: "",
-  supplier_type: "assembly",
+  factory_type: "assembly",
   category1: "",
   category2: "",
   category3: "",
@@ -118,7 +118,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
         factory_phone: mergedInitialData.factory_phone || "",
         factory_fax: mergedInitialData.factory_fax || "",
         tax_id: mergedInitialData.tax_id || "",
-        supplier_type: mergedInitialData.supplier_type || "assembly",
+        factory_type: mergedInitialData.factory_type || "assembly",
         category1: mergedInitialData.category1 || "",
         category2: mergedInitialData.category2 || "",
         category3: mergedInitialData.category3 || "",
@@ -154,7 +154,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
       // 檢查供應商ID是否已存在（僅在創建新供應商時檢查）
       if (!factoryId && !factory) {
         const { data: existingFactory, error: checkError } = await supabaseClient
-          .from("suppliers")
+          .from("factories")
           .select("factory_id")
           .eq("factory_id", data.factory_id)
           .single()
@@ -169,24 +169,24 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
       }
 
       // 準備要保存的數據
-      const supplierData = {
+      const factoryData = {
         ...data,
         updated_at: new Date().toISOString(),
       }
 
       // 如果是新增，加入創建時間
       if (!factoryId && !factory) {
-        supplierData.created_at = new Date().toISOString()
+        factoryData.created_at = new Date().toISOString()
       }
 
       // 插入或更新供應商資料
       const { error: saveError } =
         factoryId || factory
           ? await supabaseClient
-              .from("suppliers")
-              .update(supplierData)
+              .from("factories")
+              .update(factoryData)
               .eq("factory_id", factoryId || factory.factory_id)
-          : await supabaseClient.from("suppliers").insert(supplierData)
+          : await supabaseClient.from("factories").insert(factoryData)
 
       if (saveError) {
         throw new Error(`保存供應商資料時出錯: ${saveError.message}`)
@@ -304,7 +304,7 @@ export function FactoryForm({ factory, factoryId, initialData }: FactoryFormProp
 
                   <FormField
                     control={form.control}
-                    name="supplier_type"
+                    name="factory_type"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>供應商類型 *</FormLabel>

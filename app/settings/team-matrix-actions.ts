@@ -74,26 +74,26 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
     }
 
     // 獲取所有供應商/工廠
-    let suppliers: any[] = []
+    let factories: any[] = []
     try {
-      const { data: suppliersData, error: suppliersErr } = await supabase
-        .from("suppliers")
+      const { data: factoriesData, error: factoriesErr } = await supabase
+        .from("factories")
         .select("factory_id, factory_name, factory_short_name, quality_contact1, quality_contact2")
 
-      if (suppliersErr) {
+      if (factoriesErr) {
         console.warn("factory columns not found, trying alternative names")
         const { data: fallbackData, error: fallbackError } = await supabase
-          .from("suppliers")
+          .from("factories")
           .select("id, name, short_name, quality_contact1, quality_contact2")
 
         if (!fallbackError) {
-          suppliers = fallbackData || []
+          factories = fallbackData || []
         }
       } else {
-        suppliers = suppliersData || []
+        factories = factoriesData || []
       }
     } catch (error) {
-      console.error("Error fetching suppliers:", error)
+      console.error("Error fetching factories:", error)
     }
 
     // 組合資料
@@ -102,7 +102,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
         customers?.filter((customer) => member.assigned_customers?.includes(customer.customer_id)) || []
 
       const assignedFactoriesData =
-        suppliers?.filter((supplier) => member.assigned_factories?.includes(supplier.factory_id || supplier.id)) || []
+      factories?.filter((factory) => member.assigned_factories?.includes(factory.factory_id || factory.id)) || []
 
       // 業務部門：透過 sales_representative 關聯的客戶
       const salesCustomers =
@@ -118,9 +118,9 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
 
       // 品管部門：透過 quality_contact1/2 關聯的工廠
       const qcFactories =
-        suppliers?.filter(
-          (supplier) =>
-            supplier.quality_contact1 === member.ls_employee_id || supplier.quality_contact2 === member.ls_employee_id,
+      factories?.filter(
+          (factory) =>
+            factory.quality_contact1 === member.ls_employee_id || factory.quality_contact2 === member.ls_employee_id,
         ) || []
 
       return {
@@ -282,14 +282,14 @@ export async function getFactoriesForAssignment() {
     const supabase = createServerSupabaseClient()
 
     let data: any[] = []
-    const { data: suppliersData, error: suppliersErr } = await supabase
-      .from("suppliers")
+    const { data: factoriesData, error: factoriesErr } = await supabase
+      .from("factories")
       .select("factory_id, factory_name, factory_short_name, quality_contact1, quality_contact2")
       .order("factory_short_name")
 
-    if (suppliersErr) {
+    if (factoriesErr) {
       const { data: fallbackData, error: fallbackError } = await supabase
-        .from("suppliers")
+        .from("factories")
         .select("id, name, short_name, quality_contact1, quality_contact2")
         .order("short_name")
 
@@ -297,7 +297,7 @@ export async function getFactoriesForAssignment() {
         data = fallbackData || []
       }
     } else {
-      data = suppliersData || []
+      data = factoriesData || []
     }
 
     return data
@@ -425,7 +425,7 @@ export async function updateCustomerLogisticsCoordinator(
 }
 
 // 更新供應商的品管負責人
-export async function updateSupplierQualityContact(
+export async function updateFactoryQualityContact(
   factoryId: string,
   contactType: "quality_contact1" | "quality_contact2",
   employeeId: string | null,
@@ -435,13 +435,13 @@ export async function updateSupplierQualityContact(
 
     let error: any = null
     const { error: updateError } = await supabase
-      .from("suppliers")
+      .from("factories")
       .update({ [contactType]: employeeId })
       .eq("factory_id", factoryId)
 
     if (updateError) {
       const { error: fallbackError } = await supabase
-        .from("suppliers")
+        .from("factories")
         .update({ [contactType]: employeeId })
         .eq("id", factoryId)
 
@@ -451,14 +451,14 @@ export async function updateSupplierQualityContact(
     }
 
     if (error) {
-      console.error("Error updating supplier quality contact:", error)
+      console.error("Error updating factory quality contact:", error)
       return { success: false, error: error.message }
     }
 
     revalidatePath("/settings")
     return { success: true }
   } catch (error) {
-    console.error("Error in updateSupplierQualityContact:", error)
-    return { success: false, error: "Failed to update supplier quality contact" }
+    console.error("Error in updateFactoryQualityContact:", error)
+    return { success: false, error: "Failed to update factory quality contact" }
   }
 }

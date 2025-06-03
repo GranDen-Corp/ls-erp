@@ -38,7 +38,7 @@ interface ProductUnit {
   sort_order: number
 }
 
-interface Supplier {
+interface Factory {
   factory_id: string
   factory_name: string
 }
@@ -46,8 +46,8 @@ interface Supplier {
 interface ProcurementItem {
   productPartNo: string
   productName: string
-  supplierId: string
-  supplierName: string
+  factoryId: string
+  factoryName: string
   quantity: number
   unit: string
   unitPrice: number
@@ -75,33 +75,33 @@ export function ProcurementProductList({
   disabled = false,
 }: ProcurementProductListProps) {
   const [procurementData, setProcurementData] = useState<ProcurementItem[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [loadingSuppliers, setLoadingSuppliers] = useState(true)
+  const [factories, setFactories] = useState<Factory[]>([])
+  const [loadingFactories, setLoadingFactories] = useState(true)
 
   // 載入供應商資料
   useEffect(() => {
-    async function loadSuppliers() {
+    async function loadFactories() {
       try {
-        setLoadingSuppliers(true)
+        setLoadingFactories(true)
         const { data, error } = await supabaseClient
-          .from("suppliers")
+          .from("factories")
           .select("factory_id, factory_name")
           .order("factory_name")
 
         if (error) {
-          console.error("Error loading suppliers:", error)
+          console.error("Error loading factories:", error)
           return
         }
 
-        setSuppliers(data || [])
+        setFactories(data || [])
       } catch (error) {
-        console.error("Failed to fetch suppliers:", error)
+        console.error("Failed to fetch factories:", error)
       } finally {
-        setLoadingSuppliers(false)
+        setLoadingFactories(false)
       }
     }
 
-    loadSuppliers()
+    loadFactories()
   }, [])
 
   // 解析組件產品的子零件
@@ -130,7 +130,7 @@ export function ProcurementProductList({
   }
 
   // 根據產品查找供應商
-  const findSupplierForProduct = async (customerId: string, partNo: string) => {
+  const findFactoryForProduct = async (customerId: string, partNo: string) => {
     try {
       const { data, error } = await supabaseClient
         .from("products")
@@ -140,24 +140,24 @@ export function ProcurementProductList({
         .single()
 
       if (error || !data?.factory_id) {
-        return { supplierId: "", supplierName: "" }
+        return { factoryId: "", factoryName: "" }
       }
 
-      const supplier = suppliers.find((s) => s.factory_id === data.factory_id)
+      const factory = factories.find((s) => s.factory_id === data.factory_id)
       return {
-        supplierId: data.factory_id,
-        supplierName: supplier?.factory_name || "",
+        factoryId: data.factory_id,
+        factoryName: factory?.factory_name || "",
       }
     } catch (error) {
-      console.error("Error finding supplier for product:", error)
-      return { supplierId: "", supplierName: "" }
+      console.error("Error finding factory for product:", error)
+      return { factoryId: "", factoryName: "" }
     }
   }
 
   // 初始化採購資料
   useEffect(() => {
     async function initializeProcurementData() {
-      if (orderItems.length === 0 || suppliers.length === 0) return
+      if (orderItems.length === 0 || factories.length === 0) return
 
       const procurementItems: ProcurementItem[] = []
 
@@ -170,13 +170,13 @@ export function ProcurementProductList({
             const partNo = subPart.productId || subPart.part_no || subPart.productPartNo
             if (!partNo) continue
 
-            const { supplierId, supplierName } = await findSupplierForProduct(orderItem.product.customer_id, partNo)
+            const { factoryId: factoryId, factoryName: factoryName } = await findFactoryForProduct(orderItem.product.customer_id, partNo)
 
             procurementItems.push({
               productPartNo: partNo,
               productName: subPart.productName || subPart.component_name || partNo,
-              supplierId,
-              supplierName,
+              factoryId: factoryId,
+              factoryName: factoryName,
               quantity: (subPart.quantity || 1) * orderItem.quantity, // 子零件數量 × 組件數量
               unit: orderItem.unit,
               unitPrice: 0,
@@ -188,7 +188,7 @@ export function ProcurementProductList({
           }
         } else {
           // 處理一般產品
-          const { supplierId, supplierName } = await findSupplierForProduct(
+          const { factoryId: factoryId, factoryName: factoryName } = await findFactoryForProduct(
             orderItem.product?.customer_id || "",
             orderItem.productPartNo,
           )
@@ -196,8 +196,8 @@ export function ProcurementProductList({
           procurementItems.push({
             productPartNo: orderItem.productPartNo,
             productName: orderItem.productName,
-            supplierId,
-            supplierName,
+            factoryId: factoryId,
+            factoryName: factoryName,
             quantity: orderItem.quantity,
             unit: orderItem.unit,
             unitPrice: 0,
@@ -213,10 +213,10 @@ export function ProcurementProductList({
       onProcurementDataChange(procurementItems)
     }
 
-    if (orderItems.length > 0 && suppliers.length > 0) {
+    if (orderItems.length > 0 && factories.length > 0) {
       initializeProcurementData()
     }
-  }, [orderItems, suppliers, customerCurrency, onProcurementDataChange])
+  }, [orderItems, factories, customerCurrency, onProcurementDataChange])
 
   // 更新採購資料
   const updateProcurementItem = (productPartNo: string, field: keyof ProcurementItem, value: any) => {
@@ -228,10 +228,10 @@ export function ProcurementProductList({
   }
 
   // 處理供應商選擇
-  const handleSupplierChange = (productPartNo: string, supplierId: string) => {
-    const supplier = suppliers.find((s) => s.factory_id === supplierId)
-    updateProcurementItem(productPartNo, "supplierId", supplierId)
-    updateProcurementItem(productPartNo, "supplierName", supplier?.factory_name || "")
+  const handleFactoryChange = (productPartNo: string, factoryId: string) => {
+    const factory = factories.find((s) => s.factory_id === factoryId)
+    updateProcurementItem(productPartNo, "factoryId", factoryId)
+    updateProcurementItem(productPartNo, "factoryName", factory?.factory_name || "")
   }
 
   // 計算採購總金額
@@ -337,26 +337,26 @@ export function ProcurementProductList({
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={item.supplierId}
-                        onValueChange={(value) => handleSupplierChange(item.productPartNo, value)}
+                        value={item.factoryId}
+                        onValueChange={(value) => handleFactoryChange(item.productPartNo, value)}
                         disabled={disabled}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingSuppliers ? "載入中..." : "選擇供應商"} />
+                          <SelectValue placeholder={loadingFactories ? "載入中..." : "選擇供應商"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {loadingSuppliers ? (
+                          {loadingFactories ? (
                             <SelectItem value="loading" disabled>
                               載入中...
                             </SelectItem>
-                          ) : suppliers.length > 0 ? (
-                            suppliers.map((supplier) => (
-                              <SelectItem key={supplier.factory_id} value={supplier.factory_id}>
-                                {supplier.factory_name}
+                          ) : factories.length > 0 ? (
+                            factories.map((factory) => (
+                              <SelectItem key={factory.factory_id} value={factory.factory_id}>
+                                {factory.factory_name}
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="no-suppliers" disabled>
+                            <SelectItem value="no-factories" disabled>
                               無可用供應商
                             </SelectItem>
                           )}

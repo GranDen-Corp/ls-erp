@@ -5,24 +5,24 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Factory, Phone, Mail, MapPin, Check } from "lucide-react"
 
-interface SupplierInfoCardProps {
-  supplier: any
+interface FactoryInfoCardProps {
+  factory: any
   onSelect: () => void
   isSelected: boolean
 }
 
-export function SupplierInfoCard({ supplier, onSelect, isSelected }: SupplierInfoCardProps) {
+export function FactoryInfoCard({ factory: factory, onSelect, isSelected }: FactoryInfoCardProps) {
   // 使用動態欄位名稱，確保能夠顯示供應商資料
-  const id = supplier.factory_id || supplier.supplier_id || supplier.id || ""
-  const name = supplier.factory_name || supplier.supplier_name || supplier.name || `供應商 ${id}`
-  const fullName = supplier.factory_full_name || supplier.supplier_full_name || supplier.full_name || name
-  const contactPerson = supplier.quality_contact1 || supplier.contact_person || supplier.contact_name || ""
-  const phone = supplier.factory_phone || supplier.contact_phone || supplier.phone || ""
-  const email = supplier.contact_email || supplier.email || ""
-  const address = supplier.factory_address || supplier.address || ""
-  const paymentTerm = supplier.payment_term || ""
-  const deliveryTerm = supplier.delivery_term || ""
-  const notes = supplier.legacy_notes || supplier.notes || ""
+  const id = factory.factory_id || factory.id || ""
+  const name = factory.factory_name || factory.name || `供應商 ${id}`
+  const fullName = factory.factory_full_name || name
+  const contactPerson = factory.quality_contact1 || factory.contact_person || factory.contact_name || ""
+  const phone = factory.factory_phone || factory.contact_phone || factory.phone || ""
+  const email = factory.contact_email || factory.email || ""
+  const address = factory.factory_address || factory.address || ""
+  const paymentTerm = factory.payment_term || ""
+  const deliveryTerm = factory.delivery_term || ""
+  const notes = factory.legacy_notes || factory.notes || ""
 
   return (
     <Card className={`overflow-hidden transition-all ${isSelected ? "border-primary" : ""}`}>

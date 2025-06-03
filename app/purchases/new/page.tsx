@@ -51,18 +51,18 @@ function PurchaseForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label htmlFor="supplier" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="factory" className="block text-sm font-medium text-gray-700">
               供應商
             </label>
             <select
-              id="supplier"
-              name="supplier"
+              id="factory"
+              name="factory"
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="">選擇供應商</option>
-              <option value="supplier1">供應商 A</option>
-              <option value="supplier2">供應商 B</option>
-              <option value="supplier3">供應商 C</option>
+              <option value="factory1">供應商 A</option>
+              <option value="factory2">供應商 B</option>
+              <option value="factory3">供應商 C</option>
             </select>
           </div>
 

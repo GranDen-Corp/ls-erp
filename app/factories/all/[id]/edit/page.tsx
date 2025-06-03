@@ -12,7 +12,7 @@ export default async function EditFactoryPage({ params }: { params: { id: string
 
   // 使用服務器端 Supabase 客戶端獲取供應商詳情
   const supabase = createServerComponentClient({ cookies })
-  const { data: factory, error } = await supabase.from("suppliers").select("*").eq("factory_id", factoryId).single()
+  const { data: factory, error } = await supabase.from("factories").select("*").eq("factory_id", factoryId).single()
 
   if (error || !factory) {
     console.error("獲取供應商詳情時出錯:", error)
@@ -43,7 +43,7 @@ export default async function EditFactoryPage({ params }: { params: { id: string
     fax: factory.fax || factory.factory_fax || "",
     city: factory.city || "",
     postalCode: factory.postal_code || "",
-    supplierType: factory.supplier_type || "",
+    factoryType: factory.factory_type || "",
     category2: factory.category2 || "",
     category3: factory.category3 || "",
     iso9001Certified: factory.iso9001_certified || "否",

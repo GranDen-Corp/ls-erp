@@ -21,7 +21,7 @@ export interface Factory {
   cqi12_expiry: string
   invoice_address: string
   direct_relation_3yrs: string
-  supplier_type: string
+  factory_type: string
   disabled_reason: string
   iatf16949_certified: string
   approval_note: string

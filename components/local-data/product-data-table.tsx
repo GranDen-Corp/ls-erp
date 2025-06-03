@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase-client"
 
 export function ProductDataTable() {
   const [customers, setCustomers] = useState<Record<string, any>>({})
-  const [suppliers, setSuppliers] = useState<Record<string, any>>({})
+  const [factories , setFactories ] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,22 +42,22 @@ export function ProductDataTable() {
 
         // 嘗試獲取供應商(工廠)資料
         try {
-          const { data: supplierData, error: supplierError } = await supabase.from("suppliers").select("*")
+          const { data: factoryData, error: factoryError } = await supabase.from("factories").select("*")
 
-          if (supplierError) {
-            console.error("獲取供應商資料失敗:", supplierError.message)
-          } else if (supplierData) {
+          if (factoryError) {
+            console.error("獲取供應商資料失敗:", factoryError.message)
+          } else if (factoryData) {
             // 將供應商資料轉換為以ID為鍵的對象
-            const suppliersMap: Record<string, any> = {}
-            supplierData.forEach((supplier) => {
-              // 使用supplier_id作為鍵，如果不存在則使用id
-              const supplierId = supplier.supplier_id || supplier.id
-              if (supplierId) {
-                suppliersMap[supplierId] = supplier
+            const factoriesMap: Record<string, any> = {}
+            factoryData.forEach((factory) => {
+              // 使用factory_id作為鍵，如果不存在則使用id
+              const factoryId = factory.factory_id || factory.id
+              if (factoryId) {
+                factoriesMap[factoryId] = factory
               }
             })
 
-            setSuppliers(suppliersMap)
+            setFactories(factoriesMap)
           }
         } catch (err: any) {
           console.error("處理供應商資料時出錯:", err.message)
@@ -98,8 +98,8 @@ export function ProductDataTable() {
       key: "factory_id",
       title: "工廠",
       render: (value: any, row: any) => {
-        const supplier = suppliers[value]
-        return supplier ? supplier.supplier_name || supplier.factory_name || supplier.name : value || "-"
+        const factory = factories[value]
+        return factory ? factory.factory_name : value || "-"
       },
       sortable: true,
     },
@@ -266,8 +266,8 @@ export function ProductDataTable() {
           label: "工廠",
           key: "factory_id",
           render: (value: any) => {
-            const supplier = suppliers[value]
-            return supplier ? supplier.supplier_name || supplier.factory_name || supplier.name : value || "-"
+            const factory = factories[value]
+            return factory ? factory.factory_name : value || "-"
           },
         },
         { label: "海關碼", key: "customs_code" },

@@ -39,8 +39,8 @@ async function getPurchaseWithItems(id: string) {
 
   return {
     poNumber: purchase.purchase_id,
-    factoryId: purchase.supplier_id,
-    factoryName: purchase.supplier_name,
+    factoryId: purchase.factory_id,
+    factoryName: purchase.factory_name,
     currency: purchase.currency,
     deliveryTerms: purchase.delivery_term || "",
     paymentTerms: purchase.payment_term || "",

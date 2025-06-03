@@ -1,7 +1,7 @@
 -- 創建供應商資料表
-CREATE TABLE IF NOT EXISTS suppliers (
-  supplier_id VARCHAR(50) PRIMARY KEY,
-  supplier_name VARCHAR(100) NOT NULL,
+CREATE TABLE IF NOT EXISTS factories (
+  factory_id VARCHAR(50) PRIMARY KEY,
+  factory_name VARCHAR(100) NOT NULL,
   factory_id VARCHAR(50),
   contact_person VARCHAR(100),
   contact_email VARCHAR(100),
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   address TEXT,
   notes TEXT,
   is_active BOOLEAN DEFAULT TRUE,
-  supplier_type VARCHAR(50),
+  factory_type VARCHAR(50),
   category1 VARCHAR(50),
   category2 VARCHAR(50),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -20,14 +20,14 @@ CREATE TABLE IF NOT EXISTS suppliers (
 );
 
 -- 添加索引
-CREATE INDEX IF NOT EXISTS idx_suppliers_factory_id ON suppliers(factory_id);
-CREATE INDEX IF NOT EXISTS idx_suppliers_supplier_name ON suppliers(supplier_name);
+CREATE INDEX IF NOT EXISTS idx_factories_factory_id ON factories(factory_id);
+CREATE INDEX IF NOT EXISTS idx_factories_factory_name ON factories(factory_name);
 
 -- 插入測試資料
-INSERT INTO suppliers (
-  supplier_id, supplier_name, factory_id, contact_person, contact_email, 
+INSERT INTO factories (
+  factory_id, factory_name, factory_id, contact_person, contact_email, 
   contact_phone, payment_term, delivery_term, lead_time, address, 
-  notes, is_active, supplier_type, category1
+  notes, is_active, factory_type, category1
 ) VALUES 
 ('SUP-001', '台灣精密五金有限公司', 'FAC-001', '張志明', 'contact@twpm.com', 
  '02-2345-6789', '月結30天', 'FOB 基隆', 14, '新北市新莊區中正路123號', 

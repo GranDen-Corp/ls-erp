@@ -20,8 +20,8 @@ interface PurchaseEditFormProps {
 
 export function PurchaseEditForm({ purchase }: PurchaseEditFormProps) {
   const [formData, setFormData] = useState({
-    supplier_name: purchase.supplier_name,
-    supplier_id: purchase.supplier_id,
+    factory_name: purchase.factory_name,
+    factory_id: purchase.factory_id,
     status: purchase.status,
     expected_delivery_date: purchase.expected_delivery_date ? new Date(purchase.expected_delivery_date) : null,
     actual_delivery_date: purchase.actual_delivery_date ? new Date(purchase.actual_delivery_date) : null,
@@ -106,8 +106,8 @@ export function PurchaseEditForm({ purchase }: PurchaseEditFormProps) {
       const { error: updateError } = await supabase
         .from("purchases")
         .update({
-          supplier_name: formData.supplier_name,
-          supplier_id: formData.supplier_id,
+          factory_name: formData.factory_name,
+          factory_id: formData.factory_id,
           status: formData.status,
           expected_delivery_date: formData.expected_delivery_date
             ? formData.expected_delivery_date.toISOString()
@@ -184,11 +184,11 @@ export function PurchaseEditForm({ purchase }: PurchaseEditFormProps) {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">供應商名稱</label>
-            <Input name="supplier_name" value={formData.supplier_name} onChange={handleInputChange} required />
+            <Input name="factory_name" value={formData.factory_name} onChange={handleInputChange} required />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">供應商ID</label>
-            <Input name="supplier_id" value={formData.supplier_id} onChange={handleInputChange} required />
+            <Input name="factory_id" value={formData.factory_id} onChange={handleInputChange} required />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">狀態</label>

@@ -295,23 +295,21 @@ function MemberTable({
   shouldShowFactories,
   disabled = false,
 }: MemberTableProps) {
-  // Helper function to get supplier display name
-  const getSupplierDisplayName = (supplier: any) => {
+  // Helper function to get factory display name
+  const getFactoryDisplayName = (factory: any) => {
     return (
-      supplier.factory_name ||
-      supplier.supplier_name ||
-      supplier.name ||
-      supplier.factory_short_name ||
-      supplier.supplier_short_name ||
-      supplier.short_name ||
-      supplier.factory_id ||
+      factory.factory_name ||
+      factory.name ||
+      factory.factory_short_name ||
+      factory.short_name ||
+      factory.factory_id ||
       "未知工廠"
     )
   }
 
-  // Helper function to get supplier ID
-  const getSupplierId = (supplier: any) => {
-    return supplier.factory_id || supplier.id
+  // Helper function to get factory ID
+  const getFactoryId = (factory: any) => {
+    return factory.factory_id || factory.id
   }
 
   return (
@@ -411,11 +409,11 @@ function MemberTable({
                             {(expandedFactories.has(member.id) ? allFactories : allFactories.slice(0, 2)).map(
                               (factory, index) => (
                                 <Badge
-                                  key={`${getSupplierId(factory)}-${index}`}
+                                  key={`${getFactoryId(factory)}-${index}`}
                                   variant={factory.type === "qc" ? "default" : "outline"}
                                   className="text-xs"
                                 >
-                                  {getSupplierDisplayName(factory)}
+                                  {getFactoryDisplayName(factory)}
                                   {factory.type === "qc" && <span className="ml-1">(品管)</span>}
                                 </Badge>
                               ),

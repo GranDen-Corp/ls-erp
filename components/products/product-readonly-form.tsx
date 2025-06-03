@@ -39,7 +39,7 @@ interface Customer {
 }
 
 // 供應商類型
-interface Supplier {
+interface Factory {
   id: string
   name: string
   code: string
@@ -122,7 +122,7 @@ export function ProductReadOnlyForm({
   const [activeTab, setActiveTab] = useState(defaultTab || "basic")
   const [product, setProduct] = useState(initialValues || {})
   const [customersData, setCustomersData] = useState<Customer[]>([])
-  const [factories, setFactories] = useState<Supplier[]>([])
+  const [factories, setFactories] = useState<Factory[]>([])
   const [componentDetails, setComponentDetails] = useState<{ [key: string]: string }>({})
   const [selectedComponents, setSelectedComponents] = useState<ProductComponent[]>([])
   const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.is_assembly || isAssembly || false)
@@ -187,15 +187,15 @@ export function ProductReadOnlyForm({
         let formattedFactories = []
         try {
           const { data: factoriesData, error: factoriesError } = await supabase
-            .from("suppliers")
+            .from("factories")
             .select("factory_id, factory_name")
             .order("factory_id")
 
           if (!factoriesError && factoriesData) {
-            formattedFactories = factoriesData.map((supplier) => ({
-              id: supplier.factory_id,
-              name: supplier.factory_name,
-              code: supplier.factory_id || "",
+            formattedFactories = factoriesData.map((factory) => ({
+              id: factory.factory_id,
+              name: factory.factory_name,
+              code: factory.factory_id || "",
             }))
           }
         } catch (factoryError) {

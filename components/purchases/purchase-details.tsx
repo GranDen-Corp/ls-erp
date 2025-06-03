@@ -82,11 +82,11 @@ export function PurchaseDetails({ purchase }: PurchaseDetailsProps) {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">供應商名稱:</span>
-                <span className="font-medium">{purchase.supplier_name}</span>
+                <span className="font-medium">{purchase.factory_name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">供應商ID:</span>
-                <span>{purchase.supplier_id}</span>
+                <span>{purchase.factory_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">付款條件:</span>

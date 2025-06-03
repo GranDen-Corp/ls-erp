@@ -111,8 +111,8 @@ export interface PurchaseItem {
 export interface Purchase {
   purchase_id?: string
   order_id?: string
-  supplier_id: string
-  supplier_name: string
+  factory_id: string
+  factory_name: string
   status?: string
   issue_date?: string
   expected_delivery_date?: string

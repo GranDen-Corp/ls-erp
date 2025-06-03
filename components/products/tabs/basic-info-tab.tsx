@@ -62,7 +62,7 @@ export function BasicInfoTab({
         if (product.factory_id) {
           //console.log("Fetching factory name for ID:", product.factory_id)
           const { data: factoryData, error: factoryError } = await supabase
-            .from("suppliers")
+            .from("factories")
             .select("factory_name")
             .eq("factory_id", product.factory_id)
             .single()
@@ -123,7 +123,7 @@ export function BasicInfoTab({
 
       // 從資料庫獲取供應商名稱
       const { data: factoryData, error: factoryError } = await supabase
-        .from("suppliers")
+        .from("factories")
         .select("factory_name")
         .eq("factory_id", factoryId)
         .single()

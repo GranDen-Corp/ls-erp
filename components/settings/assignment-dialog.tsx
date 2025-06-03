@@ -11,7 +11,7 @@ import {
   updateTeamMemberFactories,
   updateCustomerRepresentSales,
   updateCustomerLogisticsCoordinator,
-  updateSupplierQualityContact,
+  updateFactoryQualityContact,
 } from "@/app/settings/team-matrix-actions"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
@@ -265,7 +265,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
     if (!member) return
 
     try {
-      const result = await updateSupplierQualityContact(factoryId, contactType, member.ls_employee_id)
+      const result = await updateFactoryQualityContact(factoryId, contactType, member.ls_employee_id)
 
       if (result.success) {
         toast({

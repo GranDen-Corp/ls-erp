@@ -14,8 +14,8 @@ export interface PurchaseItem {
 export interface Purchase {
   purchase_id?: string
   order_id?: string
-  supplier_id: string
-  supplier_name: string
+  factory_id: string
+  factory_name: string
   status?: string
   issue_date?: string
   expected_delivery_date?: string
@@ -69,8 +69,8 @@ export async function createPurchase(purchase: Purchase) {
       .insert({
         purchase_id: purchase.purchase_id, // 如果為空，觸發器會自動生成
         order_id: purchase.order_id,
-        supplier_id: purchase.supplier_id,
-        supplier_name: purchase.supplier_name,
+        factory_id: purchase.factory_id,
+        factory_name: purchase.factory_name,
         status: purchase.status || "pending",
         issue_date: purchase.issue_date || new Date().toISOString().split("T")[0],
         expected_delivery_date: purchase.expected_delivery_date,
@@ -127,7 +127,7 @@ export async function createPurchase(purchase: Purchase) {
  */
 export async function getPurchases(filters?: {
   status?: string
-  supplier_id?: string
+  factory_id?: string
   order_id?: string
   from_date?: string
   to_date?: string
@@ -141,8 +141,8 @@ export async function getPurchases(filters?: {
       if (filters.status) {
         query = query.eq("status", filters.status)
       }
-      if (filters.supplier_id) {
-        query = query.eq("supplier_id", filters.supplier_id)
+      if (filters.factory_id) {
+        query = query.eq("factory_id", filters.factory_id)
       }
       if (filters.order_id) {
         query = query.eq("order_id", filters.order_id)
@@ -270,23 +270,23 @@ export async function createPurchasesFromProcurementItems(procurementItems: any[
     }
 
     // 按供應商分組
-    const itemsBySupplier: Record<string, any[]> = {}
+    const itemsByFactory: Record<string, any[]> = {}
 
     procurementItems.forEach((item) => {
       if (!item.isSelected || !item.factoryId) return
 
-      if (!itemsBySupplier[item.factoryId]) {
-        itemsBySupplier[item.factoryId] = []
+      if (!itemsByFactory[item.factoryId]) {
+        itemsByFactory[item.factoryId] = []
       }
 
-      itemsBySupplier[item.factoryId].push(item)
+      itemsByFactory[item.factoryId].push(item)
     })
 
     const results = []
 
     // 為每個供應商創建採購單
-    for (const supplierId in itemsBySupplier) {
-      const items = itemsBySupplier[supplierId]
+    for (const factoryId in itemsByFactory) {
+      const items = itemsByFactory[factoryId]
       const firstItem = items[0]
 
       // 計算總金額
@@ -295,8 +295,8 @@ export async function createPurchasesFromProcurementItems(procurementItems: any[
       // 準備採購單數據
       const purchase: Purchase = {
         order_id: orderId,
-        supplier_id: supplierId,
-        supplier_name: firstItem.factoryName,
+        factory_id: factoryId,
+        factory_name: firstItem.factoryName,
         status: "pending",
         issue_date: new Date().toISOString().split("T")[0],
         expected_delivery_date: firstItem.deliveryDate
@@ -352,23 +352,23 @@ export async function createPurchasesFromProcurementProductItems(procurementProd
     }
 
     // 按供應商分組
-    const itemsBySupplier: Record<string, any[]> = {}
+    const itemsByFactory: Record<string, any[]> = {}
 
     procurementProductItems.forEach((item) => {
-      if (!item.isSelected || !item.supplierId) return
+      if (!item.isSelected || !item.factoryId) return
 
-      if (!itemsBySupplier[item.supplierId]) {
-        itemsBySupplier[item.supplierId] = []
+      if (!itemsByFactory[item.factoryId]) {
+        itemsByFactory[item.factoryId] = []
       }
 
-      itemsBySupplier[item.supplierId].push(item)
+      itemsByFactory[item.factoryId].push(item)
     })
 
     const results = []
 
     // 為每個供應商創建採購單
-    for (const supplierId in itemsBySupplier) {
-      const items = itemsBySupplier[supplierId]
+    for (const factoryId in itemsByFactory) {
+      const items = itemsByFactory[factoryId]
       const firstItem = items[0]
 
       // 計算總金額
@@ -380,8 +380,8 @@ export async function createPurchasesFromProcurementProductItems(procurementProd
       // 準備採購單數據
       const purchase: Purchase = {
         order_id: orderId,
-        supplier_id: supplierId,
-        supplier_name: firstItem.supplierName,
+        factory_id: factoryId,
+        factory_name: firstItem.factoryName,
         status: "pending",
         issue_date: new Date().toISOString().split("T")[0],
         expected_delivery_date: firstItem.expectedDeliveryDate

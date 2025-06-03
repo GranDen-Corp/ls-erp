@@ -117,42 +117,41 @@ export function ProcurementDataEditor({
 
   // 載入供應商資料
   useEffect(() => {
-    const fetchSuppliers = async () => {
+    const fetchFactories = async () => {
       try {
         setLoading(true)
         const supabase = createClient()
 
-        const { data: suppliersData, error: suppliersError } = await supabase.from("suppliers").select("*")
+        const { data: factoriesData, error: factoriesError } = await supabase.from("factories").select("*")
 
-        if (suppliersError) {
-          throw new Error(`獲取供應商資料失敗: ${suppliersError.message}`)
+        if (factoriesError) {
+          throw new Error(`獲取供應商資料失敗: ${factoriesError.message}`)
         }
 
-        if (!suppliersData || suppliersData.length === 0) {
+        if (!factoriesData || factoriesData.length === 0) {
           console.warn("供應商資料表為空")
           setFactories([])
         } else {
-          const convertedData = suppliersData.map((supplier) => {
-            const id = supplier.id || supplier.supplier_id || supplier.factory_id || ""
-            const name = supplier.name || supplier.supplier_name || supplier.factory_name || `供應商 ${id}`
+          const convertedData = factoriesData.map((factory) => {
+            const id = factory.factory_id || ""
+            const name = factory.factory_name || `供應商 ${id}`
 
             return {
-              ...supplier,
+              ...factory,
               factory_id: id,
               factory_name: name,
-              factory_full_name:
-                supplier.full_name || supplier.supplier_full_name || supplier.factory_full_name || name,
-              quality_contact1: supplier.contact_person || supplier.contact_name || "",
-              factory_phone: supplier.phone || supplier.contact_phone || "",
-              factory_address: supplier.address || "",
-              payment_term: supplier.payment_term || "",
-              delivery_term: supplier.delivery_term || "",
-              legacy_notes: supplier.notes || "",
+              factory_full_name: factory.factory_full_name || name,
+              quality_contact1: factory.contact_person || factory.contact_name || "",
+              factory_phone: factory.phone || factory.contact_phone || "",
+              factory_address: factory.address || "",
+              payment_term: factory.payment_term || "",
+              delivery_term: factory.delivery_term || "",
+              legacy_notes: factory.notes || "",
             }
           })
 
           setFactories(convertedData)
-          console.log("從suppliers表載入了", convertedData.length, "筆供應商資料")
+          console.log("從factories表載入了", convertedData.length, "筆供應商資料")
         }
       } catch (err: any) {
         console.error("獲取供應商資料失敗:", err)
@@ -162,7 +161,7 @@ export function ProcurementDataEditor({
       }
     }
 
-    fetchSuppliers()
+    fetchFactories()
   }, [])
 
   // 當訂單項目變更時，更新採購項目
@@ -555,7 +554,7 @@ export function ProcurementDataEditor({
 
                       {/* 供應商選擇 */}
                       <div>
-                        <Label htmlFor={`supplier-${item.id}`} className="text-sm font-medium">
+                        <Label htmlFor={`factory-${item.id}`} className="text-sm font-medium">
                           供應商
                         </Label>
                         {readOnly ? (
