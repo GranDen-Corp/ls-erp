@@ -98,22 +98,23 @@ export function ResumeTab({
 
       setIsLoadingQualityEvents(true)
       try {
-        const { data, error } = await supabase
-          .from("complaints")
-          .select("*")
-          .eq("product_id", product.partNo)
-          .order("complaint_date", { ascending: false })
+        // const { data, error } = await supabase
+        //   .from("complaints")
+        //   .select("*")
+        //   .eq("product_id", product.partNo)
+        //   .order("complaint_date", { ascending: false })
 
-        if (error) {
-          console.error("Error fetching quality events:", error)
-          toast({
-            title: "錯誤",
-            description: "無法獲取品質事件資料",
-            variant: "destructive",
-          })
-        } else {
-          setQualityEvents(data || [])
-        }
+        // if (error) {
+        //   console.error("Error fetching quality events:", error)
+        //   toast({
+        //     title: "錯誤",
+        //     description: "無法獲取品質事件資料",
+        //     variant: "destructive",
+        //   })
+        // } else {
+        //   setQualityEvents(data || [])
+        // }
+        setQualityEvents([])
       } catch (error) {
         console.error("Error fetching quality events:", error)
       } finally {
