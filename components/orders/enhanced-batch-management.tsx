@@ -20,11 +20,8 @@ interface ShipmentBatch {
   batchNumber: number
   plannedShipDate: Date | undefined
   quantity: number
-  unit: string
-  unitMultiplier: number
   notes?: string
   status?: string
-  trackingNumber?: string
   actualShipDate?: Date
   estimatedArrivalDate?: Date
 }
@@ -99,8 +96,6 @@ export function EnhancedBatchManagement({
           batchNumber: 1,
           plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天後
           quantity: orderTotalPcs, // 使用實際PCS數量
-          unit: "PCS",
-          unitMultiplier: 1,
           notes: "",
           status: "pending",
         }
@@ -143,8 +138,6 @@ export function EnhancedBatchManagement({
       batchNumber: batches.length + 1,
       plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天後
       quantity: remainingQty, // 自動分配剩餘數量
-      unit: "PCS",
-      unitMultiplier: 1,
       notes: "",
       status: "pending",
     }
@@ -194,8 +187,6 @@ export function EnhancedBatchManagement({
       return {
         ...batch,
         quantity: Math.max(1, batchQuantity), // 確保至少為1
-        unit: "PCS",
-        unitMultiplier: 1,
       }
     })
 
