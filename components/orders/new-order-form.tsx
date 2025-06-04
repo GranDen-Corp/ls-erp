@@ -464,6 +464,18 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               calculateItemTotal={orderForm.calculateItemTotal}
               orderData={preparePrintData()}
             />
+
+            {/* 訂單備註和產品採購資訊 - 在產品設定確認後顯示 */}
+            <MemoizedOrderInfo
+              remarks={orderForm.remarks}
+              setRemarks={orderForm.setRemarks}
+              orderItems={orderForm.orderItems || []}
+              productProcurementInfo={orderForm.productProcurementInfo || {}}
+              setProductProcurementInfo={orderForm.setProductProcurementInfo}
+              isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
+              isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+              disabled={false}
+            />
           </div>
         )}
 
@@ -629,20 +641,20 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </div>
               </CardContent>
             </Card>
+
+            {/* 在採購資料設定區域也顯示訂單備註和產品採購資訊 */}
+            <MemoizedOrderInfo
+              remarks={orderForm.remarks}
+              setRemarks={orderForm.setRemarks}
+              orderItems={orderForm.orderItems || []}
+              productProcurementInfo={orderForm.productProcurementInfo || {}}
+              setProductProcurementInfo={orderForm.setProductProcurementInfo}
+              isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
+              isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+              disabled={false}
+            />
           </div>
         )}
-
-        {/* 訂單資訊和備註 - 始終顯示在頁面底部 */}
-        <MemoizedOrderInfo
-          remarks={orderForm.remarks}
-          setRemarks={orderForm.setRemarks}
-          orderItems={orderForm.orderItems || []}
-          productProcurementInfo={orderForm.productProcurementInfo || {}}
-          setProductProcurementInfo={orderForm.setProductProcurementInfo}
-          isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
-          isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
-          disabled={false}
-        />
 
         {/* 批次管理對話框 */}
         <EnhancedBatchManagement

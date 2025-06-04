@@ -48,6 +48,18 @@ interface Product {
   customer_original_drawing?: string
   drawing_version?: string
   packaging_requirements?: string
+  mold_cost?: number
+  refundable_mold_quantity?: number
+  accounting_note?: string
+}
+
+interface Factory {
+  factory_id: string
+  factory_name: string
+  factory_trade_terms?: string
+  factory_payment_terms?: string
+  quality_contact1?: string
+  quality_contact2?: string
 }
 
 interface OrderItem {
@@ -66,6 +78,7 @@ interface OrderItem {
   discount?: number
   taxRate?: number
   product?: Product
+  expectedDeliveryDate?: string
 }
 
 interface ExchangeRate {
@@ -193,6 +206,7 @@ export function useOrderForm() {
         cartonMarkInfo: string
         palletMarkInfo: string
         jinzhanLabelInfo: string
+        purchaseOrderInfo: string
       }
     >
   >({})
@@ -209,6 +223,7 @@ export function useOrderForm() {
 
   // Data arrays
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [factories, setFactories] = useState<Factory[]>([])
   const [regularProducts, setRegularProducts] = useState<Product[]>([])
   const [assemblyProducts, setAssemblyProducts] = useState<Product[]>([])
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
@@ -247,8 +262,9 @@ export function useOrderForm() {
         const supabase = createClient()
 
         // Load data from correct tables - include port_type for ports
-        const [customersRes, unitsRes, ratesRes, portsRes] = await Promise.all([
+        const [customersRes, factoriesRes, unitsRes, ratesRes, portsRes] = await Promise.all([
           supabase.from("customers").select("*").order("customer_full_name"),
+          supabase.from("factories").select("*").order("factory_name"),
           supabase
             .from("unit_setting")
             .select("*")
@@ -260,16 +276,19 @@ export function useOrderForm() {
         ])
 
         if (customersRes.error) throw customersRes.error
+        if (factoriesRes.error) throw factoriesRes.error
         if (unitsRes.error) throw unitsRes.error
         if (ratesRes.error) throw portsRes.error
 
         setCustomers(customersRes.data || [])
+        setFactories(factoriesRes.data || [])
         setProductUnits(unitsRes.data || [])
         setExchangeRates(ratesRes.data || [])
         setPorts(portsRes.data || [])
 
         console.log("載入的產品單位:", unitsRes.data)
         console.log("載入的港口資料:", portsRes.data)
+        console.log("載入的工廠資料:", factoriesRes.data)
 
         // 自動生成初始訂單編號
         console.log("開始生成初始訂單編號...")
@@ -302,7 +321,10 @@ export function useOrderForm() {
           product_type,
           customer_original_drawing,
           drawing_version,
-          packaging_requirements
+          packaging_requirements,
+          mold_cost,
+          refundable_mold_quantity,
+          accounting_note
         `)
         .eq("customer_id", customerId)
         .order("part_no")
@@ -463,6 +485,10 @@ export function useOrderForm() {
           const defaultQuantity = 1000 // 修改為預設1000個
           const actualQuantityInPcs = defaultQuantity * getUnitMultiplier(defaultUnit)
 
+          // 設定預設交貨日期為30天後
+          const defaultDeliveryDate = new Date()
+          defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 30)
+
           const newItem: OrderItem = {
             id: `${Date.now()}-${Math.random()}`,
             productKey: `${product.customer_id}-${product.part_no}`,
@@ -485,6 +511,7 @@ export function useOrderForm() {
             specifications: product.specification || "",
             currency: customerCurrency,
             product: product,
+            expectedDeliveryDate: defaultDeliveryDate.toISOString().split("T")[0],
           }
           newItems.push(newItem)
         }
@@ -507,6 +534,10 @@ export function useOrderForm() {
 
     const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
     if (product && !checkIsProductAdded(selectedProductPartNo)) {
+      // 設定預設交貨日期為30天後
+      const defaultDeliveryDate = new Date()
+      defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 30)
+
       const newItem: OrderItem = {
         id: `${Date.now()}-${Math.random()}`,
         productKey: `${product.customer_id}-${product.part_no}`,
@@ -528,6 +559,7 @@ export function useOrderForm() {
         specifications: product.specification || "",
         currency: customerCurrency,
         product: product,
+        expectedDeliveryDate: defaultDeliveryDate.toISOString().split("T")[0],
       }
 
       setOrderItems((prev) => [...prev, newItem])
@@ -881,13 +913,13 @@ R.O.C.`
     [poNumber, portOfDischarge, getPortDisplayName],
   )
 
-  // 生成進展標籤資訊
+  // 生成今湛標籤資訊
   const generateJinzhanLabelInfo = useCallback(
     (productPartNo: string) => {
       const selectedCustomer = customers.find((c) => c.customer_id === selectedCustomerId)
       const customerName = selectedCustomer?.customer_short_name || selectedCustomer?.customer_full_name || ""
 
-      return `進展標籤：
+      return `今湛標籤：
 
 ${customerName}
 ${productPartNo}
@@ -896,12 +928,88 @@ PO ${poNumber}`
     [customers, selectedCustomerId, poNumber],
   )
 
+  // 生成採購單資訊
+  const generatePurchaseOrderInfo = useCallback(
+    (productPartNo: string) => {
+      const orderItem = orderItems.find((item) => item.productPartNo === productPartNo)
+      const product = orderItem?.product
+
+      if (!product) return ""
+
+      const finalOrderNumber = useCustomOrderNumber ? customOrderNumber : orderNumber
+
+      // 處理 purchase_requirements 的換行
+      const purchaseRequirements = product.order_requirements || ""
+      const formattedRequirements = purchaseRequirements.replace(/\\n/g, "\n")
+
+      return `PART# ${product.part_no}
+LOT NO. ${finalOrderNumber}
+${product.component_name || ""}
+HS Code: ${product.customs_code || ""}
+
+${formattedRequirements}
+
+As per print ${product.customer_drawing || ""} ${product.customer_drawing_version || ""}`
+    },
+    [orderItems, useCustomOrderNumber, customOrderNumber, orderNumber],
+  )
+
+  // 生成採購備註
+  const generateProcurementRemarks = useCallback(
+    (productPartNo: string) => {
+      const orderItem = orderItems.find((item) => item.productPartNo === productPartNo)
+      const product = orderItem?.product
+      const selectedCustomer = customers.find((c) => c.customer_id === selectedCustomerId)
+
+      if (!product || !selectedCustomer) return ""
+
+      // 獲取工廠資訊
+      const factory = factories.find((f) => f.factory_id === product.factory_id)
+
+      // 格式化交貨日期
+      const deliveryDate = orderItem.expectedDeliveryDate || new Date().toISOString().split("T")[0]
+      const formattedDeliveryDate = new Date(deliveryDate).toLocaleDateString("zh-TW")
+
+      // 模具費資訊
+      const moldCostInfo = product.mold_cost
+        ? `模具費NTD ${product.mold_cost}，出貨數量達"${product.refundable_mold_quantity || 0}" PCS退還`
+        : ""
+
+      // 會計備註
+      const accountingNote = product.accounting_note || ""
+
+      // TODO: 歷史採購單號及採購數量列表 - 需要從歷史資料中獲取
+      const historicalPurchases = "" // 暫時為空，需要實際查詢歷史資料
+
+      return `1.交貨日期： ${formattedDeliveryDate}
+
+2.成交條件：${factory?.factory_trade_terms || ""}
+
+3.付款條件：${factory?.factory_payment_terms || ""}
+4.包裝：${selectedCustomer.packaging_details || ""}
+5.QUANTITY ALLOWANCE PLUS ${selectedCustomer.qty_allowance_percent || "10"}% / MINUS ${selectedCustomer.qty_allowance_percent || "10"}%
+
+6.${moldCostInfo}
+${accountingNote}
+${historicalPurchases}
+
+7.樣品.出貨時請附XXX
+
+8.出貨請與${factory?.quality_contact1 || ""}或${factory?.quality_contact2 || ""}聯絡
+
+
+ *** PPAP 訂單 - 請做生產流程控管 - 將首件樣品、所有製程報告完整保存；
+加工體系 確定後不可更改-若要更改 要事先告知 徵得客戶同意 ***`
+    },
+    [orderItems, customers, selectedCustomerId, factories],
+  )
+
   // Update the confirmProcurementSettings function to generate carton mark info
   const confirmProcurementSettings = useCallback(() => {
     const newSettingsState = !isProcurementSettingsConfirmed
     setIsProcurementSettingsConfirmed(newSettingsState)
 
-    // 當確認採購設定時，自動生成所有產品的嘜頭資訊
+    // 當確認採購設定時，自動生成所有產品的嘜頭資訊和採購單資訊
     if (newSettingsState && orderItems.length > 0) {
       const newProcurementInfo: Record<string, any> = {}
 
@@ -909,10 +1017,13 @@ PO ${poNumber}`
         const cartonInfo = generateCartonMarkInfo(item.productPartNo)
         const palletInfo = generatePalletMarkInfo(item.productPartNo)
         const jinzhanInfo = generateJinzhanLabelInfo(item.productPartNo)
+        const purchaseInfo = generatePurchaseOrderInfo(item.productPartNo)
+        const procurementRemarks = generateProcurementRemarks(item.productPartNo)
 
         newProcurementInfo[item.productPartNo] = {
           productPartNo: item.productPartNo,
-          procurementRemarks: productProcurementInfo[item.productPartNo]?.procurementRemarks || "",
+          procurementRemarks: procurementRemarks,
+          purchaseOrderInfo: purchaseInfo,
           cartonMarkInfo: cartonInfo,
           palletMarkInfo: palletInfo,
           jinzhanLabelInfo: jinzhanInfo,
@@ -920,7 +1031,7 @@ PO ${poNumber}`
       })
 
       setProductProcurementInfo(newProcurementInfo)
-      console.log("已自動生成所有產品的嘜頭資訊:", newProcurementInfo)
+      console.log("已自動生成所有產品的嘜頭資訊、採購單資訊和採購備註:", newProcurementInfo)
     }
   }, [
     isProcurementSettingsConfirmed,
@@ -928,6 +1039,8 @@ PO ${poNumber}`
     generateCartonMarkInfo,
     generatePalletMarkInfo,
     generateJinzhanLabelInfo,
+    generatePurchaseOrderInfo,
+    generateProcurementRemarks,
     productProcurementInfo,
   ])
 
@@ -1013,6 +1126,7 @@ PO ${poNumber}`
     productProcurementInfo,
     setProductProcurementInfo,
     customers,
+    factories,
     regularProducts,
     assemblyProducts,
     orderItems,
@@ -1123,5 +1237,7 @@ PO ${poNumber}`
     generateCartonMarkInfo,
     generatePalletMarkInfo,
     generateJinzhanLabelInfo,
+    generatePurchaseOrderInfo,
+    generateProcurementRemarks,
   }
 }
