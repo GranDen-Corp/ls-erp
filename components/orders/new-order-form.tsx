@@ -28,7 +28,7 @@ import { ProductSelection } from "./product-selection"
 import { EnhancedProductList } from "./enhanced-product-list"
 import { ProductList } from "./product-list"
 import { BatchManagement } from "./batch-management"
-import { OrderInfo } from "./order-info" // Changed from default import to named import
+import { OrderInfo } from "./order-info"
 import { EnhancedBatchManagement } from "./enhanced-batch-management"
 import { ProcurementProductList } from "./procurement-product-list"
 

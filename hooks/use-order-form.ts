@@ -849,25 +849,87 @@ ${deliveryLines.join("\n")}
   )
 
   // Define generateCartonMarkInfo before it's used in confirmProcurementSettings
-  // 移除 generateCartonMarkInfo 函數，或者改為針對特定產品生成
-  // const generateCartonMarkInfo = useCallback(() => {
-  //   if (isCartonMarkDisabled) return ""
+  // 生成紙箱嘜頭資訊
+  const generateCartonMarkInfo = useCallback(
+    (productPartNo: string) => {
+      const portName = getPortDisplayName(portOfDischarge)
 
-  //   const portName = getPortDisplayName(portOfDischarge)
+      return `紙箱：
 
-  //   return `紙箱：\n\nPO ${poNumber}\n${portName}\nC/NO.\nMADE IN TAIWAN\nR.O.C.`
-  // }, [isCartonMarkDisabled, poNumber, portOfDischarge, getPortDisplayName])
+PO ${poNumber}
+${portName}
+C/NO.
+MADE IN TAIWAN
+R.O.C.`
+    },
+    [poNumber, portOfDischarge, getPortDisplayName],
+  )
+
+  // 生成棧板嘜頭資訊
+  const generatePalletMarkInfo = useCallback(
+    (productPartNo: string) => {
+      const portName = getPortDisplayName(portOfDischarge)
+
+      return `棧板：
+
+PO ${poNumber}
+${portName}
+P/NO.
+MADE IN TAIWAN
+R.O.C.`
+    },
+    [poNumber, portOfDischarge, getPortDisplayName],
+  )
+
+  // 生成進展標籤資訊
+  const generateJinzhanLabelInfo = useCallback(
+    (productPartNo: string) => {
+      const selectedCustomer = customers.find((c) => c.customer_id === selectedCustomerId)
+      const customerName = selectedCustomer?.customer_short_name || selectedCustomer?.customer_full_name || ""
+
+      return `進展標籤：
+
+${customerName}
+${productPartNo}
+PO ${poNumber}`
+    },
+    [customers, selectedCustomerId, poNumber],
+  )
 
   // Update the confirmProcurementSettings function to generate carton mark info
   const confirmProcurementSettings = useCallback(() => {
     const newSettingsState = !isProcurementSettingsConfirmed
     setIsProcurementSettingsConfirmed(newSettingsState)
 
-    // 移除自動生成嘜頭的邏輯
-    // if (newSettingsState) {
-    //   setCartonMarkInfo(generateCartonMarkInfo())
-    // }
-  }, [isProcurementSettingsConfirmed])
+    // 當確認採購設定時，自動生成所有產品的嘜頭資訊
+    if (newSettingsState && orderItems.length > 0) {
+      const newProcurementInfo: Record<string, any> = {}
+
+      orderItems.forEach((item) => {
+        const cartonInfo = generateCartonMarkInfo(item.productPartNo)
+        const palletInfo = generatePalletMarkInfo(item.productPartNo)
+        const jinzhanInfo = generateJinzhanLabelInfo(item.productPartNo)
+
+        newProcurementInfo[item.productPartNo] = {
+          productPartNo: item.productPartNo,
+          procurementRemarks: productProcurementInfo[item.productPartNo]?.procurementRemarks || "",
+          cartonMarkInfo: cartonInfo,
+          palletMarkInfo: palletInfo,
+          jinzhanLabelInfo: jinzhanInfo,
+        }
+      })
+
+      setProductProcurementInfo(newProcurementInfo)
+      console.log("已自動生成所有產品的嘜頭資訊:", newProcurementInfo)
+    }
+  }, [
+    isProcurementSettingsConfirmed,
+    orderItems,
+    generateCartonMarkInfo,
+    generatePalletMarkInfo,
+    generateJinzhanLabelInfo,
+    productProcurementInfo,
+  ])
 
   const getOrderData = useCallback(
     async (skipValidation = false) => {
@@ -1056,5 +1118,10 @@ ${deliveryLines.join("\n")}
 
     // 新增的方法
     createInitialOrder,
+
+    // 新增的嘜頭生成函數
+    generateCartonMarkInfo,
+    generatePalletMarkInfo,
+    generateJinzhanLabelInfo,
   }
 }
