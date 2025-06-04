@@ -1,49 +1,81 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
+import { useEffect, useState } from "react"
 
-const data = [
-  {
-    name: "1月",
-    訂單: 12,
-    出貨: 10,
-  },
-  {
-    name: "2月",
-    訂單: 18,
-    出貨: 15,
-  },
-  {
-    name: "3月",
-    訂單: 15,
-    出貨: 14,
-  },
-  {
-    name: "4月",
-    訂單: 22,
-    出貨: 18,
-  },
-  {
-    name: "5月",
-    訂單: 28,
-    出貨: 25,
-  },
-  {
-    name: "6月",
-    訂單: 24,
-    出貨: 22,
-  },
-]
+interface ChartData {
+  name: string
+  訂單數量: number
+  出貨數量: number
+  訂單金額: number
+}
 
 export function Overview() {
+  const [data, setData] = useState<ChartData[]>([])
+
+  useEffect(() => {
+    // 這裡應該從API獲取真實數據
+    const fetchData = async () => {
+      const mockData = [
+        {
+          name: "7月",
+          訂單數量: 18,
+          出貨數量: 15,
+          訂單金額: 450000,
+        },
+        {
+          name: "8月",
+          訂單數量: 22,
+          出貨數量: 19,
+          訂單金額: 520000,
+        },
+        {
+          name: "9月",
+          訂單數量: 25,
+          出貨數量: 23,
+          訂單金額: 680000,
+        },
+        {
+          name: "10月",
+          訂單數量: 19,
+          出貨數量: 21,
+          訂單金額: 590000,
+        },
+        {
+          name: "11月",
+          訂單數量: 28,
+          出貨數量: 25,
+          訂單金額: 750000,
+        },
+        {
+          name: "12月",
+          訂單數量: 24,
+          出貨數量: 22,
+          訂單金額: 640000,
+        },
+      ]
+      setData(mockData)
+    }
+
+    fetchData()
+  }, [])
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
         <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-        <Tooltip />
-        <Bar dataKey="訂單" fill="#adfa1d" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="出貨" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+        <Tooltip
+          formatter={(value, name) => {
+            if (name === "訂單金額") {
+              return [`$${Number(value).toLocaleString()}`, name]
+            }
+            return [value, name]
+          }}
+        />
+        <Legend />
+        <Bar dataKey="訂單數量" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+        <Bar dataKey="出貨數量" fill="#10b981" radius={[2, 2, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
