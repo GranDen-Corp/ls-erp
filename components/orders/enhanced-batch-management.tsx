@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { CustomDatePicker } from "@/components/ui/custom-date-picker"
 import { Plus, Trash2, Package, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { DatePicker } from "@/components/ui/date-picker"
 
 interface ShipmentBatch {
   id: string
@@ -360,9 +360,11 @@ export function EnhancedBatchManagement({
                           />
                         </TableCell>
                         <TableCell>
-                          <CustomDatePicker
+                          <DatePicker
                             date={batch.plannedShipDate}
-                            setDate={(date) => updateBatch(batch.id, "plannedShipDate", date)}
+                            onDateChange={(date) => updateBatch(batch.id, "plannedShipDate", date)}
+                            placeholder="選擇出貨日期"
+                            disabled={false}
                           />
                         </TableCell>
                         <TableCell>

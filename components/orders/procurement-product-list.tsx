@@ -5,14 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { CalendarIcon, Truck, Package, DollarSign } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { Truck, Package, DollarSign } from "lucide-react"
+import { DatePicker } from "@/components/ui/date-picker"
 import { supabaseClient } from "@/lib/supabase-client"
 
 interface OrderItem {
@@ -170,7 +166,7 @@ export function ProcurementProductList({
             const partNo = subPart.productId || subPart.part_no || subPart.productPartNo
             if (!partNo) continue
 
-            const { factoryId: factoryId, factoryName: factoryName } = await findFactoryForProduct(orderItem.product.customer_id, partNo)
+            const { factoryId, factoryName } = await findFactoryForProduct(orderItem.product.customer_id, partNo)
 
             procurementItems.push({
               productPartNo: partNo,
@@ -188,7 +184,7 @@ export function ProcurementProductList({
           }
         } else {
           // 處理一般產品
-          const { factoryId: factoryId, factoryName: factoryName } = await findFactoryForProduct(
+          const { factoryId, factoryName } = await findFactoryForProduct(
             orderItem.product?.customer_id || "",
             orderItem.productPartNo,
           )
@@ -387,35 +383,14 @@ export function ProcurementProductList({
                       {totalPrice.toFixed(2)} {item.currency}
                     </TableCell>
                     <TableCell>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !item.expectedDeliveryDate && "text-muted-foreground",
-                            )}
-                            disabled={disabled}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {item.expectedDeliveryDate ? (
-                              format(item.expectedDeliveryDate, "yyyy-MM-dd")
-                            ) : (
-                              <span>選擇日期</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={item.expectedDeliveryDate || undefined}
-                            onSelect={(date) =>
-                              updateProcurementItem(item.productPartNo, "expectedDeliveryDate", date || null)
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <DatePicker
+                        date={item.expectedDeliveryDate}
+                        onDateChange={(date) =>
+                          updateProcurementItem(item.productPartNo, "expectedDeliveryDate", date || null)
+                        }
+                        placeholder="選擇交期"
+                        disabled={disabled}
+                      />
                     </TableCell>
                     <TableCell>
                       <Textarea
