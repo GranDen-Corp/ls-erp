@@ -1,11 +1,12 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Package, Tag, Box, Truck, ClipboardList, FileText } from "lucide-react"
+import { supabaseClient } from "@/lib/supabase-client"
 
 interface OrderItem {
   id: string
@@ -47,6 +48,32 @@ export function ProductProcurementInfo({
   isProcurementSettingsConfirmed,
   disabled = false,
 }: ProductProcurementInfoProps) {
+  const [factories, setFactories] = useState<Record<string, any>>({})
+
+  // 獲取工廠資料
+  useEffect(() => {
+    const fetchFactories = async () => {
+      try {
+        const { data, error } = await supabaseClient.from("factories").select("factory_id, factory_name, location")
+
+        if (error) {
+          console.error("獲取工廠資料時出錯:", error)
+          return
+        }
+
+        const factoryMap = {}
+        data.forEach((factory) => {
+          factoryMap[factory.factory_id] = factory
+        })
+        setFactories(factoryMap)
+      } catch (error) {
+        console.error("獲取工廠資料時出錯:", error)
+      }
+    }
+
+    fetchFactories()
+  }, [])
+
   // 更新特定產品的採購資訊
   const updateProductProcurementInfo = (
     productPartNo: string,
@@ -102,6 +129,18 @@ export function ProductProcurementInfo({
     return null
   }
 
+  const getCartonMarkPlaceholder = (item: OrderItem) => {
+    const factory = item.product?.factory_id ? factories[item.product.factory_id] : null
+    const location = factory?.location || "TAIWAN"
+    return `紙箱嘜頭資訊...\n\nMADE IN ${location}\n\n${item.productPartNo}\nQTY: ${item.quantity} ${item.unit}`
+  }
+
+  const getPalletMarkPlaceholder = (item: OrderItem) => {
+    const factory = item.product?.factory_id ? factories[item.product.factory_id] : null
+    const location = factory?.location || "TAIWAN"
+    return `棧板嘜頭資訊...\n\nMADE IN ${location}\n\n${item.productPartNo}\nQTY: ${item.quantity} ${item.unit}`
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -112,8 +151,8 @@ export function ProductProcurementInfo({
         <CardDescription>每個產品的個別採購備註、採購單資訊、包裝標籤等資訊</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="w-full overflow-x-auto">
-          <div className="min-w-[1400px]">
+        <div className="w-full">
+          <div className="min-w-[1400px] overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -209,7 +248,7 @@ export function ProductProcurementInfo({
                           onChange={(e) =>
                             updateProductProcurementInfo(item.productPartNo, "cartonMarkInfo", e.target.value)
                           }
-                          placeholder="紙箱嘜頭資訊..."
+                          placeholder={getCartonMarkPlaceholder(item)}
                           rows={10}
                           className="min-h-[250px] text-sm w-[30ch] resize-none"
                           disabled={disabled}
@@ -221,7 +260,7 @@ export function ProductProcurementInfo({
                           onChange={(e) =>
                             updateProductProcurementInfo(item.productPartNo, "palletMarkInfo", e.target.value)
                           }
-                          placeholder="棧板嘜頭資訊..."
+                          placeholder={getPalletMarkPlaceholder(item)}
                           rows={10}
                           className="min-h-[250px] text-sm w-[30ch] resize-none"
                           disabled={disabled}

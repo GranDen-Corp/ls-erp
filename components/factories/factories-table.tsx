@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { supabaseClient } from "@/lib/supabase-client"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TeamMemberDetailDialog } from "@/components/ui/team-member-detail-dialog"
 
 // 供應商資料類型 - 對應 factories 表
 interface Factory {
@@ -76,6 +77,11 @@ export function FactoriesTable() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null)
   const { toast } = useToast()
+  const [memberDetailDialog, setMemberDetailDialog] = useState({
+    open: false,
+    employeeId: null as string | null,
+    title: "",
+  })
 
   // 從Supabase獲取供應商資料和團隊成員資料
   const fetchData = async () => {
@@ -259,16 +265,16 @@ export function FactoriesTable() {
     )
   }
 
-  // 渲染品管聯絡人（顯示姓名）
+  // 渲染品管聯絡人（顯示姓名，可點擊）
   const renderQualityContacts = (factory: Factory) => {
     const contacts = []
     if (factory.quality_contact1) {
       const name = getEmployeeName(factory.quality_contact1)
-      contacts.push(name)
+      contacts.push({ id: factory.quality_contact1, name })
     }
     if (factory.quality_contact2) {
       const name = getEmployeeName(factory.quality_contact2)
-      contacts.push(name)
+      contacts.push({ id: factory.quality_contact2, name })
     }
 
     return (
@@ -276,9 +282,19 @@ export function FactoriesTable() {
         {contacts.length > 0 ? (
           <div className="space-y-1">
             {contacts.map((contact, index) => (
-              <div key={index} className="text-gray-700">
-                {contact}
-              </div>
+              <button
+                key={index}
+                onClick={() =>
+                  setMemberDetailDialog({
+                    open: true,
+                    employeeId: contact.id,
+                    title: "負責品管詳情",
+                  })
+                }
+                className="block text-blue-600 hover:underline cursor-pointer text-left"
+              >
+                {contact.name}
+              </button>
             ))}
           </div>
         ) : (
@@ -583,6 +599,14 @@ export function FactoriesTable() {
           <p className="text-gray-500">目前沒有供應商資料</p>
         </div>
       )}
+
+      {/* 團隊成員詳情對話框 */}
+      <TeamMemberDetailDialog
+        open={memberDetailDialog.open}
+        onOpenChange={(open) => setMemberDetailDialog((prev) => ({ ...prev, open }))}
+        employeeId={memberDetailDialog.employeeId}
+        title={memberDetailDialog.title}
+      />
     </div>
   )
 }

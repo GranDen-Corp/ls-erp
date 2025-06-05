@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { supabaseClient } from "@/lib/supabase-client"
+import { TeamMemberDetailDialog } from "@/components/ui/team-member-detail-dialog"
 
 // 客戶資料類型 - 使用Supabase的資料結構
 interface Customer {
@@ -68,6 +69,11 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
   const [teamMembers, setTeamMembers] = useState<Record<string, string>>({})
   const [paymentTerms, setPaymentTerms] = useState<Record<string, string>>({})
   const [loadingTeamMembers, setLoadingTeamMembers] = useState(true)
+  const [memberDetailDialog, setMemberDetailDialog] = useState({
+    open: false,
+    employeeId: null as string | null,
+    title: "",
+  })
 
   // 獲取團隊成員資料和付款條件
   useEffect(() => {
@@ -157,32 +163,52 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
     </Button>
   )
 
-  // 獲取業務負責人
+  // 獲取業務負責人（可點擊）
   const getSalesRepresentative = (customer: Customer) => {
     const employeeId = customer.sales_representative
-    if (!employeeId) return "-"
+    if (!employeeId) return <span className="text-muted-foreground">-</span>
 
-    // 從團隊成員中查找名稱
     const memberName = teamMembers[employeeId]
-    if (memberName) {
-      return `${memberName} (${employeeId})`
-    }
+    const displayText = memberName ? `${memberName} (${employeeId})` : employeeId
 
-    return employeeId
+    return (
+      <button
+        onClick={() =>
+          setMemberDetailDialog({
+            open: true,
+            employeeId,
+            title: "負責業務詳情",
+          })
+        }
+        className="text-blue-600 hover:underline cursor-pointer text-left"
+      >
+        {displayText}
+      </button>
+    )
   }
 
-  // 獲取船務負責人
+  // 獲取船務負責人（可點擊）
   const getLogisticsCoordinator = (customer: Customer) => {
     const employeeId = customer.logistics_coordinator
-    if (!employeeId) return "-"
+    if (!employeeId) return <span className="text-muted-foreground">-</span>
 
-    // 從團隊成員中查找名稱
     const memberName = teamMembers[employeeId]
-    if (memberName) {
-      return `${memberName} (${employeeId})`
-    }
+    const displayText = memberName ? `${memberName} (${employeeId})` : employeeId
 
-    return employeeId
+    return (
+      <button
+        onClick={() =>
+          setMemberDetailDialog({
+            open: true,
+            employeeId,
+            title: "負責船務詳情",
+          })
+        }
+        className="text-blue-600 hover:underline cursor-pointer text-left"
+      >
+        {displayText}
+      </button>
+    )
   }
 
   // 獲取聯絡人Email
@@ -314,6 +340,13 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
           </TableBody>
         </Table>
       </div>
+      {/* 團隊成員詳情對話框 */}
+      <TeamMemberDetailDialog
+        open={memberDetailDialog.open}
+        onOpenChange={(open) => setMemberDetailDialog((prev) => ({ ...prev, open }))}
+        employeeId={memberDetailDialog.employeeId}
+        title={memberDetailDialog.title}
+      />
     </div>
   )
 }

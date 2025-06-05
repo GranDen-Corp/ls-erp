@@ -16,6 +16,7 @@ import {
 } from "@/app/settings/team-matrix-actions"
 import type { Department, TeamMemberWithRelations } from "@/types/team-matrix"
 import { useToast } from "@/hooks/use-toast"
+import { supabaseClient } from "@/lib/supabase-client"
 
 export function TeamMatrixManager() {
   const [departments, setDepartments] = useState<Department[]>([])
@@ -31,6 +32,7 @@ export function TeamMatrixManager() {
   const [expandedCustomers, setExpandedCustomers] = useState<Set<number>>(new Set())
   const [expandedFactories, setExpandedFactories] = useState<Set<number>>(new Set())
   const { toast } = useToast()
+  const [factories, setFactories] = useState<any[]>([])
 
   useEffect(() => {
     loadDepartments()
@@ -60,13 +62,20 @@ export function TeamMatrixManager() {
   const loadMembers = async () => {
     try {
       setMembersLoading(true)
-      let data: TeamMemberWithRelations[]
-      if (selectedDepartment === "all") {
-        data = await getAllTeamMembers()
+
+      // 並行獲取團隊成員和工廠資料
+      const [membersResult, factoriesResult] = await Promise.all([
+        selectedDepartment === "all" ? getAllTeamMembers() : getTeamMembersByDepartment(selectedDepartment),
+        supabaseClient.from("factories").select("factory_id, factory_name, quality_contact1, quality_contact2"),
+      ])
+
+      setTeamMembers(membersResult)
+
+      if (factoriesResult.error) {
+        console.error("獲取工廠資料時出錯:", factoriesResult.error)
       } else {
-        data = await getTeamMembersByDepartment(selectedDepartment)
+        setFactories(factoriesResult.data || [])
       }
-      setTeamMembers(data)
     } catch (error) {
       toast({
         title: "錯誤",
@@ -212,6 +221,7 @@ export function TeamMatrixManager() {
               shouldShowCustomers={shouldShowCustomers}
               shouldShowFactories={shouldShowFactories}
               disabled={membersLoading}
+              factories={factories}
             />
           )}
         </TabsContent>
@@ -246,6 +256,7 @@ export function TeamMatrixManager() {
                 shouldShowCustomers={shouldShowCustomers}
                 shouldShowFactories={shouldShowFactories}
                 disabled={membersLoading}
+                factories={factories}
               />
             )}
           </TabsContent>
@@ -278,6 +289,7 @@ interface MemberTableProps {
   shouldShowCustomers: (role: string) => boolean
   shouldShowFactories: (role: string) => boolean
   disabled?: boolean
+  factories: any[]
 }
 
 function MemberTable({
@@ -292,6 +304,7 @@ function MemberTable({
   shouldShowCustomers,
   shouldShowFactories,
   disabled = false,
+  factories = [],
 }: MemberTableProps) {
   const getFactoryDisplayName = (factory: any) => {
     return (
@@ -333,13 +346,31 @@ function MemberTable({
               ...member.shipping_customers.map((c) => ({ ...c, type: "shipping" as const })),
             ]
 
-            const allFactories =
-              member.role === "qc"
-                ? [
-                    ...member.assigned_factories_data,
-                    ...member.qc_factories.map((f) => ({ ...f, type: "qc" as const })),
-                  ]
-                : []
+            // 修改工廠邏輯 - 根據 ls_employee_id 查找負責的工廠
+            const responsibleFactories = factories
+              .filter(
+                (factory) =>
+                  factory.quality_contact1 === member.ls_employee_id ||
+                  factory.quality_contact2 === member.ls_employee_id,
+              )
+              .map((factory) => ({
+                ...factory,
+                type: "qc" as const,
+                factory_name: factory.factory_name || factory.factory_id,
+              }))
+
+            // 合併原有的分配工廠和負責工廠
+            const allFactories = [
+              ...member.assigned_factories_data,
+              ...member.qc_factories.map((f) => ({ ...f, type: "qc" as const })),
+              ...responsibleFactories,
+            ]
+
+            // 去重（基於 factory_id）
+            const uniqueFactories = allFactories.filter(
+              (factory, index, self) =>
+                index === self.findIndex((f) => (f.factory_id || f.id) === (factory.factory_id || factory.id)),
+            )
 
             return (
               <tr key={member.id} className="border-t">
@@ -421,10 +452,10 @@ function MemberTable({
                 <td className="p-3">
                   {shouldShowFactories(member.role) ? (
                     <div className="space-y-1">
-                      {allFactories.length > 0 ? (
+                      {uniqueFactories.length > 0 ? (
                         <>
                           <div className="flex flex-wrap gap-1">
-                            {(expandedFactories.has(member.id) ? allFactories : allFactories.slice(0, 2)).map(
+                            {(expandedFactories.has(member.id) ? uniqueFactories : uniqueFactories.slice(0, 2)).map(
                               (factory, index) => (
                                 <Badge
                                   key={`${getFactoryId(factory)}-${index}`}
@@ -437,7 +468,7 @@ function MemberTable({
                               ),
                             )}
                           </div>
-                          {allFactories.length > 2 && (
+                          {uniqueFactories.length > 2 && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -452,7 +483,7 @@ function MemberTable({
                                 </>
                               ) : (
                                 <>
-                                  <ChevronRight className="h-3 w-3 mr-1" />+{allFactories.length - 2} 更多
+                                  <ChevronRight className="h-3 w-3 mr-1" />+{uniqueFactories.length - 2} 更多
                                 </>
                               )}
                             </Button>
