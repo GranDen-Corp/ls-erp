@@ -273,149 +273,155 @@ export function ProcurementProductList({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">產品編號</TableHead>
-                <TableHead>產品名稱</TableHead>
-                <TableHead className="text-center w-[80px]">數量</TableHead>
-                <TableHead className="text-center w-[80px]">單位</TableHead>
-                <TableHead className="w-[200px]">供應商</TableHead>
-                <TableHead className="text-right w-[120px]">採購單價</TableHead>
-                <TableHead className="text-right w-[120px]">採購金額</TableHead>
-                <TableHead className="w-[150px]">預計交期</TableHead>
-                <TableHead className="w-[200px]">備註</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {procurementData.map((item, index) => {
-                const actualQuantity = item.quantity * getUnitMultiplier(item.unit)
-                const totalPrice = actualQuantity * item.unitPrice
+        <div className="overflow-x-auto overflow-y-visible">
+          <div className="min-w-[1400px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[140px]">產品編號</TableHead>
+                  <TableHead className="min-w-[180px]">產品名稱</TableHead>
+                  <TableHead className="text-center w-[100px]">數量</TableHead>
+                  <TableHead className="text-center w-[80px]">單位</TableHead>
+                  <TableHead className="w-[220px]">供應商</TableHead>
+                  <TableHead className="text-right w-[140px]">採購單價</TableHead>
+                  <TableHead className="text-right w-[140px]">採購金額</TableHead>
+                  <TableHead className="w-[160px]">預計交期</TableHead>
+                  <TableHead className="w-[240px]">備註</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {procurementData.map((item, index) => {
+                  const actualQuantity = item.quantity * getUnitMultiplier(item.unit)
+                  const totalPrice = actualQuantity * item.unitPrice
 
-                return (
-                  <TableRow key={`${item.productPartNo}-${index}`}>
-                    <TableCell className="font-medium">
-                      {item.productPartNo}
-                      {item.isAssembly && <Badge className="ml-2 bg-purple-500 text-white text-xs">組件</Badge>}
-                    </TableCell>
-                    <TableCell>{item.productName}</TableCell>
-                    <TableCell className="text-center">
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateProcurementItem(item.productPartNo, "quantity", Number.parseFloat(e.target.value) || 0)
-                        }
-                        className="w-20 text-center"
-                        min="0"
-                        step="1000"
-                        disabled={disabled}
-                      />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Select
-                        value={item.unit}
-                        onValueChange={(value) => updateProcurementItem(item.productPartNo, "unit", value)}
-                        disabled={disabled}
-                      >
-                        <SelectTrigger className="w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productUnits.map((unit) => (
-                            <SelectItem key={unit.id} value={unit.code}>
-                              {unit.code}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={item.factoryId}
-                        onValueChange={(value) => handleFactoryChange(item.productPartNo, value)}
-                        disabled={disabled}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingFactories ? "載入中..." : "選擇供應商"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {loadingFactories ? (
-                            <SelectItem value="loading" disabled>
-                              載入中...
-                            </SelectItem>
-                          ) : factories.length > 0 ? (
-                            factories.map((factory) => (
-                              <SelectItem key={factory.factory_id} value={factory.factory_id}>
-                                {factory.factory_name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-factories" disabled>
-                              無可用供應商
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center gap-1">
+                  return (
+                    <TableRow key={`${item.productPartNo}-${index}`}>
+                      <TableCell className="font-medium">
+                        {item.productPartNo}
+                        {item.isAssembly && <Badge className="ml-2 bg-purple-500 text-white text-xs">組件</Badge>}
+                      </TableCell>
+                      <TableCell>{item.productName}</TableCell>
+                      <TableCell className="text-center">
                         <Input
                           type="number"
-                          value={item.unitPrice}
+                          value={item.quantity}
                           onChange={(e) =>
                             updateProcurementItem(
                               item.productPartNo,
-                              "unitPrice",
+                              "quantity",
                               Number.parseFloat(e.target.value) || 0,
                             )
                           }
-                          className="w-24 text-right"
+                          className="w-20 text-center"
                           min="0"
-                          step="0.01"
+                          step="1000"
                           disabled={disabled}
                         />
-                        <span className="text-sm text-muted-foreground">{item.currency}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {totalPrice.toFixed(2)} {item.currency}
-                    </TableCell>
-                    <TableCell>
-                      <DatePicker
-                        date={item.expectedDeliveryDate}
-                        onDateChange={(date) =>
-                          updateProcurementItem(item.productPartNo, "expectedDeliveryDate", date || null)
-                        }
-                        placeholder="選擇交期"
-                        disabled={disabled}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Textarea
-                        value={item.notes}
-                        onChange={(e) => updateProcurementItem(item.productPartNo, "notes", e.target.value)}
-                        placeholder="採購備註..."
-                        rows={2}
-                        className="min-w-[180px]"
-                        disabled={disabled}
-                      />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-              <TableRow>
-                <TableCell colSpan={6} className="text-right font-bold">
-                  採購總金額:
-                </TableCell>
-                <TableCell className="text-right font-bold">
-                  {calculateProcurementTotal().toFixed(2)} {customerCurrency}
-                </TableCell>
-                <TableCell colSpan={2}></TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Select
+                          value={item.unit}
+                          onValueChange={(value) => updateProcurementItem(item.productPartNo, "unit", value)}
+                          disabled={disabled}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {productUnits.map((unit) => (
+                              <SelectItem key={unit.id} value={unit.code}>
+                                {unit.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={item.factoryId}
+                          onValueChange={(value) => handleFactoryChange(item.productPartNo, value)}
+                          disabled={disabled}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={loadingFactories ? "載入中..." : "選擇供應商"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {loadingFactories ? (
+                              <SelectItem value="loading" disabled>
+                                載入中...
+                              </SelectItem>
+                            ) : factories.length > 0 ? (
+                              factories.map((factory) => (
+                                <SelectItem key={factory.factory_id} value={factory.factory_id}>
+                                  {factory.factory_name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-factories" disabled>
+                                無可用供應商
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            value={item.unitPrice}
+                            onChange={(e) =>
+                              updateProcurementItem(
+                                item.productPartNo,
+                                "unitPrice",
+                                Number.parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            className="w-24 text-right"
+                            min="0"
+                            step="0.01"
+                            disabled={disabled}
+                          />
+                          <span className="text-sm text-muted-foreground">{item.currency}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {totalPrice.toFixed(2)} {item.currency}
+                      </TableCell>
+                      <TableCell>
+                        <DatePicker
+                          date={item.expectedDeliveryDate}
+                          onDateChange={(date) =>
+                            updateProcurementItem(item.productPartNo, "expectedDeliveryDate", date || null)
+                          }
+                          placeholder="選擇交期"
+                          disabled={disabled}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Textarea
+                          value={item.notes}
+                          onChange={(e) => updateProcurementItem(item.productPartNo, "notes", e.target.value)}
+                          placeholder="採購備註..."
+                          rows={2}
+                          className="min-w-[180px]"
+                          disabled={disabled}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+                <TableRow>
+                  <TableCell colSpan={6} className="text-right font-bold">
+                    採購總金額:
+                  </TableCell>
+                  <TableCell className="text-right font-bold">
+                    {calculateProcurementTotal().toFixed(2)} {customerCurrency}
+                  </TableCell>
+                  <TableCell colSpan={2}></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </CardContent>
     </Card>
