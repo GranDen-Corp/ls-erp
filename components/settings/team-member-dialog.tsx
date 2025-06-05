@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
+import { createTeamMember, updateTeamMember } from "@/app/settings/team-matrix-actions"
 
 interface TeamMemberDialogProps {
   open: boolean
@@ -24,6 +25,8 @@ export function TeamMemberDialog({ open, onClose, member, department }: TeamMemb
     name: "",
     role: "",
     department: "",
+    email: "",
+    phone_no: "",
     is_active: true,
   })
   const [loading, setLoading] = useState(false)
@@ -36,6 +39,8 @@ export function TeamMemberDialog({ open, onClose, member, department }: TeamMemb
         name: member.name || "",
         role: member.role || "",
         department: member.department || "",
+        email: member.email || "",
+        phone_no: member.phone_no || "",
         is_active: member.is_active ?? true,
       })
     } else {
@@ -44,6 +49,8 @@ export function TeamMemberDialog({ open, onClose, member, department }: TeamMemb
         name: "",
         role: department?.department_code?.toLowerCase() || "",
         department: department?.department_name || "",
+        email: "",
+        phone_no: "",
         is_active: true,
       })
     }
@@ -54,12 +61,21 @@ export function TeamMemberDialog({ open, onClose, member, department }: TeamMemb
     setLoading(true)
 
     try {
-      // Mock submission - replace with actual API call when available
-      toast({
-        title: "成功",
-        description: member ? "團隊成員已更新" : "團隊成員已新增",
-      })
-      onClose()
+      const result = member ? await updateTeamMember(member.id, formData) : await createTeamMember(formData)
+
+      if (result.success) {
+        toast({
+          title: "成功",
+          description: member ? "團隊成員已更新" : "團隊成員已新增",
+        })
+        onClose()
+      } else {
+        toast({
+          title: "錯誤",
+          description: result.error || "操作失敗",
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       toast({
         title: "錯誤",
@@ -122,6 +138,27 @@ export function TeamMemberDialog({ open, onClose, member, department }: TeamMemb
               value={formData.department}
               onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">電子郵件</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="輸入電子郵件地址"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone_no">電話號碼</Label>
+            <Input
+              id="phone_no"
+              value={formData.phone_no}
+              onChange={(e) => setFormData({ ...formData, phone_no: e.target.value })}
+              placeholder="輸入電話號碼"
             />
           </div>
 

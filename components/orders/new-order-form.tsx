@@ -21,7 +21,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProcurementDataEditor } from "@/components/orders/procurement-data-editor"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
-import { OrderProductTableEditor } from "@/components/orders/order-product-table-editor"
 import { useOrderForm } from "@/hooks/use-order-form"
 import CustomerSelection from "./customer-selection"
 import { ProductSelection } from "./product-selection"
@@ -31,6 +30,7 @@ import { BatchManagement } from "./batch-management"
 import { OrderInfo } from "./order-info"
 import { EnhancedBatchManagement } from "./enhanced-batch-management"
 import { ProcurementProductList } from "./procurement-product-list"
+import { ProductProcurementInfo } from "./product-procurement-info"
 
 interface NewOrderFormProps {
   onSubmit: (createPurchaseOrder?: boolean) => void
@@ -46,7 +46,7 @@ const MemoizedEnhancedProductList = memo(EnhancedProductList)
 const MemoizedProductList = memo(ProductList)
 const MemoizedOrderInfo = memo(OrderInfo)
 const MemoizedBatchManagement = memo(BatchManagement)
-const MemoizedOrderProductTableEditor = memo(OrderProductTableEditor)
+const MemoizedProductProcurementInfo = memo(ProductProcurementInfo)
 
 const NewOrderForm = forwardRef<any, NewOrderFormProps>(
   ({ onSubmit, createdOrderId, currentStep = 0, orderData }, ref) => {
@@ -452,23 +452,25 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               </CardContent>
             </Card>
 
-            {/* 訂單產品表格編輯器 */}
-            <MemoizedOrderProductTableEditor
+            {/* 訂單資訊 - 在產品設定確認後顯示 */}
+            <MemoizedOrderInfo
+              remarks={orderForm.remarks}
+              setRemarks={orderForm.setRemarks}
               orderItems={orderForm.orderItems || []}
+              productProcurementInfo={orderForm.productProcurementInfo || {}}
+              setProductProcurementInfo={orderForm.setProductProcurementInfo}
+              isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
+              isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+              disabled={false}
               orderId={orderForm.useCustomOrderNumber ? orderForm.customOrderNumber : orderForm.orderNumber}
               customerCurrency={orderForm.customerCurrency}
-              onTableDataChange={orderForm.handleOrderTableDataChange}
-              isVisible={orderForm.isProductSettingsConfirmed}
-              isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
               getUnitDisplayName={orderForm.getUnitDisplayName}
               calculateItemTotal={orderForm.calculateItemTotal}
               orderData={preparePrintData()}
             />
 
-            {/* 訂單備註和產品採購資訊 - 在產品設定確認後顯示 */}
-            <MemoizedOrderInfo
-              remarks={orderForm.remarks}
-              setRemarks={orderForm.setRemarks}
+            {/* 產品採購資訊 - 獨立區塊，在訂單資訊後方 */}
+            <MemoizedProductProcurementInfo
               orderItems={orderForm.orderItems || []}
               productProcurementInfo={orderForm.productProcurementInfo || {}}
               setProductProcurementInfo={orderForm.setProductProcurementInfo}
@@ -642,10 +644,24 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               </CardContent>
             </Card>
 
-            {/* 在採購資料設定區域也顯示訂單備註和產品採購資訊 */}
+            {/* 在採購資料設定區域也顯示訂單資訊和產品採購資訊 */}
             <MemoizedOrderInfo
               remarks={orderForm.remarks}
               setRemarks={orderForm.setRemarks}
+              orderItems={orderForm.orderItems || []}
+              productProcurementInfo={orderForm.productProcurementInfo || {}}
+              setProductProcurementInfo={orderForm.setProductProcurementInfo}
+              isProductSettingsConfirmed={orderForm.isProductSettingsConfirmed}
+              isProcurementSettingsConfirmed={orderForm.isProcurementSettingsConfirmed}
+              disabled={false}
+              orderId={orderForm.useCustomOrderNumber ? orderForm.customOrderNumber : orderForm.orderNumber}
+              customerCurrency={orderForm.customerCurrency}
+              getUnitDisplayName={orderForm.getUnitDisplayName}
+              calculateItemTotal={orderForm.calculateItemTotal}
+              orderData={preparePrintData()}
+            />
+
+            <MemoizedProductProcurementInfo
               orderItems={orderForm.orderItems || []}
               productProcurementInfo={orderForm.productProcurementInfo || {}}
               setProductProcurementInfo={orderForm.setProductProcurementInfo}

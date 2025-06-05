@@ -42,7 +42,6 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
 
     if (membersError) {
       console.error("Error fetching team members:", membersError)
-      // Return empty array if team_members table doesn't exist
       return []
     }
 
@@ -50,7 +49,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
       return []
     }
 
-    // 獲取所有客戶 - 修改為使用 sales_representative
+    // 獲取所有客戶
     let customers: any[] = []
     try {
       const { data: customersData, error: customersErr } = await supabase
@@ -102,7 +101,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
         customers?.filter((customer) => member.assigned_customers?.includes(customer.customer_id)) || []
 
       const assignedFactoriesData =
-      factories?.filter((factory) => member.assigned_factories?.includes(factory.factory_id || factory.id)) || []
+        factories?.filter((factory) => member.assigned_factories?.includes(factory.factory_id || factory.id)) || []
 
       // 業務部門：透過 sales_representative 關聯的客戶
       const salesCustomers =
@@ -118,7 +117,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
 
       // 品管部門：透過 quality_contact1/2 關聯的工廠
       const qcFactories =
-      factories?.filter(
+        factories?.filter(
           (factory) =>
             factory.quality_contact1 === member.ls_employee_id || factory.quality_contact2 === member.ls_employee_id,
         ) || []
@@ -128,7 +127,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
         assigned_customers_data: assignedCustomersData,
         assigned_factories_data: assignedFactoriesData,
         sales_customers: salesCustomers,
-        shipping_customers: shippingCustomers, // 新增出貨客戶
+        shipping_customers: shippingCustomers,
         qc_factories: qcFactories,
       }
     })
@@ -144,9 +143,7 @@ export async function getAllTeamMembers(): Promise<TeamMemberWithRelations[]> {
 export async function getTeamMembersByDepartment(departmentCode: string): Promise<TeamMemberWithRelations[]> {
   const allMembers = await getAllTeamMembers()
 
-  // 確保正確的部門篩選邏輯
   const filteredMembers = allMembers.filter((member) => {
-    // 支援多種比較方式
     const memberRole = member.role?.toLowerCase()
     const memberDepartment = member.department?.toLowerCase()
     const targetDepartment = departmentCode.toLowerCase()
@@ -175,6 +172,8 @@ export async function createTeamMember(data: {
   name: string
   role: string
   department: string
+  email?: string
+  phone_no?: string
   assigned_customers?: string[]
   assigned_factories?: string[]
   is_active?: boolean
@@ -205,7 +204,7 @@ export async function createTeamMember(data: {
 // 更新團隊成員
 export async function updateTeamMember(
   id: number,
-  data: Partial<TeamMember>,
+  data: Partial<TeamMember & { email?: string; phone_no?: string }>,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = createServerSupabaseClient()
@@ -359,7 +358,7 @@ export async function updateTeamMemberFactories(
   }
 }
 
-// 更新客戶的業務負責人 - 修改為使用 sales_representative
+// 更新客戶的業務負責人
 export async function updateCustomerRepresentSales(
   customerId: string,
   employeeId: string | null,

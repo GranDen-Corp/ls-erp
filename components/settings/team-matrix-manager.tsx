@@ -22,7 +22,7 @@ export function TeamMatrixManager() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [teamMembers, setTeamMembers] = useState<TeamMemberWithRelations[]>([])
   const [loading, setLoading] = useState(true)
-  const [membersLoading, setMembersLoading] = useState(false) // 新增：成員載入狀態
+  const [membersLoading, setMembersLoading] = useState(false)
   const [memberDialogOpen, setMemberDialogOpen] = useState(false)
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false)
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false)
@@ -59,7 +59,7 @@ export function TeamMatrixManager() {
 
   const loadMembers = async () => {
     try {
-      setMembersLoading(true) // 開始載入
+      setMembersLoading(true)
       let data: TeamMemberWithRelations[]
       if (selectedDepartment === "all") {
         data = await getAllTeamMembers()
@@ -74,7 +74,7 @@ export function TeamMatrixManager() {
         variant: "destructive",
       })
     } finally {
-      setMembersLoading(false) // 結束載入
+      setMembersLoading(false)
     }
   }
 
@@ -112,7 +112,7 @@ export function TeamMatrixManager() {
     setAssignmentDialogOpen(false)
     setEditingMember(null)
     setSelectedMember(null)
-    loadMembers() // 重新載入成員資料以更新顯示
+    loadMembers()
   }
 
   const getCurrentDepartment = () => {
@@ -152,10 +152,8 @@ export function TeamMatrixManager() {
     return role === "admin" || role === "qc"
   }
 
-  // 處理部門切換
   const handleDepartmentChange = (value: string) => {
     setSelectedDepartment(value)
-    // 重置展開狀態
     setExpandedCustomers(new Set())
     setExpandedFactories(new Set())
   }
@@ -279,7 +277,7 @@ interface MemberTableProps {
   onToggleFactories: (memberId: number) => void
   shouldShowCustomers: (role: string) => boolean
   shouldShowFactories: (role: string) => boolean
-  disabled?: boolean // 新增：禁用狀態
+  disabled?: boolean
 }
 
 function MemberTable({
@@ -295,7 +293,6 @@ function MemberTable({
   shouldShowFactories,
   disabled = false,
 }: MemberTableProps) {
-  // Helper function to get factory display name
   const getFactoryDisplayName = (factory: any) => {
     return (
       factory.factory_name ||
@@ -307,13 +304,12 @@ function MemberTable({
     )
   }
 
-  // Helper function to get factory ID
   const getFactoryId = (factory: any) => {
     return factory.factory_id || factory.id
   }
 
   return (
-    <div className={`border rounded-lg ${disabled ? "opacity-50 pointer-events-none" : ""}`}>
+    <div className={`border rounded-lg overflow-x-auto ${disabled ? "opacity-50 pointer-events-none" : ""}`}>
       <table className="w-full">
         <thead className="bg-muted/50">
           <tr>
@@ -321,6 +317,8 @@ function MemberTable({
             <th className="text-left p-3 font-medium">姓名</th>
             <th className="text-left p-3 font-medium">角色</th>
             <th className="text-left p-3 font-medium">部門</th>
+            <th className="text-left p-3 font-medium">電子郵件</th>
+            <th className="text-left p-3 font-medium">電話號碼</th>
             <th className="text-left p-3 font-medium">負責客戶</th>
             <th className="text-left p-3 font-medium">負責工廠</th>
             <th className="text-left p-3 font-medium">狀態</th>
@@ -329,14 +327,12 @@ function MemberTable({
         </thead>
         <tbody>
           {members.map((member) => {
-            // 合併所有客戶資料（assigned_customers + sales_customers + shipping_customers）
             const allCustomers = [
               ...member.assigned_customers_data,
               ...member.sales_customers.map((c) => ({ ...c, type: "sales" as const })),
               ...member.shipping_customers.map((c) => ({ ...c, type: "shipping" as const })),
             ]
 
-            // 只有QC部門顯示工廠資料
             const allFactories =
               member.role === "qc"
                 ? [
@@ -351,6 +347,28 @@ function MemberTable({
                 <td className="p-3 font-medium">{member.name}</td>
                 <td className="p-3">{member.role}</td>
                 <td className="p-3">{member.department}</td>
+                <td className="p-3">
+                  <div className="text-sm">
+                    {member.email ? (
+                      <a href={`mailto:${member.email}`} className="text-blue-600 hover:underline">
+                        {member.email}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">未設定</span>
+                    )}
+                  </div>
+                </td>
+                <td className="p-3">
+                  <div className="text-sm">
+                    {member.phone_no ? (
+                      <a href={`tel:${member.phone_no}`} className="text-blue-600 hover:underline">
+                        {member.phone_no}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">未設定</span>
+                    )}
+                  </div>
+                </td>
                 <td className="p-3">
                   {shouldShowCustomers(member.role) ? (
                     <div className="space-y-1">
@@ -483,7 +501,7 @@ function MemberTable({
           })}
           {members.length === 0 && !disabled && (
             <tr>
-              <td colSpan={8} className="p-8 text-center text-muted-foreground">
+              <td colSpan={10} className="p-8 text-center text-muted-foreground">
                 尚無團隊成員資料
               </td>
             </tr>

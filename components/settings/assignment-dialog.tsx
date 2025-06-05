@@ -7,8 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   getCustomersForAssignment,
   getFactoriesForAssignment,
-  updateTeamMemberCustomers,
-  updateTeamMemberFactories,
   updateCustomerRepresentSales,
   updateCustomerLogisticsCoordinator,
   updateFactoryQualityContact,
@@ -35,8 +33,13 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
   const [selectedFactory, setSelectedFactory] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [factorySearchTerm, setFactorySearchTerm] = useState("")
   const [customerAssignmentType, setCustomerAssignmentType] = useState<"sales" | "logistics">("sales")
+  const [factoryAssignmentType, setFactoryAssignmentType] = useState<"quality_contact1" | "quality_contact2">(
+    "quality_contact1",
+  )
   const [openCustomerSelector, setOpenCustomerSelector] = useState(false)
+  const [openFactorySelector, setOpenFactorySelector] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -65,146 +68,6 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
     }
   }
 
-  const handleAddCustomer = async () => {
-    if (!member || !selectedCustomer) return
-
-    try {
-      const currentCustomers = member.assigned_customers || []
-      if (currentCustomers.includes(selectedCustomer)) {
-        toast({
-          title: "提示",
-          description: "此客戶已經分配給該成員",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const newCustomers = [...currentCustomers, selectedCustomer]
-      const result = await updateTeamMemberCustomers(member.id, newCustomers)
-
-      if (result.success) {
-        toast({
-          title: "成功",
-          description: "客戶分配已更新",
-        })
-        setSelectedCustomer("")
-        onClose()
-      } else {
-        toast({
-          title: "錯誤",
-          description: result.error || "更新失敗",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "錯誤",
-        description: "操作失敗",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleRemoveCustomer = async (customerId: string) => {
-    if (!member) return
-
-    try {
-      const currentCustomers = member.assigned_customers || []
-      const newCustomers = currentCustomers.filter((id) => id !== customerId)
-      const result = await updateTeamMemberCustomers(member.id, newCustomers)
-
-      if (result.success) {
-        toast({
-          title: "成功",
-          description: "客戶分配已移除",
-        })
-        onClose()
-      } else {
-        toast({
-          title: "錯誤",
-          description: result.error || "移除失敗",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "錯誤",
-        description: "操作失敗",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleAddFactory = async () => {
-    if (!member || !selectedFactory) return
-
-    try {
-      const currentFactories = member.assigned_factories || []
-      if (currentFactories.includes(selectedFactory)) {
-        toast({
-          title: "提示",
-          description: "此工廠已經分配給該成員",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const newFactories = [...currentFactories, selectedFactory]
-      const result = await updateTeamMemberFactories(member.id, newFactories)
-
-      if (result.success) {
-        toast({
-          title: "成功",
-          description: "工廠分配已更新",
-        })
-        setSelectedFactory("")
-        onClose()
-      } else {
-        toast({
-          title: "錯誤",
-          description: result.error || "更新失敗",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "錯誤",
-        description: "操作失敗",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleRemoveFactory = async (factoryId: string) => {
-    if (!member) return
-
-    try {
-      const currentFactories = member.assigned_factories || []
-      const newFactories = currentFactories.filter((id) => id !== factoryId)
-      const result = await updateTeamMemberFactories(member.id, newFactories)
-
-      if (result.success) {
-        toast({
-          title: "成功",
-          description: "工廠分配已移除",
-        })
-        onClose()
-      } else {
-        toast({
-          title: "錯誤",
-          description: result.error || "移除失敗",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "錯誤",
-        description: "操作失敗",
-        variant: "destructive",
-      })
-    }
-  }
-
   const handleSetSalesCustomer = async (customerId: string) => {
     if (!member) return
 
@@ -216,7 +79,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
           title: "成功",
           description: "業務負責人已設定",
         })
-        loadData() // 重新載入資料以更新顯示
+        loadData()
       } else {
         toast({
           title: "錯誤",
@@ -244,7 +107,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
           title: "成功",
           description: "船務負責人已設定",
         })
-        loadData() // 重新載入資料以更新顯示
+        loadData()
       } else {
         toast({
           title: "錯誤",
@@ -272,11 +135,42 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
           title: "成功",
           description: "品管負責人已設定",
         })
-        loadData() // 重新載入資料以更新顯示
+        loadData()
       } else {
         toast({
           title: "錯誤",
           description: result.error || "設定失敗",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "錯誤",
+        description: "操作失敗",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRemoveQualityContact = async (
+    factoryId: string,
+    contactType: "quality_contact1" | "quality_contact2",
+  ) => {
+    if (!member) return
+
+    try {
+      const result = await updateFactoryQualityContact(factoryId, contactType, null)
+
+      if (result.success) {
+        toast({
+          title: "成功",
+          description: "品管負責人已移除",
+        })
+        loadData()
+      } else {
+        toast({
+          title: "錯誤",
+          description: result.error || "移除失敗",
           variant: "destructive",
         })
       }
@@ -298,6 +192,16 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
     )
   })
 
+  // 過濾工廠列表
+  const filteredFactories = factories.filter((factory) => {
+    const searchLower = factorySearchTerm.toLowerCase()
+    return (
+      factory.factory_id?.toLowerCase().includes(searchLower) ||
+      factory.factory_name?.toLowerCase().includes(searchLower) ||
+      factory.factory_short_name?.toLowerCase().includes(searchLower)
+    )
+  })
+
   // 檢查客戶是否已有指定的負責人
   const hasResponsible = (customer: any, type: "sales" | "logistics") => {
     if (type === "sales") {
@@ -316,10 +220,20 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
     }
   }
 
+  // 檢查工廠是否已由當前成員負責
+  const isFactoryResponsibleBy = (factory: any, contactType: "quality_contact1" | "quality_contact2") => {
+    return factory[contactType] === member?.ls_employee_id
+  }
+
+  // 檢查工廠是否已有其他負責人
+  const hasFactoryResponsible = (factory: any, contactType: "quality_contact1" | "quality_contact2") => {
+    return factory[contactType] && factory[contactType] !== member?.ls_employee_id
+  }
+
   if (!member) return null
 
   const shouldShowCustomers = member.role === "admin" || member.role === "sales" || member.role === "shipping"
-  const shouldShowFactories = member.role === "admin" || member.role === "shipping" || member.role === "qc"
+  const shouldShowFactories = member.role === "admin" || member.role === "qc"
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -473,7 +387,7 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
                                           <span>業務負責人</span>
                                           <X
                                             className="h-3 w-3 cursor-pointer"
-                                            onClick={() => handleSetSalesCustomer(customer.customer_id)}
+                                            onClick={() => updateCustomerRepresentSales(customer.customer_id, null)}
                                           />
                                         </Badge>
                                       ) : (
@@ -497,7 +411,9 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
                                           <span>船務負責人</span>
                                           <X
                                             className="h-3 w-3 cursor-pointer"
-                                            onClick={() => handleSetLogisticsCustomer(customer.customer_id)}
+                                            onClick={() =>
+                                              updateCustomerLogisticsCoordinator(customer.customer_id, null)
+                                            }
                                           />
                                         </Badge>
                                       ) : (
@@ -530,7 +446,187 @@ export function AssignmentDialog({ open, onClose, member }: AssignmentDialogProp
             <TabsContent value="factories" className="space-y-4">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">工廠分配</h3>
-                <p className="text-muted-foreground">工廠分配功能正在開發中...</p>
+
+                {/* 工廠分配類型選擇 */}
+                <div className="flex space-x-2 mb-4">
+                  <Button
+                    variant={factoryAssignmentType === "quality_contact1" ? "default" : "outline"}
+                    onClick={() => setFactoryAssignmentType("quality_contact1")}
+                  >
+                    品管聯絡人1
+                  </Button>
+                  <Button
+                    variant={factoryAssignmentType === "quality_contact2" ? "default" : "outline"}
+                    onClick={() => setFactoryAssignmentType("quality_contact2")}
+                  >
+                    品管聯絡人2
+                  </Button>
+                </div>
+
+                {/* 工廠選擇器 */}
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Popover open={openFactorySelector} onOpenChange={setOpenFactorySelector}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openFactorySelector}
+                          className="w-full justify-between"
+                        >
+                          {selectedFactory
+                            ? factories.find((factory) => factory.factory_id === selectedFactory)?.factory_name
+                            : "選擇工廠..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput placeholder="搜尋工廠..." />
+                          <CommandList>
+                            <CommandEmpty>找不到工廠</CommandEmpty>
+                            <CommandGroup>
+                              <ScrollArea className="h-[300px]">
+                                {filteredFactories.map((factory) => (
+                                  <CommandItem
+                                    key={factory.factory_id}
+                                    value={factory.factory_id}
+                                    onSelect={() => {
+                                      setSelectedFactory(
+                                        factory.factory_id === selectedFactory ? "" : factory.factory_id,
+                                      )
+                                      setOpenFactorySelector(false)
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedFactory === factory.factory_id ? "opacity-100" : "opacity-0",
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{factory.factory_name}</span>
+                                      <span className="text-xs text-muted-foreground">{factory.factory_id}</span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </ScrollArea>
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Button
+                      onClick={() => {
+                        handleSetQualityContact(selectedFactory, factoryAssignmentType)
+                        setSelectedFactory("")
+                      }}
+                      disabled={!selectedFactory}
+                    >
+                      設定為{factoryAssignmentType === "quality_contact1" ? "品管聯絡人1" : "品管聯絡人2"}
+                    </Button>
+                  </div>
+
+                  {/* 工廠列表 */}
+                  <div className="border rounded-md">
+                    <div className="p-2 bg-muted/50 border-b flex justify-between items-center">
+                      <h4 className="font-medium">工廠列表</h4>
+                      <div className="flex items-center space-x-2">
+                        <Search className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="搜尋工廠..."
+                          value={factorySearchTerm}
+                          onChange={(e) => setFactorySearchTerm(e.target.value)}
+                          className="h-8 w-[200px]"
+                        />
+                      </div>
+                    </div>
+                    <ScrollArea className="h-[300px]">
+                      <div className="p-2 space-y-2">
+                        {filteredFactories.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground">沒有找到符合條件的工廠</div>
+                        ) : (
+                          filteredFactories.map((factory) => {
+                            const isContact1Responsible = isFactoryResponsibleBy(factory, "quality_contact1")
+                            const isContact2Responsible = isFactoryResponsibleBy(factory, "quality_contact2")
+                            const hasContact1Responsible = hasFactoryResponsible(factory, "quality_contact1")
+                            const hasContact2Responsible = hasFactoryResponsible(factory, "quality_contact2")
+
+                            return (
+                              <div
+                                key={factory.factory_id}
+                                className="flex justify-between items-center p-2 border rounded-md hover:bg-muted/30"
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{factory.factory_name}</span>
+                                  <span className="text-xs text-muted-foreground">{factory.factory_id}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {factoryAssignmentType === "quality_contact1" && (
+                                    <>
+                                      {isContact1Responsible ? (
+                                        <Badge variant="default" className="flex items-center space-x-1">
+                                          <span>品管聯絡人1</span>
+                                          <X
+                                            className="h-3 w-3 cursor-pointer"
+                                            onClick={() =>
+                                              handleRemoveQualityContact(factory.factory_id, "quality_contact1")
+                                            }
+                                          />
+                                        </Badge>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetQualityContact(factory.factory_id, "quality_contact1")
+                                          }
+                                          disabled={hasContact1Responsible}
+                                          title={hasContact1Responsible ? "此工廠已有品管聯絡人1" : ""}
+                                        >
+                                          {hasContact1Responsible ? "已有聯絡人1" : "設為品管聯絡人1"}
+                                        </Button>
+                                      )}
+                                    </>
+                                  )}
+
+                                  {factoryAssignmentType === "quality_contact2" && (
+                                    <>
+                                      {isContact2Responsible ? (
+                                        <Badge variant="default" className="flex items-center space-x-1">
+                                          <span>品管聯絡人2</span>
+                                          <X
+                                            className="h-3 w-3 cursor-pointer"
+                                            onClick={() =>
+                                              handleRemoveQualityContact(factory.factory_id, "quality_contact2")
+                                            }
+                                          />
+                                        </Badge>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleSetQualityContact(factory.factory_id, "quality_contact2")
+                                          }
+                                          disabled={hasContact2Responsible}
+                                          title={hasContact2Responsible ? "此工廠已有品管聯絡人2" : ""}
+                                        >
+                                          {hasContact2Responsible ? "已有聯絡人2" : "設為品管聯絡人2"}
+                                        </Button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           )}

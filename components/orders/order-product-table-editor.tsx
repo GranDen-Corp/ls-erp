@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -42,7 +41,7 @@ interface OrderProductTableEditorProps {
   orderId: string
   customerCurrency: string
   onTableDataChange: (tableData: ProductTableItem[]) => void
-  isVisible: boolean
+  isVisible?: boolean
   isProductSettingsConfirmed: boolean
   getUnitDisplayName: (unit: string) => string
   calculateItemTotal: (item: OrderItem) => number
@@ -54,7 +53,7 @@ export function OrderProductTableEditor({
   orderId,
   customerCurrency,
   onTableDataChange,
-  isVisible,
+  isVisible = true,
   isProductSettingsConfirmed,
   getUnitDisplayName,
   calculateItemTotal,
@@ -87,11 +86,11 @@ export function OrderProductTableEditor({
 
   // 當訂單項目或訂單ID變更時重新生成
   useEffect(() => {
-    if (isVisible && orderItems.length > 0) {
+    if (orderItems.length > 0) {
       generateTableData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderItems, orderId, isVisible])
+  }, [orderItems, orderId])
 
   // 處理描述變更
   const handleDescriptionChange = (index: number, newDescription: string) => {
@@ -380,78 +379,73 @@ ${deliveryTerms}
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">訂單產品表格</CardTitle>
-          <div className="flex items-center gap-2">
-            {hasChanges && (
-              <Badge variant="secondary" className="text-xs">
-                有未儲存的變更
-              </Badge>
-            )}
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">訂單產品表格</h3>
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <Badge variant="secondary" className="text-xs">
+              有未儲存的變更
+            </Badge>
+          )}
 
-            {/* 簡化的列印按鈕 - 直接實現功能 */}
-            <Button variant="outline" size="sm" onClick={handlePreviewPrint} className="flex items-center gap-1">
-              <Eye className="h-4 w-4" />
-              預覽列印
-            </Button>
+          <Button variant="outline" size="sm" onClick={handlePreviewPrint} className="flex items-center gap-1">
+            <Eye className="h-4 w-4" />
+            預覽列印
+          </Button>
 
-            <Button variant="outline" size="sm" onClick={handleDirectPrint} className="flex items-center gap-1">
-              <Printer className="h-4 w-4" />
-              直接列印
-            </Button>
+          <Button variant="outline" size="sm" onClick={handleDirectPrint} className="flex items-center gap-1">
+            <Printer className="h-4 w-4" />
+            直接列印
+          </Button>
 
-            <Button variant="outline" size="sm" onClick={generateTableData} className="flex items-center gap-1">
-              <RefreshCw className="h-4 w-4" />
-              重新生成
+          <Button variant="outline" size="sm" onClick={generateTableData} className="flex items-center gap-1">
+            <RefreshCw className="h-4 w-4" />
+            重新生成
+          </Button>
+          {hasChanges && (
+            <Button size="sm" onClick={handleSaveChanges} className="flex items-center gap-1">
+              <Save className="h-4 w-4" />
+              儲存變更
             </Button>
-            {hasChanges && (
-              <Button size="sm" onClick={handleSaveChanges} className="flex items-center gap-1">
-                <Save className="h-4 w-4" />
-                儲存變更
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">產品編號</TableHead>
-                <TableHead className="w-[400px]">產品描述</TableHead>
-                <TableHead className="w-[80px]">數量</TableHead>
-                <TableHead className="w-[80px]">單位</TableHead>
-                <TableHead className="w-[100px]">單價</TableHead>
-                <TableHead className="w-[100px]">總價</TableHead>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[120px]">產品編號</TableHead>
+              <TableHead className="w-[400px]">產品描述</TableHead>
+              <TableHead className="w-[80px]">數量</TableHead>
+              <TableHead className="w-[80px]">單位</TableHead>
+              <TableHead className="w-[100px]">單價</TableHead>
+              <TableHead className="w-[100px]">總價</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tableData.map((item, index) => (
+              <TableRow key={item.part_no} className="h-[240px]">
+                <TableCell className="align-top font-mono text-sm">{item.part_no}</TableCell>
+                <TableCell className="align-top p-2">
+                  <Textarea
+                    value={item.description}
+                    onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                    className="min-h-[220px] font-mono text-xs leading-tight resize-none"
+                    rows={15}
+                  />
+                </TableCell>
+                <TableCell className="align-top text-center">{item.quantity}</TableCell>
+                <TableCell className="align-top text-center">{item.unit}</TableCell>
+                <TableCell className="align-top text-right">${item.unit_price.toFixed(2)}</TableCell>
+                <TableCell className="align-top text-right font-semibold">${item.total_price.toFixed(2)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tableData.map((item, index) => (
-                <TableRow key={item.part_no} className="h-[240px]">
-                  <TableCell className="align-top font-mono text-sm">{item.part_no}</TableCell>
-                  <TableCell className="align-top p-2">
-                    <Textarea
-                      value={item.description}
-                      onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                      className="min-h-[220px] font-mono text-xs leading-tight resize-none"
-                      rows={15}
-                    />
-                  </TableCell>
-                  <TableCell className="align-top text-center">{item.quantity}</TableCell>
-                  <TableCell className="align-top text-center">{item.unit}</TableCell>
-                  <TableCell className="align-top text-right">${item.unit_price.toFixed(2)}</TableCell>
-                  <TableCell className="align-top text-right font-semibold">${item.total_price.toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
-        {tableData.length === 0 && <div className="text-center py-8 text-gray-500">請先添加產品到訂單中</div>}
-      </CardContent>
-    </Card>
+      {tableData.length === 0 && <div className="text-center py-8 text-gray-500">請先添加產品到訂單中</div>}
+    </div>
   )
 }
