@@ -84,6 +84,7 @@ export default function NewProductPage(){
           currency: product.currency || "",
           sampleStatus: product.sample_status || "",
           sampleDate: product.sample_date || "",
+          alias_name: product.alias_name || "",
         }
         
         setFormattedProduct(formatted);

@@ -941,6 +941,7 @@ export function ProductForm({
 
         // Composite product related fields
         subPartNo: isCompositeProduct ? selectedComponents : null,
+        alias_name: product.alias_name,
       }
 
       //console.log("Saving product with data:", productData)

@@ -90,6 +90,7 @@ export default async function ProductDetailPage({
     currency: product.currency || "",
     sampleStatus: product.sample_status || "",
     sampleDate: product.sample_date || "",
+    alias_name: product.alias_name || "",
   }
 
   return (

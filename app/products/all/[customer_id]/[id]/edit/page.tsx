@@ -90,6 +90,7 @@ export default async function EditProductPage({
     currency: product.currency || "",
     sampleStatus: product.sample_status || "",
     sampleDate: product.sample_date || "",
+    alias_name: product.alias_name || "",
   }
 
   //console.log("組合產品資訊:", {

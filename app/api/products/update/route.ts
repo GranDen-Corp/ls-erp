@@ -69,6 +69,7 @@ export async function POST(request: Request) {
 
       // 組合產品相關欄位
       sub_part_no: data.isCompositeProduct ? data.selectedComponents : null,
+      alias_name: data.alias_name,
     }
 
     // 使用 upsert 方法，如果記錄已存在則更新，否則插入新記錄

@@ -427,6 +427,18 @@ export function BasicInfoTab({
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
+
+        <div key="aliasName" className="space-y-2">
+          <Label htmlFor="aliasName">產品別稱</Label>
+          <Input
+            id="aliasName"
+            value={product.alias_name || ""}
+            onChange={(e) => handleInputChange("alias_name", e.target.value)}
+            placeholder="輸入產品別稱"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
+          />
+        </div>
       </div>
 
       {/* 描述 */}
