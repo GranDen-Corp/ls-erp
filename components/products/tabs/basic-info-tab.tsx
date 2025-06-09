@@ -155,7 +155,10 @@ export function BasicInfoTab({
       {/* 基本信息 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div key="componentName" className="space-y-2">
-          <Label htmlFor="componentName">零件名稱</Label>
+          <Label htmlFor="componentName">
+            零件名稱
+            {!isReadOnly && <span className="text-red-500 ml-1">*</span>}
+          </Label>
           <Input
             id="componentName"
             value={product.componentName || ""}
@@ -167,7 +170,10 @@ export function BasicInfoTab({
         </div>
 
         <div key="componentNameEn" className="space-y-2">
-          <Label htmlFor="componentNameEn">零件名稱 (英文)</Label>
+          <Label htmlFor="componentNameEn">
+            零件名稱 (英文)
+            {!isReadOnly && <span className="text-red-500 ml-1">*</span>}
+          </Label>
           <Input
             id="componentNameEn"
             value={product.componentNameEn || ""}
@@ -179,7 +185,10 @@ export function BasicInfoTab({
         </div>
 
         <div key="partNo" className="space-y-2">
-          <Label htmlFor="partNo">Part No.</Label>
+          <Label htmlFor="partNo">
+            Part No.
+            {!isReadOnly && <span className="text-red-500 ml-1">*</span>}
+          </Label>
           <Input
             id="partNo"
             value={product.partNo || ""}
@@ -306,7 +315,10 @@ export function BasicInfoTab({
           </div>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="customerName">客戶編號</Label>
+            <Label htmlFor="customerName">
+              客戶編號
+              {!isReadOnly && <span className="text-red-500 ml-1">*</span>}
+            </Label>
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -374,7 +386,10 @@ export function BasicInfoTab({
           </div>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="factoryName">供應商編號</Label>
+            <Label htmlFor="factoryName">
+              供應商編號
+              {!isReadOnly && <span className="text-red-500 ml-1">*</span>}
+            </Label>
             <Popover open={factoryOpen} onOpenChange={setFactoryOpen}>
               <PopoverTrigger asChild>
                 <Button
