@@ -439,6 +439,19 @@ export function BasicInfoTab({
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
           />
         </div>
+
+        <div key="specification" className="space-y-2">
+          <Label htmlFor="specification">規格</Label>
+          <Input
+            id="specification"
+            value={product.specification || ""}
+            onChange={(e) => handleInputChange("specification", e.target.value)}
+            placeholder="輸入規格"
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
+          />
+        </div>
+
       </div>
 
       {/* 描述 */}
