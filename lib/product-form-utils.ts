@@ -86,10 +86,10 @@ export const getDefaultProduct = (isAssembly = false) => ({
   },
   // Part management characteristics related fields
   partManagement: {
-    safetyPart: false,
-    automotivePart: false,
-    CBAMPart: false,
-    clockRequirement: false,
+    "安全件": false,
+    "汽車件": false,
+    "CBAM件": false,
+    "熔鑄地要求": false,
   },
   // Edit notes related fields
   editNotes: [],
