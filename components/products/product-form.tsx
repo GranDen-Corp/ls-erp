@@ -859,6 +859,16 @@ export function ProductForm({
       return
     }
 
+    if (!product.factory_id) {
+      toast({
+        title: "Error",
+        description: "Please select a factory",
+        variant: "destructive",
+      })
+      setActiveTab("basic")
+      return
+    }
+
     setIsLoading(true)
 
     try {
