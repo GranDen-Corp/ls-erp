@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { MoreHorizontal, ArrowUpDown, Loader2, FileEdit, Eye, CheckCircle, XCircle } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Loader2, FileEdit, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -523,7 +523,14 @@ export function FactoriesTable() {
           <TableBody>
             {sortedFactories.map((factory) => (
               <TableRow key={factory.factory_id}>
-                <TableCell className="font-medium">{factory.factory_id}</TableCell>
+                <TableCell className="font-medium">
+                  <Link
+                    href={`/factories/all/${factory.factory_id}`}
+                    className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
+                  >
+                    {factory.factory_id}
+                  </Link>
+                </TableCell>
                 <TableCell>
                   <div>
                     <div className="font-medium">{factory.factory_name}</div>
@@ -556,12 +563,6 @@ export function FactoriesTable() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>操作</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/factories/all/${factory.factory_id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          查看詳情
-                        </Link>
-                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href={`/factories/all/${factory.factory_id}/edit`}>
                           <FileEdit className="mr-2 h-4 w-4" />

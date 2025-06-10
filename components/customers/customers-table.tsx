@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Eye, FileEdit, MoreHorizontal, Trash2, ArrowUpDown } from "lucide-react"
+import { FileEdit, MoreHorizontal, Trash2, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -285,7 +285,14 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
                 const activityStatus = getActivityStatus(customer)
                 return (
                   <TableRow key={customer.customer_id}>
-                    <TableCell className="font-medium">{customer.customer_id}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/customers/all/${customer.customer_id}`}
+                        className="text-blue-600 hover:underline cursor-pointer"
+                      >
+                        {customer.customer_id}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{customer.customer_short_name}</div>
@@ -313,12 +320,6 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>操作</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Link href={`/customers/all/${customer.customer_id}`} className="flex items-center">
-                              <Eye className="mr-2 h-4 w-4" />
-                              查看詳情
-                            </Link>
-                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Link href={`/customers/all/${customer.customer_id}/edit`} className="flex items-center">
                               <FileEdit className="mr-2 h-4 w-4" />
