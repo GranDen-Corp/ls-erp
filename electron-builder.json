@@ -1,0 +1,27 @@
+{
+  "appId": "com.ls-erp.app",
+  "productName": "LS-ERP",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    ".next/**/*",
+    "node_modules/**/*",
+    "public/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": "nsis"
+  },
+  "mac": {
+    "target": "dmg"
+  },
+  "linux": {
+    "target": "AppImage"
+  },
+  "scripts": {
+    "electron-dev": "electron .",
+    "electron-build": "electron-builder"
+  }
+} 
