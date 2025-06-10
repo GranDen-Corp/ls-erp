@@ -436,31 +436,69 @@ export function ProductReadOnlyForm({
     const [contentType, setContentType] = useState<string | null>(null)
 
     useEffect(() => {
-      if (!drawing?.path) return
+      if (!drawing?.path) {
+        setIsLoading(false)
+        return
+      }
 
       const isImage = drawing.type?.startsWith('image/') || 
                      /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
 
-      if (isImage && window.electron) {
-        // 使用 Electron API 讀取檔案
-        window.electron.readFile(drawing.path)
+      if (!isImage) {
+        setIsLoading(false)
+        return
+      }
+
+      // 檢查是否在 Electron 環境中
+      if (window.electron) {
+        // 先檢查檔案是否存在
+        window.electron.checkFileExists(drawing.path)
+          .then((result) => {
+            if (!result.exists) {
+              throw new Error('檔案不存在')
+            }
+            // 如果檔案存在，則讀取檔案
+            return window.electron.readFile(drawing.path)
+          })
           .then((result) => {
             if (result.success && result.data && result.contentType) {
               setImageData(`data:${result.contentType};base64,${result.data}`)
               setContentType(result.contentType)
             } else {
-              setError(result.error || '讀取檔案失敗')
+              throw new Error(result.error || '讀取檔案失敗')
             }
           })
           .catch((err: Error) => {
             console.error('讀取檔案時發生錯誤:', err)
-            setError('讀取檔案時發生錯誤')
+            setError(err.message || '讀取檔案時發生錯誤')
           })
           .finally(() => {
             setIsLoading(false)
           })
       } else {
-        setIsLoading(false)
+        // 如果不在 Electron 環境中，使用 API 路由
+        fetch(`/api/preview?path=${encodeURIComponent(drawing.path)}`)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('讀取檔案失敗')
+            }
+            return response.blob()
+          })
+          .then(blob => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              setImageData(reader.result as string)
+              setContentType(blob.type)
+            }
+            reader.readAsDataURL(blob)
+          })
+          .catch((err: Error) => {
+            console.error('讀取檔案時發生錯誤:', err)
+            setError(err.message || '讀取檔案時發生錯誤')
+          })
+          .finally(() => {
+            setIsLoading(false)
+          })
       }
     }, [drawing])
 
