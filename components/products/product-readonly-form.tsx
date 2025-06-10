@@ -12,6 +12,7 @@ import { ProcessTab } from "./tabs/process-tab"
 import { ResumeTab } from "./tabs/resume-tab"
 import { ImagesTab } from "./tabs/images-tab"
 import { DocumentsTab } from "./tabs/documents-tab"
+import { Button } from "@/components/ui/button"
 
 // 產品表單屬性
 interface ProductReadOnlyFormProps {
@@ -398,29 +399,75 @@ export function ProductReadOnlyForm({
 
   // 創建圖面預覽組件
   const DrawingPreview = ({ drawing, label }: { drawing: any; label: string }) => {
-    if (!drawing || !drawing.filename) return <div className="p-2 border rounded-md bg-gray-50">未上傳圖面</div>
+    if (!drawing || !drawing.filename) return null
 
     // 獲取文件名（不含副檔名）
     const fileName = drawing.filename.split(".").slice(0, -1).join(".")
 
+    // 構建 API URL
+    const previewUrl = drawing.path ? `/api/preview?path=${encodeURIComponent(drawing.path)}` : null
+    console.log('預覽 URL:', previewUrl)
+
+    // 檢查是否為圖片檔案
+    const isImage = drawing.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
+
     return (
       <div className="mt-4 border rounded-md p-4">
         <p className="text-center font-medium mb-2">{fileName}</p>
-        {drawing.path && (
+        {previewUrl ? (
           <div className="flex justify-center mb-2">
-            <img
-              src={drawing.path || "/placeholder.svg"}
-              alt={`${label}預覽`}
-              className="max-h-40 object-contain"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).style.display = "none"
-                ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
-              }}
-            />
+            {isImage ? (
+              <img
+                src={previewUrl}
+                alt={`${label}預覽`}
+                className="max-h-40 object-contain"
+                onError={(e) => {
+                  //console.error('圖片載入失敗:', e)
+                  const target = e.target as HTMLImageElement
+                  target.style.display = "none"
+                  const nextElement = target.nextElementSibling as HTMLElement
+                  if (nextElement) {
+                    nextElement.style.display = "block"
+                  }
+                }}
+              />
+            ) : (
+              <div className="text-center">
+                <p className="text-gray-500 mb-2">此檔案類型無法在網頁中預覽</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // 使用 API 路由開啟檔案
+                    fetch(`/api/preview?path=${encodeURIComponent(drawing.path)}`)
+                      .then(response => response.blob())
+                      .then(blob => {
+                        const url = window.URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = drawing.filename
+                        document.body.appendChild(a)
+                        a.click()
+                        window.URL.revokeObjectURL(url)
+                        document.body.removeChild(a)
+                      })
+                      .catch(error => {
+                        console.error('開啟檔案時發生錯誤:', error)
+                        alert('開啟檔案時發生錯誤')
+                      })
+                  }}
+                >
+                  下載並開啟檔案
+                </Button>
+              </div>
+            )}
             <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
           </div>
+        ) : (
+          <div className="text-center text-gray-500 py-4">
+            {drawing.type ? `此檔案類型 (${drawing.type}) 無法預覽` : '無法預覽此文件格式'}
+          </div>
         )}
-        <p className="text-xs text-gray-500 break-all">{drawing.path}</p>
+        <p className="text-xs text-gray-500 break-all">{drawing.originalPath}</p>
       </div>
     )
   }

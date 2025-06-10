@@ -19,24 +19,70 @@ const DrawingPreview = ({ drawing, label }: { drawing: any; label: string }) => 
   // 獲取文件名（不含副檔名）
   const fileName = drawing.filename.split(".").slice(0, -1).join(".")
 
+  // 構建 API URL
+  const previewUrl = drawing.path ? `/api/preview?path=${encodeURIComponent(drawing.path)}` : null
+  console.log('預覽 URL:', previewUrl)
+
+  // 檢查是否為圖片檔案
+  const isImage = drawing.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
+
   return (
     <div className="mt-4 border rounded-md p-4">
       <p className="text-center font-medium mb-2">{fileName}</p>
-      {drawing.path && (
+      {previewUrl ? (
         <div className="flex justify-center mb-2">
-          <img
-            src={drawing.path || "/placeholder.svg"}
-            alt={`${label}預覽`}
-            className="max-h-40 object-contain"
-            onError={(e) => {
-              ;(e.target as HTMLImageElement).style.display = "none"
-              ;(e.target as HTMLImageElement).nextElementSibling!.style.display = "block"
-            }}
-          />
+          {isImage ? (
+            <img
+              src={previewUrl}
+              alt={`${label}預覽`}
+              className="max-h-40 object-contain"
+              onError={(e) => {
+                //console.error('圖片載入失敗:', e)
+                const target = e.target as HTMLImageElement
+                target.style.display = "none"
+                const nextElement = target.nextElementSibling as HTMLElement
+                if (nextElement) {
+                  nextElement.style.display = "block"
+                }
+              }}
+            />
+          ) : (
+            <div className="text-center">
+              <p className="text-gray-500 mb-2">此檔案類型無法在網頁中預覽</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // 使用 API 路由開啟檔案
+                  fetch(`/api/preview?path=${encodeURIComponent(drawing.path)}`)
+                    .then(response => response.blob())
+                    .then(blob => {
+                      const url = window.URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = drawing.filename
+                      document.body.appendChild(a)
+                      a.click()
+                      window.URL.revokeObjectURL(url)
+                      document.body.removeChild(a)
+                    })
+                    .catch(error => {
+                      console.error('開啟檔案時發生錯誤:', error)
+                      alert('開啟檔案時發生錯誤')
+                    })
+                }}
+              >
+                下載並開啟檔案
+              </Button>
+            </div>
+          )}
           <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
         </div>
+      ) : (
+        <div className="text-center text-gray-500 py-4">
+          {drawing.type ? `此檔案類型 (${drawing.type}) 無法預覽` : '無法預覽此文件格式'}
+        </div>
       )}
-      <p className="text-xs text-gray-500 break-all">{drawing.path}</p>
+      <p className="text-xs text-gray-500 break-all">{drawing.originalPath}</p>
     </div>
   )
 }
@@ -47,37 +93,28 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // In a real application, this would upload the file to the server
-    // Here we're just simulating the upload process
     const file = files[0]
-    const fileData = {
-      path: URL.createObjectURL(file),
-      filename: file.name,
-    }
-
-    switch (fieldType) {
-      case "customerOriginalDrawing":
-        setProduct((prev: any) => ({
-          ...prev,
-          customerOriginalDrawing: fileData,
-        }))
-        break
-      case "customerDrawing":
-        setProduct((prev: any) => ({
-          ...prev,
-          customerDrawing: fileData,
-        }))
-        break
-      case "factoryDrawing":
-        setProduct((prev: any) => ({
-          ...prev,
-          factoryDrawing: fileData,
-        }))
-        break
-      default:
-        break
-    }
-
+    
+    // 檢查檔案類型
+    const isImage = file.type.startsWith('image/')
+    
+    // 只更新檔案名稱，保留原有的路徑
+    const fileName = file.name
+    
+    setProduct((prev: any) => {
+      const currentDrawing = prev[fieldType] || {}
+      return {
+        ...prev,
+        [fieldType]: {
+          ...currentDrawing,
+          filename: fileName,
+          type: file.type
+        }
+      }
+    })
+    
+    console.log('更新檔案名稱:', fileName)
+    
     // Reset input to allow selecting the same file again
     e.target.value = ""
   }
@@ -85,7 +122,6 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
   return (
     <div className="space-y-4 pt-4">
       <div className="grid grid-cols-1 gap-6">
-        {/* Drawing Information */}
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
@@ -94,7 +130,6 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
               </div>
 
               <div className="grid grid-cols-2 gap-6">
-                {/* Left: Original Drawing Version and Customer Original Drawing */}
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="originalDrawingVersion">原圖版次</Label>
@@ -115,21 +150,38 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                         onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
                         className="hidden"
                       />
+                      <Input readOnly value={product.customerOriginalDrawing?.filename || "未選擇圖面"} className="flex-1" />
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => document.getElementById("customerOriginalDrawing")?.click()}
-                        className="w-full"
                       >
                         選擇圖面連結
                       </Button>
                     </div>
-
+                    <div className="mt-2">
+                      <Label htmlFor="customerOriginalDrawingPath">檔案路徑</Label>
+                      <Input
+                        id="customerOriginalDrawingPath"
+                        value={product.customerOriginalDrawing?.path || ""}
+                        onChange={(e) => {
+                          const newPath = e.target.value
+                          setProduct((prev: any) => ({
+                            ...prev,
+                            customerOriginalDrawing: {
+                              ...prev.customerOriginalDrawing,
+                              path: newPath,
+                              originalPath: newPath
+                            }
+                          }))
+                        }}
+                        placeholder="請輸入完整的檔案路徑 (例如: Y:\資料夾\檔案.jpg)"
+                      />
+                    </div>
                     <DrawingPreview drawing={product.customerOriginalDrawing} label="客戶原圖" />
                   </div>
                 </div>
 
-                {/* Right: Vehicle Drawing No and Customer Drawing No (synced from basic info) */}
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="syncedVehicleDrawingNo">車廠圖號</Label>
@@ -203,6 +255,25 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       選擇圖面連結
                     </Button>
                   </div>
+                  <div className="mt-2">
+                    <Label htmlFor="customerDrawingPath">檔案路徑</Label>
+                    <Input
+                      id="customerDrawingPath"
+                      value={product.customerDrawing?.path || ""}
+                      onChange={(e) => {
+                        const newPath = e.target.value
+                        setProduct((prev: any) => ({
+                          ...prev,
+                          customerDrawing: {
+                            ...prev.customerDrawing,
+                            path: newPath,
+                            originalPath: newPath
+                          }
+                        }))
+                      }}
+                      placeholder="請輸入完整的檔案路徑 (例如: Y:\資料夾\檔案.jpg)"
+                    />
+                  </div>
                   <DrawingPreview drawing={product.customerDrawing} label="今湛客圖" />
                 </div>
 
@@ -223,6 +294,25 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                     >
                       選擇圖面連結
                     </Button>
+                  </div>
+                  <div className="mt-2">
+                    <Label htmlFor="factoryDrawingPath">檔案路徑</Label>
+                    <Input
+                      id="factoryDrawingPath"
+                      value={product.factoryDrawing?.path || ""}
+                      onChange={(e) => {
+                        const newPath = e.target.value
+                        setProduct((prev: any) => ({
+                          ...prev,
+                          factoryDrawing: {
+                            ...prev.factoryDrawing,
+                            path: newPath,
+                            originalPath: newPath
+                          }
+                        }))
+                      }}
+                      placeholder="請輸入完整的檔案路徑 (例如: Y:\資料夾\檔案.jpg)"
+                    />
                   </div>
                   <DrawingPreview drawing={product.factoryDrawing} label="今湛工廠圖" />
                 </div>
