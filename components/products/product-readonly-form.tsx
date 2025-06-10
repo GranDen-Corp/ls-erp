@@ -406,7 +406,7 @@ export function ProductReadOnlyForm({
 
     // 構建 API URL
     const previewUrl = drawing.path ? `/api/preview?path=${encodeURIComponent(drawing.path)}` : null
-    console.log('預覽 URL:', previewUrl)
+    //console.log('預覽 URL:', previewUrl)
 
     // 檢查是否為圖片檔案
     const isImage = drawing.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
@@ -655,29 +655,113 @@ export function ProductReadOnlyForm({
                     {/* 標準文件 */}
                     <div className="space-y-2">
                       <Label>PPAP認可資料夾</Label>
-                      <Input
-                        value={product.importantDocuments?.PPAP?.filename || "未選擇文件"}
-                        readOnly
-                        className="bg-gray-50 cursor-not-allowed"
-                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={product.importantDocuments?.PPAP?.document || ""}
+                          readOnly
+                          className="bg-gray-50 cursor-not-allowed"
+                        />
+                        {product.importantDocuments?.PPAP?.document && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              fetch(`/api/preview?path=${encodeURIComponent(product.importantDocuments.PPAP.document)}&type=folder`)
+                                .then(response => {
+                                  if (!response.ok) {
+                                    throw new Error('開啟資料夾失敗')
+                                  }
+                                  return response.json()
+                                })
+                                .then(data => {
+                                  console.log('資料夾已開啟')
+                                })
+                                .catch(error => {
+                                  console.error('開啟資料夾時發生錯誤:', error)
+                                  if (error.message !== '開啟資料夾失敗') {
+                                    alert('開啟資料夾時發生錯誤')
+                                  }
+                                })
+                            }}
+                          >
+                            開啟資料夾
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label>PSW報告</Label>
-                      <Input
-                        value={product.importantDocuments?.PSW?.filename || "未選擇文件"}
-                        readOnly
-                        className="bg-gray-50 cursor-not-allowed"
-                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={product.importantDocuments?.PSW?.document || ""}
+                          readOnly
+                          className="bg-gray-50 cursor-not-allowed"
+                        />
+                        {product.importantDocuments?.PSW?.document && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              fetch(`/api/preview?path=${encodeURIComponent(product.importantDocuments.PSW.document)}`)
+                                .then(response => response.blob())
+                                .then(blob => {
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = product.importantDocuments.PSW.filename || product.importantDocuments.PSW.document.split('\\').pop() || product.importantDocuments.PSW.document.split('/').pop() || product.importantDocuments.PSW.document
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                })
+                                .catch(error => {
+                                  console.error('開啟檔案時發生錯誤:', error)
+                                  alert('開啟檔案時發生錯誤')
+                                })
+                            }}
+                          >
+                            下載並開啟
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label>產能分析</Label>
-                      <Input
-                        value={product.importantDocuments?.capacityAnalysis?.filename || "未選擇文件"}
-                        readOnly  
-                        className="bg-gray-50 cursor-not-allowed"
-                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={product.importantDocuments?.capacityAnalysis?.document || ""}
+                          readOnly
+                          className="bg-gray-50 cursor-not-allowed"
+                        />
+                        {product.importantDocuments?.capacityAnalysis?.document && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              fetch(`/api/preview?path=${encodeURIComponent(product.importantDocuments.capacityAnalysis.document)}`)
+                                .then(response => response.blob())
+                                .then(blob => {
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = product.importantDocuments.capacityAnalysis.filename || product.importantDocuments.capacityAnalysis.document.split('\\').pop() || product.importantDocuments.capacityAnalysis.document.split('/').pop() || product.importantDocuments.capacityAnalysis.document
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                })
+                                .catch(error => {
+                                  console.error('開啟檔案時發生錯誤:', error)
+                                  alert('開啟檔案時發生錯誤')
+                                })
+                            }}
+                          >
+                            下載並開啟
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     {/* 自定義文件 */}

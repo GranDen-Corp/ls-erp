@@ -1,26 +1,61 @@
 import { NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const filePath = searchParams.get('path')
+    const type = searchParams.get('type')
 
     if (!filePath) {
-      return NextResponse.json({ error: '未提供檔案路徑' }, { status: 400 })
+      return NextResponse.json({ error: '未提供路徑' }, { status: 400 })
     }
 
     // 解碼 URL 編碼的路徑
     const decodedPath = decodeURIComponent(filePath)
-    console.log('嘗試讀取檔案:', decodedPath)
+    console.log('嘗試讀取路徑:', decodedPath)
 
-    // 檢查檔案是否存在
+    // 檢查路徑是否存在
     if (!fs.existsSync(decodedPath)) {
-      console.error(`檔案不存在: ${decodedPath}`)
-      return NextResponse.json({ error: '檔案不存在' }, { status: 404 })
+      console.error(`路徑不存在: ${decodedPath}`)
+      return NextResponse.json({ error: '路徑不存在' }, { status: 404 })
     }
 
+    // 如果是資料夾，使用系統命令開啟
+    if (type === 'folder') {
+      try {
+        // 根據作業系統選擇適當的命令
+        let command = ''
+        if (process.platform === 'win32') {
+          // Windows 系統
+          command = `explorer "${decodedPath.replace(/\//g, '\\')}"`
+        } else if (process.platform === 'darwin') {
+          // macOS 系統
+          command = `open "${decodedPath}"`
+        } else {
+          // Linux 系統
+          command = `xdg-open "${decodedPath}"`
+        }
+
+        console.log('執行命令:', command)
+        await execAsync(command)
+        return NextResponse.json({ success: true, message: '資料夾已開啟' })
+      } catch (error) {
+        console.error('開啟資料夾時發生錯誤:', error)
+        // 即使發生錯誤，如果資料夾已經開啟，我們也視為成功
+        if (fs.existsSync(decodedPath)) {
+          return NextResponse.json({ success: true, message: '資料夾已開啟' })
+        }
+        return NextResponse.json({ error: '開啟資料夾時發生錯誤' }, { status: 500 })
+      }
+    }
+
+    // 如果是檔案，則讀取並回傳
     try {
       // 讀取檔案
       const fileBuffer = fs.readFileSync(decodedPath)

@@ -53,11 +53,10 @@ export function DocumentsTab({
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // In a real application, this would upload the file to the server
-    // Here we're just simulating the upload process
     const file = files[0]
+    const filePath = e.target.value // 獲取完整路徑
     const fileData = {
-      path: URL.createObjectURL(file),
+      path: filePath,
       filename: file.name,
     }
 
@@ -130,6 +129,100 @@ export function DocumentsTab({
     e.target.value = ""
   }
 
+  // 處理文件路徑輸入
+  const handleFilePathInput = (path: string, fieldType: string) => {
+    const fileData = {
+      path: path,
+      filename: path.split('\\').pop() || path.split('/').pop() || path,
+    }
+
+    switch (fieldType) {
+      case "PPAP":
+        setProduct((prev: any) => ({
+          ...prev,
+          importantDocuments: {
+            ...(prev.importantDocuments || {}),
+            PPAP: { document: fileData.path, filename: fileData.filename },
+          },
+        }))
+        break
+      case "PSW":
+        setProduct((prev: any) => ({
+          ...prev,
+          importantDocuments: {
+            ...(prev.importantDocuments || {}),
+            PSW: { document: fileData.path, filename: fileData.filename },
+          },
+        }))
+        break
+      case "capacityAnalysis":
+        setProduct((prev: any) => ({
+          ...prev,
+          importantDocuments: {
+            ...(prev.importantDocuments || {}),
+            capacityAnalysis: { document: fileData.path, filename: fileData.filename },
+          },
+        }))
+        break
+      default:
+        if (fieldType.startsWith("compliance_")) {
+          const regulation = fieldType.split("_")[1]
+          setProduct((prev: any) => {
+            const exists = (prev.complianceStatus || []).some((item: any) => item.regulation === regulation)
+            return {
+              ...prev,
+              complianceStatus: exists
+                ? prev.complianceStatus.map((item: any) =>
+                    item.regulation === regulation
+                      ? { ...item, document: fileData.path }
+                      : item
+                  )
+                : [...(prev.complianceStatus || []), {
+                    regulation,
+                    document: fileData.path,
+                    regulationType: "standard",
+                  }],
+            }
+          })
+        } else if (fieldType.startsWith("customDoc_")) {
+          const key = fieldType.replace("customDoc_", "")
+          setProduct((prev: any) => ({
+            ...prev,
+            importantDocuments: {
+              ...(prev.importantDocuments || {}),
+              [key]: {
+                ...((prev.importantDocuments || {})[key] || {}),
+                document: fileData.path,
+                filename: fileData.filename,
+              },
+            },
+          }))
+        }
+        break
+    }
+  }
+
+  // 處理文件下載
+  const handleFileDownload = async (path: string, filename: string) => {
+    try {
+      const response = await fetch(`/api/preview?path=${encodeURIComponent(path)}`)
+      if (!response.ok) throw new Error('下載失敗')
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('下載檔案時發生錯誤:', error)
+      alert('下載檔案時發生錯誤')
+    }
+  }
+
   // 如果有文件選擇對話框，確保它保存完整路徑
   const handleDocumentSelect = (documentPath: string) => {
     // 保存完整路徑
@@ -187,30 +280,42 @@ export function DocumentsTab({
                     <Label htmlFor="PPAP">PPAP認可資料夾</Label>
                     <div className="flex items-center gap-2">
                       <Input
-                        type="file"
-                        id="PPAP"
-                        onChange={(e) => handleFileUpload(e, "PPAP")}
-                        className="hidden"
-                        disabled={isReadOnly}
-                      />
-                      <Input
                         type="text"
-                        readOnly
-                        value={
-                          product.importantDocuments?.PPAP?.document ||
-                          product.importantDocuments?.PPAP?.filename ||
-                          "未選擇文件"
-                        }
+                        value={product.importantDocuments?.PPAP?.document || ""}
+                        onChange={(e) => handleFilePathInput(e.target.value, "PPAP")}
+                        placeholder="請輸入完整資料夾路徑"
                         className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById("PPAP")?.click()}
                         disabled={isReadOnly}
-                      >
-                        選擇文件連結
-                      </Button>
+                      />
+                      {isReadOnly && product.importantDocuments?.PPAP?.document && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            // 使用 API 開啟資料夾
+                            fetch(`/api/preview?path=${encodeURIComponent(product.importantDocuments.PPAP.document)}&type=folder`)
+                              .then(response => {
+                                if (!response.ok) {
+                                  throw new Error('開啟資料夾失敗')
+                                }
+                                return response.json()
+                              })
+                              .then(data => {
+                                if (data.success) {
+                                  console.log('資料夾已開啟')
+                                } else {
+                                  throw new Error(data.message || '開啟資料夾失敗')
+                                }
+                              })
+                              .catch(error => {
+                                console.error('開啟資料夾時發生錯誤:', error)
+                                alert('開啟資料夾時發生錯誤')
+                              })
+                          }}
+                        >
+                          開啟資料夾
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -218,30 +323,45 @@ export function DocumentsTab({
                     <Label htmlFor="PSW">PSW報告</Label>
                     <div className="flex items-center gap-2">
                       <Input
-                        type="file"
-                        id="PSW"
-                        onChange={(e) => handleFileUpload(e, "PSW")}
-                        className="hidden"
-                        disabled={isReadOnly}
-                      />
-                      <Input
                         type="text"
-                        readOnly
-                        value={
-                          product.importantDocuments?.PSW?.document ||
-                          product.importantDocuments?.PSW?.filename ||
-                          "未選擇文件"
-                        }
+                        value={product.importantDocuments?.PSW?.document || ""}
+                        onChange={(e) => handleFilePathInput(e.target.value, "PSW")}
+                        placeholder="請輸入完整檔案路徑"
                         className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById("PSW")?.click()}
                         disabled={isReadOnly}
-                      >
-                        選擇文件連結
-                      </Button>
+                      />
+                      {!isReadOnly && (
+                        <>
+                          <Input
+                            type="file"
+                            id="PSW"
+                            onChange={(e) => handleFileUpload(e, "PSW")}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById("PSW")?.click()}
+                          >
+                            選擇檔案
+                          </Button>
+                        </>
+                      )}
+                      {isReadOnly && product.importantDocuments?.PSW?.document && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">{product.importantDocuments.PSW.document}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleFileDownload(
+                              product.importantDocuments.PSW.document,
+                              product.importantDocuments.PSW.filename || product.importantDocuments.PSW.document.split('\\').pop() || product.importantDocuments.PSW.document.split('/').pop() || product.importantDocuments.PSW.document
+                            )}
+                          >
+                            下載並開啟
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -249,30 +369,45 @@ export function DocumentsTab({
                     <Label htmlFor="capacityAnalysis">產能分析</Label>
                     <div className="flex items-center gap-2">
                       <Input
-                        type="file"
-                        id="capacityAnalysis"
-                        onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
-                        className="hidden"
-                        disabled={isReadOnly}
-                      />
-                      <Input
                         type="text"
-                        readOnly
-                        value={
-                          product.importantDocuments?.capacityAnalysis?.document ||
-                          product.importantDocuments?.capacityAnalysis?.filename ||
-                          "未選擇文件"
-                        }
+                        value={product.importantDocuments?.capacityAnalysis?.document || ""}
+                        onChange={(e) => handleFilePathInput(e.target.value, "capacityAnalysis")}
+                        placeholder="請輸入完整檔案路徑"
                         className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById("capacityAnalysis")?.click()}
                         disabled={isReadOnly}
-                      >
-                        選擇文件連結
-                      </Button>
+                      />
+                      {!isReadOnly && (
+                        <>
+                          <Input
+                            type="file"
+                            id="capacityAnalysis"
+                            onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById("capacityAnalysis")?.click()}
+                          >
+                            選擇檔案
+                          </Button>
+                        </>
+                      )}
+                      {isReadOnly && product.importantDocuments?.capacityAnalysis?.document && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">{product.importantDocuments.capacityAnalysis.document}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleFileDownload(
+                              product.importantDocuments.capacityAnalysis.document,
+                              product.importantDocuments.capacityAnalysis.filename || product.importantDocuments.capacityAnalysis.document.split('\\').pop() || product.importantDocuments.capacityAnalysis.document.split('/').pop() || product.importantDocuments.capacityAnalysis.document
+                            )}
+                          >
+                            下載並開啟
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -330,26 +465,25 @@ export function DocumentsTab({
                         </div>
                         <div className="flex items-center gap-2">
                           <Input
-                            type="file"
-                            id={`customDoc_${key}`}
-                            onChange={(e) => handleFileUpload(e, `customDoc_${key}`)}
-                            className="hidden"
-                            disabled={isReadOnly}
-                          />
-                          <Input
                             type="text"
-                            readOnly
-                            value={(doc as any).document || (doc as any).filename || "未選擇文件"}
+                            value={(doc as any).document || ""}
+                            onChange={(e) => handleFilePathInput(e.target.value, `customDoc_${key}`)}
+                            placeholder="請輸入完整檔案路徑"
                             className="flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById(`customDoc_${key}`)?.click()}
                             disabled={isReadOnly}
-                          >
-                            選擇文件連結
-                          </Button>
+                          />
+                          {isReadOnly && (doc as any).document && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleFileDownload(
+                                (doc as any).document,
+                                (doc as any).filename || (doc as any).document.split('\\').pop() || (doc as any).document.split('/').pop() || (doc as any).document
+                              )}
+                            >
+                              下載並開啟
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )
@@ -501,22 +635,25 @@ export function DocumentsTab({
 
                       <div className="flex items-center gap-2">
                         <Input
-                          type="file"
-                          id={`compliance_${data.regulation}`}
-                          onChange={(e) => handleFileUpload(e, data.regulation)}
-                          className="hidden"
+                          type="text"
+                          value={data.document || ""}
+                          onChange={(e) => handleFilePathInput(e.target.value, `compliance_${data.regulation}`)}
+                          placeholder="請輸入完整檔案路徑"
+                          className="flex-1"
                           disabled={isReadOnly}
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => document.getElementById(`compliance_${data.regulation}`)?.click()}
-                          disabled={isReadOnly}
-                        >
-                          選擇文件連結
-                        </Button>
+                        {isReadOnly && data.document && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleFileDownload(
+                              data.document,
+                              data.document.split('\\').pop() || data.document.split('/').pop() || data.document
+                            )}
+                          >
+                            下載並開啟
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

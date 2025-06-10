@@ -21,7 +21,7 @@ const DrawingPreview = ({ drawing, label }: { drawing: any; label: string }) => 
 
   // 構建 API URL
   const previewUrl = drawing.path ? `/api/preview?path=${encodeURIComponent(drawing.path)}` : null
-  console.log('預覽 URL:', previewUrl)
+  //console.log('預覽 URL:', previewUrl)
 
   // 檢查是否為圖片檔案
   const isImage = drawing.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
