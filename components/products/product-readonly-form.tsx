@@ -43,7 +43,7 @@ interface Customer {
 interface Factory {
   id: string
   name: string
-  code: string
+  [key: string]: any
 }
 
 // 文件記錄類型
@@ -84,8 +84,23 @@ interface ProductSpecification {
 
 // 產品部件類型
 interface ProductComponent {
-  part_no: string
-  description: string
+  part_number: string;
+  component_name: string;
+  // ... 其他屬性
+}
+
+// 產品類型
+interface Product {
+  id?: string;
+  part_number: string;
+  component_name: string;
+  customer_id: string;
+  factory_id: string;
+  product_type: string;
+  resumeData?: any;
+  imageData?: any;
+  documentData?: any;
+  [key: string]: any;
 }
 
 // 默認的空文件對象
@@ -113,6 +128,23 @@ const emptyDocumentRecord = {
 
 // 產品類別映射
 const productTypeMap: Record<string, string> = {}
+
+interface ElectronAPI {
+  openFile: (path: string) => Promise<{ success: boolean; error?: string }>;
+  readFile: (path: string) => Promise<{ 
+    success: boolean; 
+    data?: string; 
+    contentType?: string; 
+    error?: string 
+  }>;
+  checkFileExists: (path: string) => Promise<boolean>;
+}
+
+declare global {
+  interface Window {
+    electron?: ElectronAPI;
+  }
+}
 
 export function ProductReadOnlyForm({
   productId,
@@ -145,7 +177,7 @@ export function ProductReadOnlyForm({
       const customerId = product.customer_id
       const selectedCustomer = customersData.find((c) => c.id === customerId)
       if (selectedCustomer) {
-        setProduct((prev) => ({
+        setProduct((prev: any) => ({
           ...prev,
           customer_id: selectedCustomer.id,
         }))
@@ -156,7 +188,7 @@ export function ProductReadOnlyForm({
       const factoryId = product.factory_id
       const selectedFactory = factories.find((f) => f.id === factoryId)
       if (selectedFactory) {
-        setProduct((prev) => ({
+        setProduct((prev: any) => ({
           ...prev,
           factory_id: selectedFactory.id,
         }))
@@ -185,7 +217,7 @@ export function ProductReadOnlyForm({
           })) || []
 
         // 嘗試獲取供應商數據
-        let formattedFactories = []
+        let formattedFactories: Factory[] = []
         try {
           const { data: factoriesData, error: factoriesError } = await supabase
             .from("factories")
@@ -196,7 +228,6 @@ export function ProductReadOnlyForm({
             formattedFactories = factoriesData.map((factory) => ({
               id: factory.factory_id,
               name: factory.factory_name,
-              code: factory.factory_id || "",
             }))
           }
         } catch (factoryError) {
@@ -257,8 +288,8 @@ export function ProductReadOnlyForm({
               // 如果解析失敗，可能是逗號分隔的字符串
               if (typeof subPartNoData === "string" && subPartNoData.includes(",")) {
                 components = subPartNoData.split(",").map((part) => ({
-                  part_no: part.trim(),
-                  description: "",
+                  part_number: part.trim(),
+                  component_name: "",
                 }))
               }
             }
@@ -272,21 +303,21 @@ export function ProductReadOnlyForm({
               .map((comp): ProductComponent => {
                 if (typeof comp === "object") {
                   return {
-                    part_no: comp.part_no || comp.part_number || "",
-                    description: comp.description || comp.component_name || "",
+                    part_number: comp.part_number || "",
+                    component_name: comp.component_name || "",
                   }
                 } else if (typeof comp === "string") {
                   return {
-                    part_no: comp,
-                    description: "",
+                    part_number: comp,
+                    component_name: "",
                   }
                 }
                 return {
-                  part_no: "",
-                  description: "",
+                  part_number: "",
+                  component_name: "",
                 }
               })
-              .filter((comp) => comp.part_no)
+              .filter((comp) => comp.part_number)
 
             setSelectedComponents(formattedComponents)
 
@@ -308,17 +339,17 @@ export function ProductReadOnlyForm({
     if (!components.length || !customerId) return
 
     try {
-      // 獲取所有部件的 part_no
-      const partNos = components.map((comp) => comp.part_no).filter(Boolean)
+      // 獲取所有部件的 part_number
+      const partNumbers = components.map((comp) => comp.part_number).filter(Boolean)
 
-      if (partNos.length === 0) return
+      if (partNumbers.length === 0) return
 
       // 查詢產品名稱
       const { data, error } = await supabase
         .from("products")
-        .select("part_no, component_name")
+        .select("part_number, component_name")
         .eq("customer_id", customerId)
-        .in("part_no", partNos)
+        .in("part_number", partNumbers)
 
       if (error) {
         console.error("獲取部件詳情時出錯:", error)
@@ -326,11 +357,11 @@ export function ProductReadOnlyForm({
       }
 
       if (data && data.length > 0) {
-        // 建立 part_no 到 component_name 的映射
+        // 建立 part_number 到 component_name 的映射
         const detailsMap: { [key: string]: string } = {}
         data.forEach((item) => {
-          if (item.part_no && item.component_name) {
-            detailsMap[item.part_no] = item.component_name
+          if (item.part_number && item.component_name) {
+            detailsMap[item.part_number] = item.component_name
           }
         })
 
@@ -341,7 +372,7 @@ export function ProductReadOnlyForm({
         setSelectedComponents((prev) =>
           prev.map((comp) => ({
             ...comp,
-            description: detailsMap[comp.part_no] || comp.description,
+            component_name: detailsMap[comp.part_number] || comp.component_name,
           })),
         )
       }
@@ -399,18 +430,57 @@ export function ProductReadOnlyForm({
 
   // 創建圖面預覽組件
   const DrawingPreview = ({ drawing, label }: { drawing: any; label: string }) => {
-    if (!drawing || !drawing.filename) return null
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [imageData, setImageData] = useState<string | null>(null)
+    const [contentType, setContentType] = useState<string | null>(null)
 
-    // 獲取文件名（不含副檔名）
+    useEffect(() => {
+      if (!drawing?.path) return
+
+      const isImage = drawing.type?.startsWith('image/') || 
+                     /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
+
+      if (isImage && window.electron) {
+        // 使用 Electron API 讀取檔案
+        window.electron.readFile(drawing.path)
+          .then((result) => {
+            if (result.success && result.data && result.contentType) {
+              setImageData(`data:${result.contentType};base64,${result.data}`)
+              setContentType(result.contentType)
+            } else {
+              setError(result.error || '讀取檔案失敗')
+            }
+          })
+          .catch((err: Error) => {
+            console.error('讀取檔案時發生錯誤:', err)
+            setError('讀取檔案時發生錯誤')
+          })
+          .finally(() => {
+            setIsLoading(false)
+          })
+      } else {
+        setIsLoading(false)
+      }
+    }, [drawing])
+
+    if (!drawing?.path) return null
+
     const fileName = drawing.filename.split(".").slice(0, -1).join(".")
+    const isImage = drawing.type?.startsWith('image/') || 
+                   /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
 
-    // 檢查是否為圖片檔案
-    const isImage = drawing.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(drawing.filename)
-
-    // 使用 Electron 的 IPC 通訊來顯示圖片
-    const handleImagePreview = () => {
+    const handleOpenFile = async () => {
       if (window.electron) {
-        window.electron.openFile(drawing.path)
+        try {
+          const result = await window.electron.openFile(drawing.path)
+          if (!result.success) {
+            throw new Error(result.error)
+          }
+        } catch (error) {
+          console.error('開啟檔案時發生錯誤:', error)
+          alert('開啟檔案時發生錯誤')
+        }
       } else {
         // 如果不在 Electron 環境中，使用 API 路由
         fetch(`/api/preview?path=${encodeURIComponent(drawing.path)}`)
@@ -435,36 +505,49 @@ export function ProductReadOnlyForm({
     return (
       <div className="mt-4 border rounded-md p-4">
         <p className="text-center font-medium mb-2">{fileName}</p>
-        {drawing.path ? (
-          <div className="flex justify-center mb-2">
-            {isImage ? (
-              <div className="text-center">
-                <Button
-                  variant="outline"
-                  onClick={handleImagePreview}
-                  className="mb-2"
-                >
-                  預覽圖片
-                </Button>
-              </div>
-            ) : (
-              <div className="text-center">
-                <p className="text-gray-500 mb-2">此檔案類型無法在網頁中預覽</p>
-                <Button
-                  variant="outline"
-                  onClick={handleImagePreview}
-                >
-                  開啟檔案
-                </Button>
-              </div>
-            )}
-            <div className="hidden text-center text-gray-500 py-4">無法預覽此文件格式</div>
-          </div>
-        ) : (
-          <div className="text-center text-gray-500 py-4">
-            {drawing.type ? `此檔案類型 (${drawing.type}) 無法預覽` : '無法預覽此文件格式'}
-          </div>
-        )}
+        <div className="flex justify-center mb-2">
+          {isImage ? (
+            <div className="relative">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                </div>
+              )}
+              {error && (
+                <div className="text-center text-red-500">
+                  <p>{error}</p>
+                  <Button
+                    variant="outline"
+                    onClick={handleOpenFile}
+                  >
+                    開啟檔案
+                  </Button>
+                </div>
+              )}
+              {imageData && !error && (
+                <img
+                  src={imageData}
+                  alt={`${label}預覽`}
+                  className="max-h-40 object-contain"
+                  onError={() => {
+                    setError('圖片載入失敗')
+                    setImageData(null)
+                  }}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="text-center">
+              <p className="text-gray-500 mb-2">此檔案類型無法在網頁中預覽</p>
+              <Button
+                variant="outline"
+                onClick={handleOpenFile}
+              >
+                開啟檔案
+              </Button>
+            </div>
+          )}
+        </div>
         <p className="text-xs text-gray-500 break-all">{drawing.originalPath}</p>
       </div>
     )
@@ -485,18 +568,40 @@ export function ProductReadOnlyForm({
     {
       id: "resume",
       label: "履歷資料",
-      content: <ResumeTab resumeData={product.resume_data || {}} onResumeDataChange={() => {}} isReadOnly={true} />,
+      content: <ResumeTab
+        product={product}
+        handleInputChange={(field, value) => {
+          setProduct((prev: any) => ({
+            ...prev,
+            [field]: value,
+          }))
+        }}
+        isReadOnly={true}
+      />,
     },
     {
       id: "images",
       label: "圖片資料",
-      content: <ImagesTab imageData={product.image_data || {}} onImageDataChange={() => {}} isReadOnly={true} />,
+      content: <ImagesTab
+        product={product}
+        handleInputChange={(field, value) => {
+          setProduct((prev: any) => ({
+            ...prev,
+            [field]: value,
+          }))
+        }}
+        setProduct={setProduct}
+      />,
     },
     {
       id: "documents",
       label: "文件與認證",
       content: (
-        <DocumentsTab documentData={product.document_data || {}} onDocumentDataChange={() => {}} isReadOnly={true} />
+        <DocumentsTab
+          product={product}
+          setProduct={setProduct}
+          isReadOnly={true}
+        />
       ),
     },
   ]
@@ -524,7 +629,12 @@ export function ProductReadOnlyForm({
         <TabsContent value="basic" className="space-y-4 pt-4">
           <BasicInfoTab
             product={product}
-            handleInputChange={() => {}}
+            handleInputChange={(field, value) => {
+              setProduct((prev: any) => ({
+                ...prev,
+                [field]: value,
+              }))
+            }}
             customersData={customersData}
             factories={factories}
             productTypes={[]}
@@ -561,9 +671,9 @@ export function ProductReadOnlyForm({
                           <tbody>
                             {selectedComponents.map((component, index) => (
                               <tr key={index} className="border-t">
-                                <td className="px-4 py-2 font-medium">{component.part_no}</td>
+                                <td className="px-4 py-2 font-medium">{component.part_number}</td>
                                 <td className="px-4 py-2">
-                                  {componentDetails[component.part_no] || component.description || ""}
+                                  {componentDetails[component.part_number] || component.component_name || ""}
                                 </td>
                               </tr>
                             ))}
@@ -941,7 +1051,16 @@ export function ProductReadOnlyForm({
 
         {/* 履歷資料頁籤 */}
         <TabsContent value="resume" className="space-y-4 pt-4">
-          <ResumeTab product={product} handleInputChange={() => {}} isReadOnly={true} />
+          <ResumeTab
+            product={product}
+            handleInputChange={(field, value) => {
+              setProduct((prev: any) => ({
+                ...prev,
+                [field]: value,
+              }))
+            }}
+            isReadOnly={true}
+          />
         </TabsContent>
       </Tabs>
     </form>
