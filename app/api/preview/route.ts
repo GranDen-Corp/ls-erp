@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     const type = searchParams.get('type')
 
     if (!filePath) {
+      console.error('未提供路徑')
       return NextResponse.json({ error: '未提供路徑' }, { status: 400 })
     }
 
@@ -24,6 +25,14 @@ export async function GET(request: Request) {
     if (!fs.existsSync(decodedPath)) {
       console.error(`路徑不存在: ${decodedPath}`)
       return NextResponse.json({ error: '路徑不存在' }, { status: 404 })
+    }
+
+    // 檢查檔案權限
+    try {
+      await fs.promises.access(decodedPath, fs.constants.R_OK)
+    } catch (error) {
+      console.error(`檔案權限不足: ${decodedPath}`, error)
+      return NextResponse.json({ error: '檔案權限不足' }, { status: 403 })
     }
 
     // 如果是資料夾，使用系統命令開啟
@@ -57,6 +66,13 @@ export async function GET(request: Request) {
 
     // 如果是檔案，則讀取並回傳
     try {
+      // 檢查是否為檔案
+      const stats = fs.statSync(decodedPath)
+      if (!stats.isFile()) {
+        console.error(`路徑不是檔案: ${decodedPath}`)
+        return NextResponse.json({ error: '路徑不是檔案' }, { status: 400 })
+      }
+
       // 讀取檔案
       const fileBuffer = fs.readFileSync(decodedPath)
       
@@ -83,10 +99,16 @@ export async function GET(request: Request) {
       })
     } catch (readError) {
       console.error(`讀取檔案時發生錯誤: ${decodedPath}`, readError)
-      return NextResponse.json({ error: '讀取檔案時發生錯誤' }, { status: 500 })
+      return NextResponse.json({ 
+        error: '讀取檔案時發生錯誤',
+        details: readError instanceof Error ? readError.message : '未知錯誤'
+      }, { status: 500 })
     }
   } catch (error) {
     console.error('處理請求時發生錯誤:', error)
-    return NextResponse.json({ error: '處理請求時發生錯誤' }, { status: 500 })
+    return NextResponse.json({ 
+      error: '處理請求時發生錯誤',
+      details: error instanceof Error ? error.message : '未知錯誤'
+    }, { status: 500 })
   }
 }
