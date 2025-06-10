@@ -89,4 +89,4 @@ export async function GET(request: Request) {
     console.error('處理請求時發生錯誤:', error)
     return NextResponse.json({ error: '處理請求時發生錯誤' }, { status: 500 })
   }
-} 
+}
