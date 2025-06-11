@@ -28,9 +28,9 @@ import { EnhancedProductList } from "./enhanced-product-list"
 import { ProductList } from "./product-list"
 import { BatchManagement } from "./batch-management"
 import { OrderInfo } from "./order-info"
-import { EnhancedBatchManagement } from "./enhanced-batch-management"
 import { ProcurementProductList } from "./procurement-product-list"
 import { ProductProcurementInfo } from "./product-procurement-info"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface NewOrderFormProps {
   onSubmit: (createPurchaseOrder?: boolean) => void
@@ -484,84 +484,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
         {/* 採購資料設定區域 */}
         {orderForm.activeTab === "procurement" && (
           <div className="space-y-6">
-            {/* 訂單摘要卡片 */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <LucidePackage className="h-5 w-5" />
-                    訂單產品摘要
-                  </CardTitle>
-                  <CardDescription>請確認以下產品資料，再進行採購設定</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                    {(orderForm.orderItems || []).length} 項產品
-                  </Badge>
-                  <Badge variant="outline" className="bg-green-50 text-green-700">
-                    總金額: {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[120px]">產品編號</TableHead>
-                        <TableHead>產品名稱</TableHead>
-                        <TableHead className="text-center w-[80px]">數量</TableHead>
-                        <TableHead className="text-center w-[80px]">單位</TableHead>
-                        <TableHead className="text-right w-[100px]">單價</TableHead>
-                        <TableHead className="text-right w-[100px]">金額</TableHead>
-                        <TableHead className="text-center w-[80px]">批次</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(orderForm.orderItems || []).map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">
-                            {item.productPartNo}
-                            {item.isAssembly && (
-                              <Badge className="ml-2 bg-purple-500 text-white">
-                                <LucideLayers className="h-3 w-3 mr-1" />
-                                組件
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>{item.productName}</TableCell>
-                          <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                              {orderForm.getUnitDisplayName(item.unit)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {item.unitPrice.toFixed(2)} {item.currency}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {orderForm.calculateItemTotal(item).toFixed(2)} {item.currency}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline">{item.shipmentBatches?.length || 0}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-right font-bold">
-                          訂單總金額:
-                        </TableCell>
-                        <TableCell className="text-right font-bold">
-                          {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
-                        </TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* 返回產品設定按鈕 */}
             <div className="flex justify-center">
               <Button variant="outline" onClick={handleGoToProducts} className="flex items-center gap-2">
@@ -570,16 +492,121 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               </Button>
             </div>
 
-            {/* 採購產品列表 */}
-            <ProcurementProductList
-              orderItems={orderForm.orderItems || []}
-              onProcurementDataChange={orderForm.handleProcurementDataChange}
-              customerCurrency={orderForm.customerCurrency}
-              productUnits={orderForm.productUnits || []}
-              getUnitMultiplier={orderForm.getUnitMultiplier}
-              disabled={orderForm.isProcurementSettingsConfirmed}
-            />
+            {/* 採購資料與訂單摘要分頁頁籤 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <LucideClipboardList className="h-5 w-5" />
+                    採購資料設定與訂單對比
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      {(orderForm.orderItems || []).length} 項產品
+                    </Badge>
+                    <Badge variant="outline" className="bg-green-50 text-green-700">
+                      總金額: {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
+                    </Badge>
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  您可以在此頁面查看訂單產品摘要並設定採購資料，使用下方頁籤切換不同視圖
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="procurement" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="procurement">
+                      <LucideShoppingCart className="h-4 w-4 mr-2" />
+                      採購產品設定
+                    </TabsTrigger>
+                    <TabsTrigger value="order-summary">
+                      <LucidePackage className="h-4 w-4 mr-2" />
+                      訂單產品摘要
+                    </TabsTrigger>
+                  </TabsList>
 
+                  {/* 採購產品列表頁籤 */}
+                  <TabsContent value="procurement" className="mt-0">
+                    <ProcurementProductList
+                      orderItems={orderForm.orderItems || []}
+                      onProcurementDataChange={orderForm.handleProcurementDataChange}
+                      customerCurrency={orderForm.customerCurrency}
+                      productUnits={orderForm.productUnits || []}
+                      getUnitMultiplier={orderForm.getUnitMultiplier}
+                      disabled={orderForm.isProcurementSettingsConfirmed}
+                    />
+                  </TabsContent>
+
+                  {/* 訂單產品摘要頁籤 */}
+                  <TabsContent value="order-summary" className="mt-0">
+                    <div className="border rounded-lg p-4 bg-blue-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+                          <LucidePackage className="h-5 w-5" />
+                          訂單產品摘要
+                        </h3>
+                      </div>
+                      <div className="overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[120px]">產品編號</TableHead>
+                              <TableHead>產品名稱</TableHead>
+                              <TableHead className="text-center w-[80px]">數量</TableHead>
+                              <TableHead className="text-center w-[80px]">單位</TableHead>
+                              <TableHead className="text-right w-[100px]">單價</TableHead>
+                              <TableHead className="text-right w-[100px]">金額</TableHead>
+                              <TableHead className="text-center w-[80px]">批次</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(orderForm.orderItems || []).map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">
+                                  {item.productPartNo}
+                                  {item.isAssembly && (
+                                    <Badge className="ml-2 bg-purple-500 text-white">
+                                      <LucideLayers className="h-3 w-3 mr-1" />
+                                      組件
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>{item.productName}</TableCell>
+                                <TableCell className="text-center">{item.quantity}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                    {orderForm.getUnitDisplayName(item.unit)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {item.unitPrice.toFixed(2)} {item.currency}
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {orderForm.calculateItemTotal(item).toFixed(2)} {item.currency}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="outline">{item.shipmentBatches?.length || 0}</Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-right font-bold">
+                                訂單總金額:
+                              </TableCell>
+                              <TableCell className="text-right font-bold">
+                                {formatCurrencyAmount(orderForm.calculateTotal(), orderForm.customerCurrency)}
+                              </TableCell>
+                              <TableCell></TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
             {/* 採購設定確認按鈕 */}
             <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
               <CardContent className="p-6">
@@ -611,7 +638,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </div>
               </CardContent>
             </Card>
-
             {/* 最終提交按鈕 */}
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
               <CardContent className="p-6">
@@ -643,7 +669,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                 </div>
               </CardContent>
             </Card>
-
             {/* 在採購資料設定區域也顯示訂單資訊和產品採購資訊 */}
             <MemoizedOrderInfo
               remarks={orderForm.remarks}
@@ -671,22 +696,6 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             />
           </div>
         )}
-
-        {/* 批次管理對話框 */}
-        <EnhancedBatchManagement
-          isOpen={orderForm.isManagingBatches}
-          onClose={() => orderForm.setIsManagingBatches(false)}
-          orderItem={orderForm.getCurrentItem()}
-          onUpdateBatches={(productPartNo, batches) => {
-            // 更新指定產品的批次資料
-            orderForm.setOrderItems((prevItems) =>
-              (prevItems || []).map((item) =>
-                item.productPartNo === productPartNo ? { ...item, shipmentBatches: batches } : item,
-              ),
-            )
-          }}
-          getUnitMultiplier={orderForm.getUnitMultiplier}
-        />
       </div>
     )
   },
