@@ -36,6 +36,8 @@ interface Product {
   customer_id: string
   unit_price: number
   last_price: number
+  last_quantity?: number // 新增：最後訂購數量
+  last_unit?: string // 新增：最後訂購單位
   sub_part_no: any
   factory_id: string
   currency: string
@@ -60,10 +62,12 @@ interface Factory {
   factory_payment_terms?: string
   quality_contact1?: string
   quality_contact2?: string
+  currency?: string // 新增工廠貨幣欄位
 }
 
 interface OrderItem {
   id: string
+  orderSequence: string // 新增：訂單產品序號 (A, B, C...)
   productKey: string
   productName: string
   productPartNo: string
@@ -166,15 +170,19 @@ async function checkOrderNumberExists(orderNumber: string): Promise<boolean> {
   return data && data.length > 0
 }
 
+// 輔助函數：生成訂單產品序號 (A, B, C...)
+function generateOrderSequence(index: number): string {
+  return String.fromCharCode(65 + index) // 65 是 'A' 的 ASCII 碼
+}
+
 export function useOrderForm() {
   // Basic state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Add this line with other state declarations
-
   // Form data with proper string initialization
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("")
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [poNumber, setPoNumber] = useState<string>("")
   const [orderNumber, setOrderNumber] = useState<string>("")
   const [customOrderNumber, setCustomOrderNumber] = useState<string>("")
@@ -187,14 +195,6 @@ export function useOrderForm() {
 
   // 新增交貨日期狀態
   const [deliveryDate, setDeliveryDate] = useState<Date>(new Date())
-
-  // 移除這些舊的狀態
-  // const [purchaseRemarks, setPurchaseRemarks] = useState<string>("")
-  // const [cartonMarkInfo, setCartonMarkInfo] = useState<string>("")
-  // const [palletMarkInfo, setPalletMarkInfo] = useState<string>("")
-  // const [jinzhanLabelInfo, setJinzhanLabelInfo] = useState<string>("")
-  // const [isJinzhanLabelDisabled, setIsJinzhanLabelDisabled] = useState<boolean>(false)
-  // const [isCartonMarkDisabled, setIsCartonMarkDisabled] = useState<boolean>(false)
 
   // 添加新的狀態
   const [productProcurementInfo, setProductProcurementInfo] = useState<
@@ -264,7 +264,12 @@ export function useOrderForm() {
         // Load data from correct tables - include port_type for ports
         const [customersRes, factoriesRes, unitsRes, ratesRes, portsRes] = await Promise.all([
           supabase.from("customers").select("*").order("customer_full_name"),
-          supabase.from("factories").select("*").order("factory_name"),
+          supabase
+            .from("factories")
+            .select(
+              "factory_id, factory_name, factory_trade_terms, factory_payment_terms, quality_contact1, quality_contact2, currency",
+            )
+            .order("factory_name"),
           supabase
             .from("unit_setting")
             .select("*")
@@ -324,7 +329,9 @@ export function useOrderForm() {
           packaging_requirements,
           mold_cost,
           refundable_mold_quantity,
-          accounting_note
+          accounting_note,
+          last_quantity,
+          last_unit
         `)
         .eq("customer_id", customerId)
         .order("part_no")
@@ -353,6 +360,7 @@ export function useOrderForm() {
       if (customerId) {
         const customer = customers.find((c) => c.customer_id === customerId)
         if (customer) {
+          setSelectedCustomer(customer)
           // Ensure we always set strings, never null/undefined
           setPaymentTerms(customer.payment_terms_specification || customer.payment_due_date || "")
           setTradeTerms(customer.trade_terms_specification || "")
@@ -365,6 +373,7 @@ export function useOrderForm() {
           loadCustomerProducts(customerId)
         }
       } else {
+        setSelectedCustomer(null)
         setPaymentTerms("")
         setTradeTerms("")
         setPortOfDischarge("")
@@ -385,11 +394,6 @@ export function useOrderForm() {
   const customerCurrency = useMemo(() => {
     const customer = customers.find((c) => c.customer_id === selectedCustomerId)
     return customer?.currency || "USD"
-  }, [customers, selectedCustomerId])
-
-  // Get selected customer
-  const selectedCustomer = useMemo(() => {
-    return customers.find((c) => c.customer_id === selectedCustomerId) || null
   }, [customers, selectedCustomerId])
 
   // Get default unit
@@ -442,6 +446,14 @@ export function useOrderForm() {
     }
   }, [useCustomOrderNumber])
 
+  // 重新分配訂單序號的函數
+  const reassignOrderSequences = useCallback((items: OrderItem[]) => {
+    return items.map((item, index) => ({
+      ...item,
+      orderSequence: generateOrderSequence(index),
+    }))
+  }, [])
+
   // Other methods remain the same...
   const checkIsProductAdded = useCallback(
     (partNo: string) => {
@@ -482,7 +494,11 @@ export function useOrderForm() {
       selectedProducts.forEach((partNo) => {
         const product = [...regularProducts, ...assemblyProducts].find((p) => p.part_no === partNo)
         if (product && !checkIsProductAdded(partNo)) {
-          const defaultQuantity = 1000 // 修改為預設1000個
+          // 使用產品的歷史數據作為預設值
+          const defaultQuantity = product.last_quantity || 1000
+          const defaultUnit = product.last_unit || defaultUnit
+          const defaultPrice = product.last_price || product.unit_price || 0
+
           const actualQuantityInPcs = defaultQuantity * getUnitMultiplier(defaultUnit)
 
           // 設定預設交貨日期為30天後
@@ -491,25 +507,26 @@ export function useOrderForm() {
 
           const newItem: OrderItem = {
             id: `${Date.now()}-${Math.random()}`,
+            orderSequence: "", // 稍後會重新分配
             productKey: `${product.customer_id}-${product.part_no}`,
             productName: product.component_name || product.part_no,
             productPartNo: product.part_no,
             quantity: defaultQuantity,
             unit: defaultUnit,
-            unitPrice: product.unit_price || product.last_price || 0,
+            unitPrice: defaultPrice,
             isAssembly: product.is_assembly || false,
             shipmentBatches: [
               {
                 id: `batch-${Date.now()}`,
                 batchNumber: 1,
                 quantity: actualQuantityInPcs,
-                plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
                 status: "pending",
                 notes: "",
               },
             ],
             specifications: product.specification || "",
-            currency: customerCurrency,
+            currency: customerCurrency, // 使用客戶貨幣
             product: product,
             expectedDeliveryDate: defaultDeliveryDate.toISOString().split("T")[0],
           }
@@ -518,7 +535,10 @@ export function useOrderForm() {
       })
 
       if (newItems.length > 0) {
-        setOrderItems((prev) => [...prev, ...newItems])
+        setOrderItems((prev) => {
+          const updatedItems = [...prev, ...newItems]
+          return reassignOrderSequences(updatedItems)
+        })
         setSelectedProducts([])
         console.log(`成功添加 ${newItems.length} 個產品`)
       }
@@ -527,46 +547,70 @@ export function useOrderForm() {
     } finally {
       setLoadingSelectedProducts(false)
     }
-  }, [selectedProducts, regularProducts, assemblyProducts, checkIsProductAdded, defaultUnit, customerCurrency])
+  }, [
+    selectedProducts,
+    regularProducts,
+    assemblyProducts,
+    checkIsProductAdded,
+    defaultUnit,
+    customerCurrency,
+    reassignOrderSequences,
+  ])
 
   const handleAddAssemblyProduct = useCallback(() => {
     if (!selectedProductPartNo) return
 
     const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
     if (product && !checkIsProductAdded(selectedProductPartNo)) {
+      // 使用產品的歷史數據作為預設值
+      const defaultQuantity = product.last_quantity || 1000
+      const defaultUnit = product.last_unit || defaultUnit
+      const defaultPrice = product.last_price || product.unit_price || 0
+
       // 設定預設交貨日期為30天後
       const defaultDeliveryDate = new Date()
       defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 30)
 
       const newItem: OrderItem = {
         id: `${Date.now()}-${Math.random()}`,
+        orderSequence: "", // 稍後會重新分配
         productKey: `${product.customer_id}-${product.part_no}`,
         productName: product.component_name || product.part_no,
         productPartNo: product.part_no,
-        quantity: 1000, // 修改為預設1000個
+        quantity: defaultQuantity,
         unit: defaultUnit,
-        unitPrice: product.unit_price || product.last_price || 0,
+        unitPrice: defaultPrice,
         isAssembly: true,
         shipmentBatches: [
           {
             id: `batch-${Date.now()}`,
             batchNumber: 1,
-            quantity: 1000,
+            quantity: defaultQuantity,
             plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             status: "pending",
           },
         ],
         specifications: product.specification || "",
-        currency: customerCurrency,
+        currency: customerCurrency, // 使用客戶貨幣
         product: product,
         expectedDeliveryDate: defaultDeliveryDate.toISOString().split("T")[0],
       }
 
-      setOrderItems((prev) => [...prev, newItem])
+      setOrderItems((prev) => {
+        const updatedItems = [...prev, newItem]
+        return reassignOrderSequences(updatedItems)
+      })
       setSelectedProductPartNo("")
       console.log("成功添加組件產品:", product.part_no)
     }
-  }, [selectedProductPartNo, assemblyProducts, checkIsProductAdded, defaultUnit, customerCurrency])
+  }, [
+    selectedProductPartNo,
+    assemblyProducts,
+    checkIsProductAdded,
+    defaultUnit,
+    customerCurrency,
+    reassignOrderSequences,
+  ])
 
   // Form submission
   const handleSubmitOrder = useCallback(
@@ -609,6 +653,7 @@ export function useOrderForm() {
           status: 0,
           created_at: new Date().toISOString(),
           order_items: orderItems.map((item) => ({
+            order_sequence: item.orderSequence,
             product_part_no: item.productPartNo,
             quantity: item.quantity,
             unit_price: item.unitPrice,
@@ -732,7 +777,7 @@ export function useOrderForm() {
       etdDate.setDate(etdDate.getDate() + 30) // 預設30天後
       const etdString = etdDate.toISOString().split("T")[0].replace(/-/g, "/")
 
-      return `${item.productPartNo}: ${item.quantity} ${getUnitDisplayName(item.unit)} ETD ${etdString} XXX`
+      return `${item.orderSequence}. ${item.productPartNo}: ${item.quantity} ${getUnitDisplayName(item.unit)} ETD ${etdString} XXX`
     })
 
     const remarks = `1. DELIVERY:
@@ -796,7 +841,11 @@ ${deliveryLines.join("\n")}
 
   const handleRemoveProduct = useCallback(
     (id: string) => {
-      setOrderItems((prev) => prev.filter((item) => item.id !== id))
+      setOrderItems((prev) => {
+        const filteredItems = prev.filter((item) => item.id !== id)
+        // 重新分配序號
+        return reassignOrderSequences(filteredItems)
+      })
 
       if (orderItems.length <= 1) {
         setIsProductSettingsConfirmed(false)
@@ -806,7 +855,7 @@ ${deliveryLines.join("\n")}
         setOrderTableData([])
       }
     },
-    [orderItems],
+    [orderItems, reassignOrderSequences],
   )
 
   const openBatchManagement = useCallback((item: OrderItem) => {
@@ -1101,26 +1150,6 @@ ${historicalPurchases}
     orderInfo,
     purchaseInfo,
     deliveryDate, // 新增
-    // 移除舊的返回項目
-    // purchaseRemarks,
-    // setPurchaseRemarks,
-    // cartonMarkInfo,
-    // palletMarkInfo,
-    // jinzhanLabelInfo,
-    // isJinzhanLabelDisabled,
-    // setCartonMarkInfo,
-    // setPalletMarkInfo,
-    // setJinzhanLabelInfo,
-    // setIsJinzhanLabelDisabled,
-    // palletMarkInfo,
-    // jinzhanLabelInfo,
-    // isJinzhanLabelDisabled,
-    // setCartonMarkInfo,
-    // setPalletMarkInfo,
-    // setJinzhanLabelInfo,
-    // setIsJinzhanLabelDisabled,
-    // isCartonMarkDisabled,
-    // setIsCartonMarkDisabled,
 
     // 添加新的返回項目
     productProcurementInfo,

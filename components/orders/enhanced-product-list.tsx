@@ -20,6 +20,7 @@ import { formatCurrencyAmount } from "@/lib/currency-utils"
 
 interface OrderItem {
   id: string
+  orderSequence: string // 新增：訂單產品序號 (A, B, C...)
   productPartNo: string
   productName: string
   quantity: number
@@ -29,9 +30,11 @@ interface OrderItem {
   isAssembly: boolean
   shipmentBatches: Array<{
     id: string
-    batch_no: string
+    batchNumber: number
     quantity: number
-    delivery_date: string
+    plannedShipDate: Date | string
+    status?: string
+    notes?: string
   }>
 }
 
@@ -142,19 +145,25 @@ export function EnhancedProductList({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[80px]">序號</TableHead>
                 <TableHead className="w-[120px]">產品編號</TableHead>
                 <TableHead>產品名稱</TableHead>
                 <TableHead className="text-center w-[100px]">數量</TableHead>
                 <TableHead className="text-center w-[80px]">單位</TableHead>
                 <TableHead className="text-right w-[120px]">單價</TableHead>
                 <TableHead className="text-right w-[120px]">金額</TableHead>
-                <TableHead className="text-center w-[100px]">批次管理</TableHead>
+                <TableHead className="text-center w-[120px]">批次管理</TableHead>
                 <TableHead className="text-center w-[80px]">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orderItems.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell className="font-bold text-center">
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 font-bold">
+                      {item.orderSequence}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {item.productPartNo}
@@ -223,7 +232,7 @@ export function EnhancedProductList({
                   <TableCell className="text-right">
                     {isProductSettingsConfirmed ? (
                       <span>
-                        {item.unitPrice.toFixed(2)} {item.currency}
+                        {item.unitPrice.toFixed(2)} {customerCurrency}
                       </span>
                     ) : (
                       <div className="flex items-center gap-1">
@@ -237,12 +246,12 @@ export function EnhancedProductList({
                           min="0"
                           step="0.01"
                         />
-                        <span className="text-sm text-muted-foreground">{item.currency}</span>
+                        <span className="text-sm text-muted-foreground">{customerCurrency}</span>
                       </div>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {calculateItemTotal(item).toFixed(2)} {item.currency}
+                    {calculateItemTotal(item).toFixed(2)} {customerCurrency}
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex flex-col items-center gap-1">
@@ -278,7 +287,7 @@ export function EnhancedProductList({
                 </TableRow>
               ))}
               <TableRow>
-                <TableCell colSpan={5} className="text-right font-bold">
+                <TableCell colSpan={6} className="text-right font-bold">
                   訂單總金額:
                 </TableCell>
                 <TableCell className="text-right font-bold">
