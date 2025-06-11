@@ -24,7 +24,6 @@ import {
   BarChart,
   ChevronLeft,
   ChevronRight,
-  Database,
   Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -164,12 +163,6 @@ export default function Sidebar({ className }: SidebarProps = {}) {
       icon: Settings,
       href: "/settings",
       active: pathname === "/settings" || pathname?.startsWith("/settings/"),
-    },
-    {
-      label: "SBTest資料表",
-      icon: Database,
-      href: "/local-data",
-      active: pathname === "/local-data" || pathname?.startsWith("/local-data/"),
     },
   ]
 

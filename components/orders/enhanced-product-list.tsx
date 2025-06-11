@@ -63,6 +63,7 @@ interface EnhancedProductListProps {
   getUnitMultiplier: (unitName: string) => number
   calculateActualQuantity: (quantity: number, unit: string) => number
   calculateActualUnitPrice: (unitPrice: number, unit: string) => number
+  orderNumber: string // 新增：訂單編號
 }
 
 export function EnhancedProductList({
@@ -79,6 +80,7 @@ export function EnhancedProductList({
   getUnitMultiplier,
   calculateActualQuantity,
   calculateActualUnitPrice,
+  orderNumber,
 }: EnhancedProductListProps) {
   const [editingItem, setEditingItem] = useState<string | null>(null)
 
@@ -101,6 +103,21 @@ export function EnhancedProductList({
     return Math.abs(totalBatchQuantity - actualQuantity) > 0.01
   }
 
+  // 生成訂單產品編號
+  const generateOrderProductNumber = (orderNumber: string) => {
+    if (!orderNumber || !orderNumber.startsWith("L-")) return ""
+    return orderNumber.replace("L-", "LS-")
+  }
+
+  // 生成個別產品編號
+  const generateIndividualProductNumber = (orderNumber: string, sequence: string) => {
+    const baseNumber = generateOrderProductNumber(orderNumber)
+    return baseNumber ? `${baseNumber}-${sequence}` : ""
+  }
+
+  const orderProductNumber = generateOrderProductNumber(orderNumber)
+  const showSequenceColumn = orderItems.length > 1
+
   if (orderItems.length === 0) {
     return (
       <Card>
@@ -119,10 +136,13 @@ export function EnhancedProductList({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-1">
             <LucidePackage className="h-5 w-5" />
-            訂單產品列表
-          </CardTitle>
+            <CardTitle>訂單產品列表</CardTitle>
+          </div>
+          {orderProductNumber && (
+            <div className="text-base font-medium text-blue-600 mb-2">訂單產品編號: {orderProductNumber}</div>
+          )}
           <CardDescription>管理訂單中的產品資訊和批次設定</CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -145,7 +165,7 @@ export function EnhancedProductList({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">序號</TableHead>
+                {showSequenceColumn && <TableHead className="w-[80px]">序號</TableHead>}
                 <TableHead className="w-[120px]">產品編號</TableHead>
                 <TableHead>產品名稱</TableHead>
                 <TableHead className="text-center w-[100px]">數量</TableHead>
@@ -159,11 +179,18 @@ export function EnhancedProductList({
             <TableBody>
               {orderItems.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-bold text-center">
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 font-bold">
-                      {item.orderSequence}
-                    </Badge>
-                  </TableCell>
+                  {showSequenceColumn && (
+                    <TableCell className="font-bold text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800 font-bold">
+                          {item.orderSequence}
+                        </Badge>
+                        <div className="text-sm font-medium text-blue-600 mt-1">
+                          {generateIndividualProductNumber(orderNumber, item.orderSequence)}
+                        </div>
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {item.productPartNo}
@@ -287,7 +314,7 @@ export function EnhancedProductList({
                 </TableRow>
               ))}
               <TableRow>
-                <TableCell colSpan={6} className="text-right font-bold">
+                <TableCell colSpan={showSequenceColumn ? 6 : 5} className="text-right font-bold">
                   訂單總金額:
                 </TableCell>
                 <TableCell className="text-right font-bold">

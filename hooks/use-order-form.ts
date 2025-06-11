@@ -38,6 +38,7 @@ interface Product {
   last_price: number
   last_quantity?: number // 新增：最後訂購數量
   last_unit?: string // 新增：最後訂購單位
+  last_purchase_price?: number // 新增：最後採購價格
   sub_part_no: any
   factory_id: string
   currency: string
@@ -331,7 +332,8 @@ export function useOrderForm() {
           refundable_mold_quantity,
           accounting_note,
           last_quantity,
-          last_unit
+          last_unit,
+          last_purchase_price
         `)
         .eq("customer_id", customerId)
         .order("part_no")

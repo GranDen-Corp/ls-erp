@@ -74,6 +74,7 @@ interface ProcurementProductListProps {
   productUnits: ProductUnit[]
   getUnitMultiplier: (unit: string) => number
   disabled?: boolean
+  orderNumber: string // 新增：訂單編號
 }
 
 export function ProcurementProductList({
@@ -83,6 +84,7 @@ export function ProcurementProductList({
   productUnits = [],
   getUnitMultiplier,
   disabled = false,
+  orderNumber,
 }: ProcurementProductListProps) {
   const [procurementBatches, setProcurementBatches] = useState<ProcurementBatch[]>([])
   const [factories, setFactories] = useState<Factory[]>([])
@@ -139,18 +141,18 @@ export function ProcurementProductList({
     }
   }
 
-  // 根據產品查找供應商
+  // 根據產品查找供應商和歷史採購價格
   const findFactoryForProduct = async (customerId: string, partNo: string) => {
     try {
       const { data, error } = await supabaseClient
         .from("products")
-        .select("factory_id")
+        .select("factory_id, last_purchase_price")
         .eq("customer_id", customerId)
         .eq("part_no", partNo)
         .single()
 
       if (error || !data?.factory_id) {
-        return { factoryId: "", factoryName: "" }
+        return { factoryId: "", factoryName: "", lastPurchasePrice: 0 }
       }
 
       const factory = factories.find((s) => s.factory_id === data.factory_id)
@@ -158,10 +160,11 @@ export function ProcurementProductList({
         factoryId: data.factory_id,
         factoryName: factory?.factory_name || "",
         factoryCurrency: factory?.currency || "USD", // 新增工廠貨幣
+        lastPurchasePrice: data.last_purchase_price || 0, // 新增歷史採購價格
       }
     } catch (error) {
       console.error("Error finding factory for product:", error)
-      return { factoryId: "", factoryName: "" }
+      return { factoryId: "", factoryName: "", lastPurchasePrice: 0 }
     }
   }
 
@@ -182,7 +185,7 @@ export function ProcurementProductList({
               const partNo = subPart.productId || subPart.part_no || subPart.productPartNo
               if (!partNo) continue
 
-              const { factoryId, factoryName, factoryCurrency } = await findFactoryForProduct(
+              const { factoryId, factoryName, factoryCurrency, lastPurchasePrice } = await findFactoryForProduct(
                 orderItem.product.customer_id,
                 partNo,
               )
@@ -197,7 +200,7 @@ export function ProcurementProductList({
                 factoryName: factoryName,
                 quantity: (subPart.quantity || 1) * orderBatch.quantity,
                 unit: orderItem.unit,
-                unitPrice: 0,
+                unitPrice: lastPurchasePrice, // 使用歷史採購價格
                 currency: factoryCurrency, // 使用工廠貨幣
                 expectedDeliveryDate: null,
                 notes: `組件 ${orderItem.productPartNo} 批次 ${orderBatch.batchNumber} 的子零件`,
@@ -208,7 +211,7 @@ export function ProcurementProductList({
           }
         } else {
           // 處理一般產品 - 每個訂單批次對應一個採購批次
-          const { factoryId, factoryName, factoryCurrency } = await findFactoryForProduct(
+          const { factoryId, factoryName, factoryCurrency, lastPurchasePrice } = await findFactoryForProduct(
             orderItem.product?.customer_id || "",
             orderItem.productPartNo,
           )
@@ -224,7 +227,7 @@ export function ProcurementProductList({
               factoryName: factoryName,
               quantity: orderBatch.quantity,
               unit: orderItem.unit,
-              unitPrice: 0,
+              unitPrice: lastPurchasePrice, // 使用歷史採購價格
               currency: factoryCurrency, // 使用工廠貨幣
               expectedDeliveryDate: null,
               notes: `批次 ${orderBatch.batchNumber}`,
@@ -286,6 +289,19 @@ export function ProcurementProductList({
     return totals
   }
 
+  // 生成採購單編號
+  const generatePurchaseOrderNumber = (orderNumber: string, sequence: string) => {
+    if (!orderNumber || !orderNumber.startsWith("L-")) return ""
+    const baseNumber = orderNumber.replace("L-", "LP-")
+    return `${baseNumber}-${sequence}`
+  }
+
+  // 生成完整採購單批號
+  const generatePurchaseBatchNumber = (orderNumber: string, sequence: string, batchNumber: number) => {
+    const baseNumber = generatePurchaseOrderNumber(orderNumber, sequence)
+    return baseNumber ? `${baseNumber}-${batchNumber}` : ""
+  }
+
   // 按訂單產品序號分組顯示
   const groupedBatches = procurementBatches.reduce(
     (groups, batch) => {
@@ -339,13 +355,20 @@ export function ProcurementProductList({
         <div className="space-y-6">
           {Object.entries(groupedBatches).map(([orderSequence, batches]) => {
             const orderItem = orderItems.find((item) => item.orderSequence === orderSequence)
+            const purchaseOrderNumber = generatePurchaseOrderNumber(orderNumber, orderSequence)
+
             return (
               <div key={orderSequence} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 font-bold text-lg px-3 py-1">
-                      {orderSequence}
-                    </Badge>
+                    <div className="flex flex-col items-center">
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 font-bold text-lg px-3 py-1">
+                        {orderSequence}
+                      </Badge>
+                      {purchaseOrderNumber && (
+                        <div className="text-base font-medium text-blue-600 mt-1">{purchaseOrderNumber}</div>
+                      )}
+                    </div>
                     <ArrowRight className="h-4 w-4 text-gray-400" />
                     <div>
                       <h3 className="font-semibold text-lg">{orderItem?.productPartNo}</h3>
@@ -381,13 +404,23 @@ export function ProcurementProductList({
                       {batches.map((batch) => {
                         const actualQuantity = batch.quantity * getUnitMultiplier(batch.unit)
                         const totalPrice = actualQuantity * batch.unitPrice
+                        const purchaseBatchNumber = generatePurchaseBatchNumber(
+                          orderNumber,
+                          orderSequence,
+                          batch.orderBatchNumber,
+                        )
 
                         return (
                           <TableRow key={batch.id}>
                             <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-green-100 text-green-800">
-                                #{batch.orderBatchNumber}
-                              </Badge>
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant="outline" className="bg-green-100 text-green-800">
+                                  #{batch.orderBatchNumber}
+                                </Badge>
+                                {purchaseBatchNumber && (
+                                  <div className="text-sm font-medium text-blue-600 mt-1">{purchaseBatchNumber}</div>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="font-medium">{batch.productPartNo}</TableCell>
                             <TableCell>{batch.productName}</TableCell>
