@@ -126,6 +126,26 @@ async function getTradeTermName(code: string): Promise<string> {
   }
 }
 
+// 獲取港口名稱的函數
+async function getPortName(unLocode: string): Promise<string> {
+  if (!unLocode) return ""
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("ports")
+      .select("port_name_zh, port_name_en, region")
+      .eq("un_locode", unLocode)
+      .single()
+
+    if (!error && data) {
+      return `${data.port_name_zh} (${unLocode}) - ${data.region}`
+    }
+    return unLocode // 如果找不到，返回UN/LOCODE
+  } catch (error) {
+    return unLocode
+  }
+}
+
 export default async function CustomerDetailsPage({
   params,
 }: {
@@ -140,6 +160,9 @@ export default async function CustomerDetailsPage({
     : ""
   const logisticsCoordinatorName = customer.logistics_coordinator
     ? await getTeamMemberName(customer.logistics_coordinator)
+    : ""
+  const portOfDischargeName = customer.port_of_discharge_default
+    ? await getPortName(customer.port_of_discharge_default)
     : ""
 
   // 格式化日期的輔助函數
@@ -237,6 +260,10 @@ export default async function CustomerDetailsPage({
                   <p className="text-sm font-medium text-muted-foreground">最後更新</p>
                   <p>{formatDate(customer.updatedAt)}</p>
                 </div>
+                <div className="md:col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">備註</p>
+                  <p className="whitespace-pre-wrap">{customer.remarks || "-"}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -278,19 +305,23 @@ export default async function CustomerDetailsPage({
                   <p>{customer.ship_to_address || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">客人負責人</p>
+                  <p className="text-sm font-medium text-muted-foreground">客戶負責人</p>
                   <p>{customer.client_lead_person || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">客人聯絡人</p>
+                  <p className="text-sm font-medium text-muted-foreground">客戶聯絡人</p>
                   <p>{customer.client_contact_person || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">客人採購</p>
+                  <p className="text-sm font-medium text-muted-foreground">客戶聯絡人Email</p>
+                  <p>{customer.client_contact_person_email || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">客戶採購</p>
                   <p>{customer.client_procurement || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">客人業務</p>
+                  <p className="text-sm font-medium text-muted-foreground">客戶業務</p>
                   <p>{customer.client_sales || "-"}</p>
                 </div>
                 <div>
@@ -400,6 +431,14 @@ export default async function CustomerDetailsPage({
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">標籤</p>
                   <p>{customer.labels || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">轉運商</p>
+                  <p>{customer.forwarder || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">預設到貨港</p>
+                  <p>{portOfDischargeName || customer.port_of_discharge_default || "-"}</p>
                 </div>
               </div>
             </CardContent>

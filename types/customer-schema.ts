@@ -22,6 +22,8 @@ export interface Customer {
   factory_fax: string
   client_lead_person: string
   client_contact_person: string
+  client_contact_person_email: string
+  port_of_discharge_default: string
   factory_contact_person: string
   client_procurement: string
   client_sales: string
@@ -30,7 +32,7 @@ export interface Customer {
   pallet_format: string
   cbam_note: string
   sc_shipping_mark: string
-  carton_format: string
+  carton_format: 
   ship_to_address: string
   max_carton_weight: number
   payment_term: string
@@ -43,4 +45,6 @@ export interface Customer {
   acceptance_percent: number
   require_report: boolean | string
   legacy_system_note: string
+  forwarder: string
+  remarks: string
 }

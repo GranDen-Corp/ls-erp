@@ -4,7 +4,6 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { supabaseClient } from "@/lib/supabase-client"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, AlertCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface CustomerFormProps {
@@ -55,6 +54,15 @@ interface TeamMember {
   role?: string
   department?: string
   is_active: boolean
+}
+
+interface Port {
+  id: string
+  region: string
+  port_name_zh: string
+  port_name_en: string
+  un_locode: string
+  port_type: string
 }
 
 export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
@@ -101,6 +109,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [tradeTermOptions, setTradeTermOptions] = useState<TradeTerm[]>([])
   const [exchangeRateOptions, setExchangeRateOptions] = useState<ExchangeRate[]>([])
   const [teamMemberOptions, setTeamMemberOptions] = useState<TeamMember[]>([])
+  const [portOptions, setPortOptions] = useState<Port[]>([])
 
   // 包裝與出貨
   const [groupPackagingDefault, setGroupPackagingDefault] = useState("")
@@ -121,6 +130,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [requireReport, setRequireReport] = useState(false)
   const [cbamNote, setCbamNote] = useState("")
   const [legacySystemNote, setLegacySystemNote] = useState("")
+
+  // 在其他狀態變數後面添加
+  const [forwarder, setForwarder] = useState("")
+  const [remarks, setRemarks] = useState("")
+  const [clientContactPersonEmail, setClientContactPersonEmail] = useState("")
+  const [portOfDischargeDefault, setPortOfDischargeDefault] = useState("")
 
   // 載入所有選項資料
   useEffect(() => {
@@ -168,6 +183,17 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
 
         if (!teamError && teamData) {
           setTeamMemberOptions(teamData)
+        }
+
+        // 載入港口選項
+        const { data: portData, error: portError } = await supabaseClient
+          .from("ports")
+          .select("*")
+          .order("region", { ascending: true })
+          .order("port_name_zh", { ascending: true })
+
+        if (!portError && portData) {
+          setPortOptions(portData)
         }
       } catch (error) {
         console.error("載入選項資料時出錯:", error)
@@ -234,6 +260,17 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setRequireReport(initialData.require_report === true || initialData.require_report === "true")
       setCbamNote(initialData.cbam_note || "")
       setLegacySystemNote(initialData.legacy_system_note || "")
+
+      // 在其他欄位初始化後面添加
+      setClientContactPersonEmail(initialData.client_contact_person_email || "")
+      // 確保正確設定預設到貨港的 UN/LOCODE
+      setPortOfDischargeDefault(initialData.port_of_discharge_default || "")
+      // 在其他欄位初始化後面添加
+      setForwarder(initialData.forwarder || "")
+      setRemarks(initialData.remarks || "")
+
+      // 添加調試日誌
+      console.log("設定預設到貨港:", initialData.port_of_discharge_default)
     }
   }, [initialData])
 
@@ -291,6 +328,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         client_sales: clientSales,
         sales_representative: salesRepresentative,
         logistics_coordinator: logisticsCoordinator,
+        // 在 logistics_coordinator 後面添加
+        client_contact_person_email: clientContactPersonEmail,
 
         // 財務資訊
         currency,
@@ -312,6 +351,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         max_carton_weight: maxCartonWeight,
         sc_shipping_mark: scShippingMark,
         labels,
+        // 在 labels 後面添加
+        port_of_discharge_default: portOfDischargeDefault,
 
         // 品質與報告
         qty_allowance_percent: qtyAllowancePercent,
@@ -320,6 +361,9 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         require_report: requireReport,
         cbam_note: cbamNote,
         legacy_system_note: legacySystemNote,
+        // 在 legacy_system_note 後面添加
+        forwarder,
+        remarks,
       }
 
       let result
@@ -443,6 +487,17 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   </div>
                   <p className="text-sm text-muted-foreground">啟用後將使用集團的預設設定</p>
                 </div>
+                {/* 在 "basic" TabsContent 中（約第 400 行附近），在最後一個 div 後面添加備註欄位： */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="remarks">備註</Label>
+                  <Textarea
+                    id="remarks"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="例如: 特殊要求或注意事項"
+                    rows={3}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -521,7 +576,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="clientLeadPerson">客人負責人</Label>
+                  <Label htmlFor="clientLeadPerson">客戶負責人</Label>
                   <Input
                     id="clientLeadPerson"
                     value={clientLeadPerson}
@@ -530,7 +585,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="clientContactPerson">客人聯絡人</Label>
+                  <Label htmlFor="clientContactPerson">客戶聯絡人</Label>
                   <Input
                     id="clientContactPerson"
                     value={clientContactPerson}
@@ -539,7 +594,17 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="clientProcurement">客人採購</Label>
+                  <Label htmlFor="clientContactPersonEmail">客戶聯絡人 Email</Label>
+                  <Input
+                    id="clientContactPersonEmail"
+                    type="email"
+                    value={clientContactPersonEmail}
+                    onChange={(e) => setClientContactPersonEmail(e.target.value)}
+                    placeholder="例如: lisi@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientProcurement">客戶採購</Label>
                   <Input
                     id="clientProcurement"
                     value={clientProcurement}
@@ -548,7 +613,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="clientSales">客人業務</Label>
+                  <Label htmlFor="clientSales">客戶業務</Label>
                   <Input
                     id="clientSales"
                     value={clientSales}
@@ -564,7 +629,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {teamMemberOptions.map((member) => (
-                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id}>
+                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id || ""}>
                           {member.name} ({member.ls_employee_id})
                         </SelectItem>
                       ))}
@@ -579,7 +644,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {teamMemberOptions.map((member) => (
-                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id}>
+                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id || ""}>
                           {member.name} ({member.ls_employee_id})
                         </SelectItem>
                       ))}
@@ -606,7 +671,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {exchangeRateOptions.map((option) => (
-                        <SelectItem key={option.currency_code} value={option.currency_code}>
+                        <SelectItem key={option.currency_code} value={option.currency_code || ""}>
                           {option.currency_name} ({option.currency_code})
                         </SelectItem>
                       ))}
@@ -643,7 +708,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {paymentTermOptions.map((option) => (
-                        <SelectItem key={option.code} value={option.code}>
+                        <SelectItem key={option.code} value={option.code || ""}>
                           {option.name_zh} ({option.code})
                         </SelectItem>
                       ))}
@@ -668,7 +733,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {tradeTermOptions.map((option) => (
-                        <SelectItem key={option.code} value={option.code}>
+                        <SelectItem key={option.code} value={option.code || ""}>
                           {option.name_zh} ({option.code})
                         </SelectItem>
                       ))}
@@ -769,121 +834,4 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     id="maxCartonWeight"
                     type="number"
                     value={maxCartonWeight}
-                    onChange={(e) => setMaxCartonWeight(Number.parseFloat(e.target.value) || 0)}
-                    placeholder="例如: 20"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scShippingMark">SC shipping mark</Label>
-                  <Input
-                    id="scShippingMark"
-                    value={scShippingMark}
-                    onChange={(e) => setScShippingMark(e.target.value)}
-                    placeholder="例如: SC-001"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="labels">標籤</Label>
-                  <Input
-                    id="labels"
-                    value={labels}
-                    onChange={(e) => setLabels(e.target.value)}
-                    placeholder="例如: 產品標籤、警告標籤"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="quality" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>品質與報告</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="qtyAllowancePercent">Q'ty Allowance (%)</Label>
-                  <Input
-                    id="qtyAllowancePercent"
-                    type="number"
-                    step="0.1"
-                    value={qtyAllowancePercent}
-                    onChange={(e) => setQtyAllowancePercent(Number.parseFloat(e.target.value) || 0)}
-                    placeholder="例如: 5"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="acceptancePercent">允收量 (%)</Label>
-                  <Input
-                    id="acceptancePercent"
-                    type="number"
-                    step="0.1"
-                    value={acceptancePercent}
-                    onChange={(e) => setAcceptancePercent(Number.parseFloat(e.target.value) || 0)}
-                    placeholder="例如: 95"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reportType">Reports</Label>
-                  <Input
-                    id="reportType"
-                    value={reportType}
-                    onChange={(e) => setReportType(e.target.value)}
-                    placeholder="例如: 品質報告、測試報告"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="requireReport">索取報告</Label>
-                    <Switch id="requireReport" checked={requireReport} onCheckedChange={setRequireReport} />
-                  </div>
-                  <p className="text-sm text-muted-foreground">是否需要提供報告</p>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="cbamNote">出歐洲 CBAM note</Label>
-                  <Textarea
-                    id="cbamNote"
-                    value={cbamNote}
-                    onChange={(e) => setCbamNote(e.target.value)}
-                    placeholder="例如: 需符合歐盟碳邊境調整機制要求"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="legacySystemNote">舊系統備註</Label>
-                  <Textarea
-                    id="legacySystemNote"
-                    value={legacySystemNote}
-                    onChange={(e) => setLegacySystemNote(e.target.value)}
-                    placeholder="例如: 從舊系統遷移的備註資訊"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={() => router.push("/customers/all")} disabled={isSubmitting}>
-          取消
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              處理中...
-            </>
-          ) : customerId ? (
-            "更新客戶"
-          ) : (
-            "創建客戶"
-          )}
-        </Button>
-      </div>
-    </form>
-  )
-}
+                    onChange={(e) => setMaxCarton

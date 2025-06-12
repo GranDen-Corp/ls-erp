@@ -32,6 +32,7 @@ export interface Customer {
   ship_to_address?: string
   client_lead_person?: string
   client_contact_person?: string
+  client_contact_person_email?: string
   client_procurement?: string
   client_sales?: string
   sales_representative?: string
@@ -56,6 +57,7 @@ export interface Customer {
   max_carton_weight?: number
   sc_shipping_mark?: string
   labels?: string
+  port_of_discharge_default?: string
 
   // 品質與報告
   qty_allowance_percent?: number
@@ -64,6 +66,10 @@ export interface Customer {
   require_report?: boolean
   cbam_note?: string
   legacy_system_note?: string
+
+  // 新增欄位
+  forwarder?: string
+  remarks?: string
 }
 
 export interface CustomerFormData {

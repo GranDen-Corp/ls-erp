@@ -43,6 +43,7 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     client_sales: customer.client_sales || "",
     sales_representative: customer.represent_sales || customer.sales_representative || "",
     logistics_coordinator: customer.logistics_coordinator || "",
+    client_contact_person_email: customer.client_contact_person_email || "",
 
     // 財務資訊
     currency: customer.currency || "USD",
@@ -64,6 +65,9 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     max_carton_weight: customer.max_carton_weight || 0,
     sc_shipping_mark: customer.sc_shipping_mark || "",
     labels: customer.labels || "",
+    forwarder: customer.forwarder || "",
+    // 確保正確傳遞預設到貨港的 UN/LOCODE
+    port_of_discharge_default: customer.port_of_discharge_default || "",
 
     // 品質與報告
     qty_allowance_percent: customer.qty_allowance_percent || 0,
@@ -72,6 +76,7 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     require_report: customer.require_report || false,
     cbam_note: customer.cbam_note || "",
     legacy_system_note: customer.legacy_system_note || "",
+    remarks: customer.remarks || "",
 
     // 向後兼容的欄位映射
     id: customer.customer_id || "",
