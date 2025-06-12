@@ -97,7 +97,14 @@ export default async function EditCustomerPage({ params }: { params: { id: strin
     bankAccount: customer.bank_account || "",
     groupTag: customer.group_code || customer.group_tag || "",
     salesRepresentative: customer.represent_sales || customer.sales_representative || "",
+    port_of_discharge_default: customer.port_of_discharge_default || "",
+    client_contact_person_email: customer.client_contact_person_email || "",
+    forwarder: customer.forwarder || "",
+    remarks: customer.remarks || "",
   }
+
+  // 添加調試日誌
+  console.log("客戶預設到貨港 UN/LOCODE:", customer.port_of_discharge_default)
 
   return (
     <div className="flex flex-col gap-4">

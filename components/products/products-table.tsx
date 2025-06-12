@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Eye, FileText, Loader2, MoreHorizontal, Pencil, Copy, Layers, ArrowUpDown } from "lucide-react"
+import { FileText, Loader2, MoreHorizontal, Pencil, Copy, Layers, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -54,10 +54,10 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
 
   const handleCloneProduct = (product: Product) => {
     // 將產品資料存儲到 localStorage
-    localStorage.setItem('clonedProduct', JSON.stringify(product));
-    return '/products/new?clone=true';
-  };
-  
+    localStorage.setItem("clonedProduct", JSON.stringify(product))
+    return "/products/new?clone=true"
+  }
+
   // 獲取產品類別數據
   useEffect(() => {
     async function fetchProductTypes() {
@@ -363,8 +363,8 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
 
                 const searchParams = new URLSearchParams({
                   part_no: product.part_no,
-                  customer_id: product.customer_id
-                }).toString();
+                  customer_id: product.customer_id,
+                }).toString()
 
                 return (
                   <TableRow key={`${product.customer_id}-${product.part_no}`}>
@@ -386,7 +386,12 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {product.part_no}
+                      <Link
+                        href={`/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}`}
+                        className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
+                        {product.part_no}
+                      </Link>
                       {product.is_assembly && (
                         <Badge className="ml-2 bg-purple-500 text-white">
                           <Layers className="h-3 w-3 mr-1" />
@@ -438,15 +443,6 @@ export function ProductsTable({ products = [], isLoading = false, onEdit, onView
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>操作</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Link
-                              href={`/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}`}
-                              className="flex items-center"
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              查看詳情
-                            </Link>
-                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Link
                               href={`/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}/edit`}

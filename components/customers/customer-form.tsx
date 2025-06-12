@@ -268,6 +268,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       // 在其他欄位初始化後面添加
       setForwarder(initialData.forwarder || "")
       setRemarks(initialData.remarks || "")
+
+      // 在 useEffect 的最後部分，確保正確設定預設到貨港
+      setPortOfDischargeDefault(initialData.port_of_discharge_default || "")
+
+      // 添加調試日誌
+      console.log("設定預設到貨港 UN/LOCODE:", initialData.port_of_discharge_default)
     }
   }, [initialData])
 
@@ -441,6 +447,15 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   {customerId && <p className="text-sm text-muted-foreground">客戶編號不可修改</p>}
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="customerShortName">客戶簡稱</Label>
+                  <Input
+                    id="customerShortName"
+                    value={customerShortName}
+                    onChange={(e) => setCustomerShortName(e.target.value)}
+                    placeholder="例如: 台科"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="customerFullName">客戶全名 *</Label>
                   <Input
                     id="customerFullName"
@@ -448,15 +463,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     onChange={(e) => setCustomerFullName(e.target.value)}
                     required
                     placeholder="例如: 台灣科技股份有限公司"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="customerShortName">客戶簡稱</Label>
-                  <Input
-                    id="customerShortName"
-                    value={customerShortName}
-                    onChange={(e) => setCustomerShortName(e.target.value)}
-                    placeholder="例如: 台科"
                   />
                 </div>
                 <div className="space-y-2">
@@ -871,6 +877,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                       <SelectValue placeholder="選擇預設到貨港" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="default">-- 請選擇港口 --</SelectItem>
                       {portOptions.map((port) => (
                         <SelectItem key={port.un_locode} value={port.un_locode}>
                           {port.port_name_zh} ({port.un_locode}) - {port.region}
@@ -878,7 +885,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-muted-foreground">選擇客戶的預設到貨港口</p>
+                  {portOfDischargeDefault && (
+                    <p className="text-sm text-muted-foreground">
+                      當前選中:{" "}
+                      {portOptions.find((p) => p.un_locode === portOfDischargeDefault)?.port_name_zh ||
+                        portOfDischargeDefault}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
