@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -183,6 +182,8 @@ interface ShipmentsTableProps {
 }
 
 export function ShipmentsTable({ status, isDelayed }: ShipmentsTableProps) {
+  const [loading, setLoading] = useState(true)
+  const [shipments, setShipments] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false)
   const [selectedShipment, setSelectedShipment] = useState<any>(null)
@@ -193,6 +194,28 @@ export function ShipmentsTable({ status, isDelayed }: ShipmentsTableProps) {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
+
+  useEffect(() => {
+    // 模擬資料載入
+    const timer = setTimeout(() => {
+      setShipments([
+        { id: 1, number: "SH-2023-001", customer: "客戶A", status: "準備中", date: "2023-06-10" },
+        { id: 2, number: "SH-2023-002", customer: "客戶B", status: "已出貨", date: "2023-06-15" },
+        { id: 3, number: "SH-2023-003", customer: "客戶C", status: "已完成", date: "2023-06-20" },
+      ])
+      setLoading(false)
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (loading) {
+    return <div className="p-4 text-center">載入中...</div>
+  }
+
+  if (shipments.length === 0) {
+    return <div className="p-4 text-center">沒有找到符合條件的出貨</div>
+  }
 
   // 根據用戶的客戶矩陣過濾出貨數據
   const userFilteredShipments = shipmentsData.filter((shipment) => {
@@ -473,13 +496,6 @@ export function ShipmentsTable({ status, isDelayed }: ShipmentsTableProps) {
                 </TableRow>
               )
             })}
-            {filteredShipments.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={15} className="h-24 text-center">
-                  沒有找到符合條件的出貨記錄
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </div>
