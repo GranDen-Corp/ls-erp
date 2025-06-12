@@ -51,42 +51,6 @@ export default function ProductsPage() {
 
   const filterOptions: FilterOption[] = [
     {
-      id: "product_type",
-      label: "產品類型",
-      type: "select",
-      options: [
-        { value: "standard", label: "標準品" },
-        { value: "custom", label: "客製品" },
-        { value: "assembly", label: "組裝品" },
-        { value: "raw_material", label: "原材料" },
-      ],
-    },
-    {
-      id: "material",
-      label: "材質",
-      type: "select",
-      options: [
-        { value: "steel", label: "鋼材" },
-        { value: "stainless_steel", label: "不鏽鋼" },
-        { value: "aluminum", label: "鋁" },
-        { value: "copper", label: "銅" },
-        { value: "plastic", label: "塑膠" },
-        { value: "rubber", label: "橡膠" },
-        { value: "other", label: "其他" },
-      ],
-    },
-    {
-      id: "status",
-      label: "狀態",
-      type: "select",
-      options: [
-        { value: "active", label: "使用中" },
-        { value: "discontinued", label: "已停產" },
-        { value: "development", label: "開發中" },
-        { value: "obsolete", label: "已淘汰" },
-      ],
-    },
-    {
       id: "created_at",
       label: "建立時間",
       type: "dateRange",
@@ -195,21 +159,6 @@ export default function ProductsPage() {
           product.component_name?.toLowerCase().includes(searchTerm) ||
           product.customer_id?.toLowerCase().includes(searchTerm),
       )
-    }
-
-    // Apply product_type filter
-    if (filters.product_type) {
-      result = result.filter((product) => product.product_type === filters.product_type)
-    }
-
-    // Apply material filter
-    if (filters.material) {
-      result = result.filter((product) => product.material === filters.material)
-    }
-
-    // Apply status filter
-    if (filters.status) {
-      result = result.filter((product) => product.status === filters.status)
     }
 
     // Apply date range filters

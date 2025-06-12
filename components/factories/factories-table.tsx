@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { Eye, MoreHorizontal, Pencil, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Eye, MoreHorizontal, Pencil, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,15 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 interface Factory {
   id: string | number
@@ -32,12 +25,18 @@ interface Factory {
   factory_name: string
   factory_type?: string
   location?: string
-  contact_person?: string
+  quality_contact1?: string
+  quality_contact2?: string
   factory_phone?: string
-  status?: string
+  status?: boolean
   created_at?: string
   updated_at?: string
   [key: string]: any
+}
+
+interface TeamMember {
+  ls_employee_id: string
+  name: string
 }
 
 interface FactoriesTableProps {
@@ -45,6 +44,7 @@ interface FactoriesTableProps {
   isLoading?: boolean
   visibleColumns?: string[]
   columnOrder?: string[]
+  onStatusUpdate?: (factoryId: string, newStatus: boolean) => void
 }
 
 export function FactoriesTable({
@@ -52,9 +52,42 @@ export function FactoriesTable({
   isLoading = false,
   visibleColumns = [],
   columnOrder = [],
+  onStatusUpdate,
 }: FactoriesTableProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [isTeamLoading, setIsTeamLoading] = useState(true)
+  const supabase = createClientComponentClient()
+
+  // 獲取團隊成員資料
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        setIsTeamLoading(true)
+        const { data: teamData, error } = await supabase.from("team_members").select("ls_employee_id, name")
+
+        if (error) {
+          console.error("獲取團隊成員資料失敗:", error)
+        } else {
+          setTeamMembers(teamData || [])
+        }
+      } catch (err) {
+        console.error("獲取團隊成員資料時出錯:", err)
+      } finally {
+        setIsTeamLoading(false)
+      }
+    }
+
+    fetchTeamMembers()
+  }, [])
+
+  // 根據員工ID獲取員工姓名
+  const getEmployeeName = (employeeId: string | undefined) => {
+    if (!employeeId) return ""
+    const member = teamMembers.find((m) => m.ls_employee_id === employeeId)
+    return member ? member.name : employeeId
+  }
 
   // 定義欄位渲染函數
   const columnRenderers: Record<string, (factory: Factory) => React.ReactNode> = {
@@ -66,7 +99,14 @@ export function FactoriesTable({
         {factory.factory_id}
       </Link>
     ),
-    factory_name: (factory) => factory.factory_name,
+    factory_name: (factory) => (
+      <div>
+        <div className="font-medium">{factory.factory_name}</div>
+        {factory.factory_full_name && factory.factory_full_name !== factory.factory_name && (
+          <div className="text-sm text-gray-500">{factory.factory_full_name}</div>
+        )}
+      </div>
+    ),
     factory_type: (factory) => {
       const typeMap: Record<string, string> = {
         assembly: "組裝廠",
@@ -75,28 +115,71 @@ export function FactoriesTable({
         material: "材料供應商",
         service: "服務供應商",
       }
-      return typeMap[factory.factory_type || ""] || factory.factory_type || "-"
-    },
-    location: (factory) => factory.location || "-",
-    contact_person: (factory) => factory.contact_person || "-",
-    factory_phone: (factory) => factory.factory_phone || "-",
-    status: (factory) => {
-      const statusColorMap: Record<string, string> = {
-        active: "bg-green-500",
-        inactive: "bg-gray-500",
-        pending: "bg-yellow-500",
-      }
       return (
-        <Badge className={`${statusColorMap[factory.status || ""] || "bg-gray-500"} text-white`}>
-          {factory.status === "active" ? "活躍" : factory.status === "inactive" ? "停用" : factory.status || "未知"}
+        <Badge variant="outline" className="bg-purple-50 text-purple-700">
+          {typeMap[factory.factory_type || ""] || factory.factory_type || "-"}
         </Badge>
       )
     },
+    location: (factory) => factory.location || "-",
+    quality_contacts: (factory) => {
+      const contacts = []
+      if (factory.quality_contact1) {
+        const name = getEmployeeName(factory.quality_contact1)
+        contacts.push(name || factory.quality_contact1)
+      }
+      if (factory.quality_contact2) {
+        const name = getEmployeeName(factory.quality_contact2)
+        contacts.push(name || factory.quality_contact2)
+      }
+
+      return (
+        <div className="text-sm">
+          {contacts.length > 0 ? (
+            <div className="space-y-1">
+              {contacts.map((contact, index) => (
+                <div key={index} className="text-blue-600">
+                  {contact}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-400">未設定</span>
+          )}
+        </div>
+      )
+    },
+    factory_phone: (factory) => factory.factory_phone || "-",
+    status: (factory) => (
+      <div className="flex items-center space-x-2">
+        <Switch
+          checked={factory.status === true}
+          onCheckedChange={(checked) => {
+            if (onStatusUpdate) {
+              onStatusUpdate(factory.factory_id, checked)
+            }
+          }}
+        />
+        <Badge variant={factory.status ? "default" : "secondary"} className="text-xs">
+          {factory.status ? (
+            <>
+              <CheckCircle className="h-3 w-3 mr-1" />
+              啟用
+            </>
+          ) : (
+            <>
+              <XCircle className="h-3 w-3 mr-1" />
+              停用
+            </>
+          )}
+        </Badge>
+      </div>
+    ),
     created_at: (factory) => {
       if (!factory.created_at) return "-"
       try {
         const date = new Date(factory.created_at)
-        return date.toLocaleString("zh-TW")
+        return date.toLocaleDateString("zh-TW")
       } catch (e) {
         return factory.created_at
       }
@@ -105,7 +188,7 @@ export function FactoriesTable({
       if (!factory.updated_at) return "-"
       try {
         const date = new Date(factory.updated_at)
-        return date.toLocaleString("zh-TW")
+        return date.toLocaleDateString("zh-TW")
       } catch (e) {
         return factory.updated_at
       }
@@ -115,10 +198,9 @@ export function FactoriesTable({
     factory_address: (factory) => factory.factory_address || "-",
     factory_fax: (factory) => factory.factory_fax || "-",
     tax_id: (factory) => factory.tax_id || "-",
+    contact_person: (factory) => factory.contact_person || "-",
     contact_email: (factory) => factory.contact_email || "-",
     website: (factory) => factory.website || "-",
-    quality_contact1: (factory) => factory.quality_contact1 || "-",
-    quality_contact2: (factory) => factory.quality_contact2 || "-",
     invoice_address: (factory) => factory.invoice_address || "-",
     category1: (factory) => factory.category1 || "-",
     category2: (factory) => factory.category2 || "-",
@@ -144,7 +226,7 @@ export function FactoriesTable({
     factory_name: "供應商名稱",
     factory_type: "供應商類型",
     location: "國家/地區",
-    contact_person: "聯絡人",
+    quality_contacts: "品管人員",
     factory_phone: "連絡電話",
     status: "狀態",
     created_at: "建立時間",
@@ -154,10 +236,9 @@ export function FactoriesTable({
     factory_address: "供應商地址",
     factory_fax: "傳真",
     tax_id: "統一編號",
+    contact_person: "聯絡人",
     contact_email: "聯絡人Email",
     website: "網站",
-    quality_contact1: "負責品管",
-    quality_contact2: "負責品管2",
     invoice_address: "發票地址",
     category1: "產品類別1",
     category2: "產品類別2",
@@ -182,12 +263,13 @@ export function FactoriesTable({
     .filter((columnId) => visibleColumns.includes(columnId))
     .filter((columnId) => columnRenderers[columnId] && columnLabels[columnId])
 
-  // 分頁
+  // 分頁計算
   const totalPages = Math.ceil(data.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = data.slice(startIndex, startIndex + itemsPerPage)
+  const endIndex = Math.min(startIndex + itemsPerPage, data.length)
+  const paginatedData = data.slice(startIndex, endIndex)
 
-  if (isLoading) {
+  if (isLoading || isTeamLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="flex flex-col items-center">
@@ -219,7 +301,7 @@ export function FactoriesTable({
               </TableRow>
             ) : (
               paginatedData.map((factory, index) => (
-                <TableRow key={factory.id || index}>
+                <TableRow key={factory.id || index} className={index % 2 === 1 ? "bg-muted/50" : ""}>
                   {displayColumns.map((columnId) => (
                     <TableCell key={columnId}>{columnRenderers[columnId](factory)}</TableCell>
                   ))}
@@ -257,88 +339,57 @@ export function FactoriesTable({
       </div>
 
       {data.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-2">
           <div className="text-sm text-muted-foreground">
-            顯示 {data.length} 個供應商中的 {startIndex + 1}-{Math.min(startIndex + itemsPerPage, data.length)} 個
+            顯示 {startIndex + 1} 到 {endIndex} 筆，共 {data.length} 筆資料
           </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (currentPage > 1) setCurrentPage(currentPage - 1)
-                  }}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNumber = i + 1
-                return (
-                  <PaginationItem key={pageNumber}>
-                    <PaginationLink
-                      href="#"
-                      isActive={currentPage === pageNumber}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(pageNumber)
-                      }}
-                    >
-                      {pageNumber}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-              {totalPages > 5 && (
-                <>
-                  <PaginationItem>
-                    <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
-                      ...
-                    </PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(totalPages)
-                      }}
-                    >
-                      {totalPages}
-                    </PaginationLink>
-                  </PaginationItem>
-                </>
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (currentPage < totalPages) setCurrentPage(currentPage + 1)
-                  }}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={(value) => {
-              setItemsPerPage(Number.parseInt(value))
-              setCurrentPage(1)
-            }}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="每頁顯示" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">每頁 10 筆</SelectItem>
-              <SelectItem value="20">每頁 20 筆</SelectItem>
-              <SelectItem value="50">每頁 50 筆</SelectItem>
-              <SelectItem value="100">每頁 100 筆</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">每頁顯示</p>
+              <Select
+                value={`${itemsPerPage}`}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value))
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[5, 10, 20].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm font-medium">筆</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="h-8 px-2 lg:px-3"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">上一頁</span>
+              </Button>
+              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                第 {currentPage} 頁，共 {totalPages} 頁
+              </div>
+              <Button
+                variant="outline"
+                className="h-8 px-2 lg:px-3"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">下一頁</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

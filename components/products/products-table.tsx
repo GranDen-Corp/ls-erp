@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { FileText, Loader2, MoreHorizontal, Pencil, Copy, Layers } from "lucide-react"
+import { FileText, Loader2, MoreHorizontal, Pencil, Copy, Layers, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -18,14 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import type { Product } from "@/types/product"
 import { supabase } from "@/lib/supabase"
 
@@ -46,9 +38,6 @@ export function ProductsTable({
   visibleColumns = [],
   columnOrder = [],
 }: ProductsTableProps) {
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [customerFilter, setCustomerFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [processedProducts, setProcessedProducts] = useState<Product[]>([])
@@ -251,32 +240,6 @@ export function ProductsTable({
     setProcessedProducts(processed)
   }, [products])
 
-  // 獲取唯一的產品類型和客戶ID
-  const productTypes = Array.from(new Set(products.map((product) => product.product_type).filter(Boolean)))
-  const customerIds = Array.from(new Set(products.map((product) => product.customer_id).filter(Boolean)))
-  const statusOptions = ["active", "sample", "discontinued"]
-
-  // 根據條件過濾產品
-  const filteredProducts = products.filter((product) => {
-    const match = true
-
-    // 類型篩選
-    const matchesType = typeFilter === "all" || product.product_type === typeFilter
-
-    // 客戶篩選
-    const matchesCustomer = customerFilter === "all" || product.customer_id === customerFilter
-
-    // 狀態篩選
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter
-
-    return match && matchesType && matchesCustomer && matchesStatus
-  })
-
-  // 分頁
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage)
-
   // 解析組合件的零件編號和名稱
   const parseAssemblyParts = (product: Product) => {
     if (!product.is_assembly || !product.sub_part_no) return []
@@ -319,6 +282,12 @@ export function ProductsTable({
     })
   }
 
+  // 分頁計算
+  const totalPages = Math.ceil(products.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = Math.min(startIndex + itemsPerPage, products.length)
+  const paginatedProducts = products.slice(startIndex, endIndex)
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -332,48 +301,6 @@ export function ProductsTable({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="產品類型" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">所有類型</SelectItem>
-            {productTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={customerFilter} onValueChange={setCustomerFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="客戶" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">所有客戶</SelectItem>
-            {customerIds.map((id) => (
-              <SelectItem key={id} value={id}>
-                {id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="狀態" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">所有狀態</SelectItem>
-            {statusOptions.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -393,8 +320,11 @@ export function ProductsTable({
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedProducts.map((product) => (
-                <TableRow key={`${product.customer_id}-${product.part_no}`}>
+              paginatedProducts.map((product, index) => (
+                <TableRow
+                  key={`${product.customer_id}-${product.part_no}`}
+                  className={index % 2 === 1 ? "bg-muted/50" : ""}
+                >
                   <TableCell>
                     <ProductImagePreview
                       images={
@@ -473,89 +403,57 @@ export function ProductsTable({
       </div>
 
       {products.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-2">
           <div className="text-sm text-muted-foreground">
-            顯示 {filteredProducts.length} 個產品中的 {startIndex + 1}-
-            {Math.min(startIndex + itemsPerPage, filteredProducts.length)} 個
+            顯示 {startIndex + 1} 到 {endIndex} 筆，共 {products.length} 筆資料
           </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (currentPage > 1) setCurrentPage(currentPage - 1)
-                  }}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNumber = i + 1
-                return (
-                  <PaginationItem key={pageNumber}>
-                    <PaginationLink
-                      href="#"
-                      isActive={currentPage === pageNumber}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(pageNumber)
-                      }}
-                    >
-                      {pageNumber}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-              {totalPages > 5 && (
-                <>
-                  <PaginationItem>
-                    <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
-                      ...
-                    </PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(totalPages)
-                      }}
-                    >
-                      {totalPages}
-                    </PaginationLink>
-                  </PaginationItem>
-                </>
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (currentPage < totalPages) setCurrentPage(currentPage + 1)
-                  }}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={(value) => {
-              setItemsPerPage(Number.parseInt(value))
-              setCurrentPage(1)
-            }}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="每頁顯示" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">每頁 10 筆</SelectItem>
-              <SelectItem value="20">每頁 20 筆</SelectItem>
-              <SelectItem value="50">每頁 50 筆</SelectItem>
-              <SelectItem value="100">每頁 100 筆</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">每頁顯示</p>
+              <Select
+                value={`${itemsPerPage}`}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value))
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[5, 10, 20].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm font-medium">筆</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="h-8 px-2 lg:px-3"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">上一頁</span>
+              </Button>
+              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                第 {currentPage} 頁，共 {totalPages} 頁
+              </div>
+              <Button
+                variant="outline"
+                className="h-8 px-2 lg:px-3"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">下一頁</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -21,7 +21,7 @@ export default function FactoriesPage() {
     { id: "factory_name", label: "供應商名稱", visible: true, category: "基本資訊", required: true },
     { id: "factory_type", label: "供應商類型", visible: true, category: "基本資訊" },
     { id: "location", label: "國家/地區", visible: true, category: "基本資訊" },
-    { id: "contact_person", label: "聯絡人", visible: true, category: "聯絡資訊" },
+    { id: "quality_contacts", label: "品管人員", visible: true, category: "聯絡資訊" },
     { id: "factory_phone", label: "連絡電話", visible: true, category: "聯絡資訊" },
     { id: "status", label: "狀態", visible: true, category: "其他資訊" },
 
@@ -31,10 +31,9 @@ export default function FactoriesPage() {
     { id: "factory_address", label: "供應商地址", visible: false, category: "聯絡資訊" },
     { id: "factory_fax", label: "傳真", visible: false, category: "聯絡資訊" },
     { id: "tax_id", label: "統一編號", visible: false, category: "聯絡資訊" },
+    { id: "contact_person", label: "聯絡人", visible: false, category: "聯絡資訊" },
     { id: "contact_email", label: "聯絡人Email", visible: false, category: "聯絡資訊" },
     { id: "website", label: "網站", visible: false, category: "聯絡資訊" },
-    { id: "quality_contact1", label: "負責品管", visible: false, category: "聯絡資訊" },
-    { id: "quality_contact2", label: "負責品管2", visible: false, category: "聯絡資訊" },
     { id: "invoice_address", label: "發票地址", visible: false, category: "聯絡資訊" },
 
     // 產品類別
@@ -64,6 +63,7 @@ export default function FactoriesPage() {
 
   const [columnOptions, setColumnOptions] = useState<ColumnOption[]>(defaultColumnOptions)
 
+  // 簡化的篩選選項，只保留建立時間和更新時間
   const filterOptions: FilterOption[] = [
     {
       id: "created_at",
@@ -74,30 +74,6 @@ export default function FactoriesPage() {
       id: "updated_at",
       label: "更新時間",
       type: "dateRange",
-    },
-    {
-      id: "location",
-      label: "國家/地區",
-      type: "select",
-      options: [
-        { value: "台灣", label: "台灣" },
-        { value: "中國", label: "中國" },
-        { value: "越南", label: "越南" },
-        { value: "泰國", label: "泰國" },
-        { value: "其他", label: "其他" },
-      ],
-    },
-    {
-      id: "factory_type",
-      label: "供應商類型",
-      type: "select",
-      options: [
-        { value: "assembly", label: "組裝廠" },
-        { value: "production", label: "生產廠" },
-        { value: "parts", label: "零件廠" },
-        { value: "material", label: "材料供應商" },
-        { value: "service", label: "服務供應商" },
-      ],
     },
   ]
 
@@ -129,9 +105,10 @@ export default function FactoriesPage() {
             factory_name: "台灣精密製造",
             factory_type: "production",
             location: "台灣",
-            contact_person: "張先生",
+            quality_contact1: "EMP001",
+            quality_contact2: "EMP002",
             factory_phone: "02-12345678",
-            status: "active",
+            status: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -141,9 +118,9 @@ export default function FactoriesPage() {
             factory_name: "中國零件廠",
             factory_type: "parts",
             location: "中國",
-            contact_person: "李先生",
+            quality_contact1: "EMP003",
             factory_phone: "86-12345678",
-            status: "active",
+            status: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -153,9 +130,10 @@ export default function FactoriesPage() {
             factory_name: "越南組裝廠",
             factory_type: "assembly",
             location: "越南",
-            contact_person: "阮先生",
+            quality_contact1: "EMP004",
+            quality_contact2: "EMP005",
             factory_phone: "84-12345678",
-            status: "active",
+            status: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
@@ -178,9 +156,10 @@ export default function FactoriesPage() {
           factory_name: "台灣精密製造",
           factory_type: "production",
           location: "台灣",
-          contact_person: "張先生",
+          quality_contact1: "EMP001",
+          quality_contact2: "EMP002",
           factory_phone: "02-12345678",
-          status: "active",
+          status: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -190,9 +169,9 @@ export default function FactoriesPage() {
           factory_name: "中國零件廠",
           factory_type: "parts",
           location: "中國",
-          contact_person: "李先生",
+          quality_contact1: "EMP003",
           factory_phone: "86-12345678",
-          status: "active",
+          status: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -221,16 +200,6 @@ export default function FactoriesPage() {
           factory.contact_person?.toLowerCase().includes(searchTerm) ||
           factory.contact_email?.toLowerCase().includes(searchTerm),
       )
-    }
-
-    // Apply location filter
-    if (filters.location) {
-      result = result.filter((factory) => factory.location === filters.location)
-    }
-
-    // Apply factory_type filter
-    if (filters.factory_type) {
-      result = result.filter((factory) => factory.factory_type === filters.factory_type)
     }
 
     // Apply date range filters
@@ -265,6 +234,36 @@ export default function FactoriesPage() {
     console.log("導入供應商資料")
   }
 
+  // 處理狀態更新
+  const handleStatusUpdate = async (factoryId: string, newStatus: boolean) => {
+    try {
+      // 更新本地狀態
+      const updatedFactories = factories.map((factory) =>
+        factory.factory_id === factoryId ? { ...factory, status: newStatus } : factory,
+      )
+      setFactories(updatedFactories)
+      setFilteredFactories(updatedFactories)
+
+      // 更新資料庫
+      const { error } = await supabase
+        .from("factories")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("factory_id", factoryId)
+
+      if (error) {
+        console.error("更新狀態失敗:", error)
+        // 如果更新失敗，回復原狀態
+        fetchFactories()
+      } else {
+        console.log(`供應商 ${factoryId} 狀態已更新為 ${newStatus ? "啟用" : "停用"}`)
+      }
+    } catch (err) {
+      console.error("更新狀態時出錯:", err)
+      // 如果更新失敗，回復原狀態
+      fetchFactories()
+    }
+  }
+
   return (
     <ManagementLayout
       title="供應商管理"
@@ -297,6 +296,7 @@ export default function FactoriesPage() {
         isLoading={isLoading}
         visibleColumns={columnOptions.filter((col) => col.visible).map((col) => col.id)}
         columnOrder={columnOptions.map((col) => col.id)}
+        onStatusUpdate={handleStatusUpdate}
       />
     </ManagementLayout>
   )
