@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FileEdit, MoreHorizontal, Trash2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FileEdit, MoreHorizontal, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -64,6 +65,8 @@ interface Customer {
   cbam_note?: string
   legacy_system_note?: string
   remarks?: string
+  created_at?: string
+  updated_at?: string
 }
 
 interface CustomersTableProps {
@@ -88,6 +91,22 @@ export function CustomersTable({
     employeeId: null as string | null,
     title: "",
   })
+
+  // 分頁狀態
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
+  // 計算分頁資料
+  const totalItems = data.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentData = data.slice(startIndex, endIndex)
+
+  // 重置頁面當資料變更時
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [data])
 
   // 定義所有可能的欄位渲染函數
   const columnRenderers: Record<string, (customer: Customer) => React.ReactNode> = {
@@ -146,6 +165,8 @@ export function CustomersTable({
       const activityStatus = getActivityStatus(customer)
       return <Badge variant={activityStatus.variant}>{activityStatus.label}</Badge>
     },
+    created_at: (customer) => (customer.created_at ? new Date(customer.created_at).toLocaleDateString("zh-TW") : "-"),
+    updated_at: (customer) => (customer.updated_at ? new Date(customer.updated_at).toLocaleDateString("zh-TW") : "-"),
   }
 
   // 欄位標籤映射
@@ -191,6 +212,8 @@ export function CustomersTable({
     legacy_system_note: "舊系統備註",
     remarks: "備註",
     status: "活躍度",
+    created_at: "建立時間",
+    updated_at: "更新時間",
   }
 
   // 根據 columnOrder 和 visibleColumns 決定要顯示的欄位及其順序
@@ -338,6 +361,16 @@ export function CustomersTable({
     return { label: "活躍", variant: "default" as const }
   }
 
+  // 分頁控制函數
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1) // 重置到第一頁
+  }
+
   if (isLoading || loadingData) {
     return (
       <Card>
@@ -370,15 +403,15 @@ export function CustomersTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
+            {currentData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={displayColumns.length + 1} className="h-24 text-center">
                   沒有找到客戶資料
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((customer) => (
-                <TableRow key={customer.customer_id}>
+              currentData.map((customer, index) => (
+                <TableRow key={customer.customer_id} className={index % 2 === 1 ? "bg-muted/50" : ""}>
                   {displayColumns.map((columnId) => (
                     <TableCell key={columnId}>{columnRenderers[columnId](customer)}</TableCell>
                   ))}
@@ -412,6 +445,63 @@ export function CustomersTable({
           </TableBody>
         </Table>
       </div>
+
+      {/* 分頁控制 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <p className="text-sm text-muted-foreground">
+            顯示 {startIndex + 1} 到 {Math.min(endIndex, totalItems)} 筆，共 {totalItems} 筆資料
+          </p>
+          <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">筆/頁</p>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            上一頁
+          </Button>
+
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => handlePageChange(page)}
+                className="w-8 h-8 p-0"
+              >
+                {page}
+              </Button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+          >
+            下一頁
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       {/* 團隊成員詳情對話框 */}
       <TeamMemberDetailDialog
         open={memberDetailDialog.open}

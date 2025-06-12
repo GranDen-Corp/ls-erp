@@ -13,6 +13,8 @@ export default function CustomersPage() {
   const [filteredCustomers, setFilteredCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  const [regions, setRegions] = useState([])
+  const [countries, setCountries] = useState([])
 
   // 定義預設的欄位配置（用於重置）
   const defaultColumnOptions: ColumnOption[] = [
@@ -65,7 +67,7 @@ export default function CustomersPage() {
   // 當前的欄位配置（可以被用戶修改）
   const [columnOptions, setColumnOptions] = useState<ColumnOption[]>(defaultColumnOptions)
 
-  const filterOptions: FilterOption[] = [
+  const [filterOptions, setFilterOptions] = useState<FilterOption[]>([
     {
       id: "created_at",
       label: "建立時間",
@@ -80,15 +82,9 @@ export default function CustomersPage() {
       id: "division_location",
       label: "分部位置",
       type: "select",
-      options: [
-        { value: "Taiwan", label: "台灣" },
-        { value: "China", label: "中國" },
-        { value: "USA", label: "美國" },
-        { value: "Europe", label: "歐洲" },
-        { value: "Other", label: "其他" },
-      ],
+      options: [], // 將動態載入 regions 資料
     },
-  ]
+  ])
 
   const fetchCustomers = async () => {
     setIsLoading(true)
@@ -115,6 +111,42 @@ export default function CustomersPage() {
   }
 
   useEffect(() => {
+    async function fetchRegionsAndCountries() {
+      try {
+        // 載入 regions
+        const { data: regionsData, error: regionsError } = await supabaseClient.from("regions").select("code, name")
+
+        if (regionsError) throw regionsError
+
+        // 載入 countries
+        const { data: countriesData, error: countriesError } = await supabaseClient
+          .from("countries")
+          .select("region_code, name_en")
+
+        if (countriesError) throw countriesError
+
+        setRegions(regionsData || [])
+        setCountries(countriesData || [])
+
+        // 更新篩選選項
+        const regionOptions =
+          regionsData?.map((region) => ({
+            value: region.code,
+            label: region.name,
+          })) || []
+
+        setFilterOptions((prev) =>
+          prev.map((option) => (option.id === "division_location" ? { ...option, options: regionOptions } : option)),
+        )
+      } catch (error) {
+        console.error("Failed to fetch regions and countries:", error)
+      }
+    }
+
+    fetchRegionsAndCountries()
+  }, [])
+
+  useEffect(() => {
     fetchCustomers()
   }, [])
 
@@ -135,29 +167,34 @@ export default function CustomersPage() {
       )
     }
 
-    // Apply division_location filter
-    if (filters.division_location) {
-      result = result.filter((customer) => customer.division_location === filters.division_location)
+    // Apply division_location filter (by region)
+    if (filters.division_location && filters.division_location !== "all") {
+      const selectedRegionCode = filters.division_location
+      const regionCountries = countries
+        .filter((country) => country.region_code === selectedRegionCode)
+        .map((country) => country.name_en)
+
+      result = result.filter((customer) => regionCountries.includes(customer.division_location))
     }
 
     // Apply date range filters
     if (filters.created_at) {
       const { from, to } = filters.created_at
       if (from) {
-        result = result.filter((customer) => new Date(customer.created_at) >= new Date(from))
+        result = result.filter((customer) => customer.created_at && new Date(customer.created_at) >= new Date(from))
       }
       if (to) {
-        result = result.filter((customer) => new Date(customer.created_at) <= new Date(to))
+        result = result.filter((customer) => customer.created_at && new Date(customer.created_at) <= new Date(to))
       }
     }
 
     if (filters.updated_at) {
       const { from, to } = filters.updated_at
       if (from) {
-        result = result.filter((customer) => new Date(customer.updated_at) >= new Date(from))
+        result = result.filter((customer) => customer.updated_at && new Date(customer.updated_at) >= new Date(from))
       }
       if (to) {
-        result = result.filter((customer) => new Date(customer.updated_at) <= new Date(to))
+        result = result.filter((customer) => customer.updated_at && new Date(customer.updated_at) <= new Date(to))
       }
     }
 

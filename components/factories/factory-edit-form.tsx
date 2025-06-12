@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
 import { supabaseClient } from "@/lib/supabase-client"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -67,7 +66,6 @@ interface FactoryEditFormProps {
 
 export function FactoryEditForm({ factory, teamMembers }: FactoryEditFormProps) {
   const router = useRouter()
-  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -103,10 +101,8 @@ export function FactoryEditForm({ factory, teamMembers }: FactoryEditFormProps) 
       }
 
       // 顯示成功訊息
-      toast({
-        title: "供應商已更新",
-        description: `供應商 ${data.factory_name} 已成功更新`,
-      })
+      console.log("供應商已更新", `供應商 ${data.factory_name} 已成功更新`)
+      alert(`供應商 ${data.factory_name} 已成功更新`)
 
       // 導航回供應商詳情頁
       router.push(`/factories/all/${encodeURIComponent(data.factory_id)}`)
@@ -114,11 +110,8 @@ export function FactoryEditForm({ factory, teamMembers }: FactoryEditFormProps) 
     } catch (err) {
       console.error("保存供應商資料時出錯:", err)
       setError(err instanceof Error ? err.message : "保存供應商資料時出錯")
-      toast({
-        title: "操作失敗",
-        description: err instanceof Error ? err.message : "保存供應商資料時出錯",
-        variant: "destructive",
-      })
+      console.error("操作失敗", err instanceof Error ? err.message : "保存供應商資料時出錯")
+      alert(`操作失敗: ${err instanceof Error ? err.message : "保存供應商資料時出錯"}`)
     } finally {
       setIsLoading(false)
     }

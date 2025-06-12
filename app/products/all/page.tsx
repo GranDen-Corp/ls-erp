@@ -1,44 +1,78 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import Link from "next/link"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { ProductsTable } from "@/components/products/products-table"
+import { ManagementLayout } from "@/components/ui/management-layout"
 import type { FilterOption } from "@/components/ui/advanced-filter"
-import { useSearchParams } from "next/navigation"
-import type { Product } from "@/types/product"
+import { ColumnControlDialog, type ColumnOption } from "@/components/ui/column-control-dialog"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState([])
+  const [filteredProducts, setFilteredProducts] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filters, setFilters] = useState<Record<string, any>>({})
-  const searchParams = useSearchParams()
-  const filterParam = searchParams.get("filter")
   const supabase = createClientComponentClient()
 
-  // 定義篩選選項
+  // 定義預設的產品欄位配置
+  const defaultColumnOptions: ColumnOption[] = [
+    // 基本資訊
+    { id: "part_no", label: "Part No.", visible: true, category: "基本資訊", required: true },
+    { id: "component_name", label: "產品名稱", visible: true, category: "基本資訊", required: true },
+    { id: "customer_id", label: "客戶", visible: true, category: "基本資訊" },
+    { id: "product_type", label: "產品類型", visible: true, category: "基本資訊" },
+    { id: "material", label: "材質", visible: true, category: "技術資訊" },
+    { id: "last_price", label: "最近價格", visible: true, category: "商業資訊" },
+    { id: "currency", label: "幣別", visible: true, category: "商業資訊" },
+    { id: "status", label: "狀態", visible: true, category: "其他資訊" },
+
+    // 技術資訊
+    { id: "specification", label: "規格", visible: false, category: "技術資訊" },
+    { id: "drawing_no", label: "圖號", visible: false, category: "技術資訊" },
+    { id: "surface_treatment", label: "表面處理", visible: false, category: "技術資訊" },
+    { id: "hardness", label: "硬度", visible: false, category: "技術資訊" },
+    { id: "weight", label: "重量", visible: false, category: "技術資訊" },
+    { id: "unit", label: "單位", visible: false, category: "技術資訊" },
+
+    // 商業資訊
+    { id: "moq", label: "最小訂購量", visible: false, category: "商業資訊" },
+    { id: "lead_time", label: "交期", visible: false, category: "商業資訊" },
+    { id: "packaging", label: "包裝", visible: false, category: "商業資訊" },
+    { id: "factory_id", label: "工廠", visible: false, category: "商業資訊" },
+
+    // 其他資訊
+    { id: "notes", label: "備註", visible: false, category: "其他資訊" },
+    { id: "created_at", label: "建立時間", visible: false, category: "其他資訊" },
+    { id: "updated_at", label: "更新時間", visible: false, category: "其他資訊" },
+    { id: "is_assembly", label: "是否組合產品", visible: false, category: "其他資訊" },
+  ]
+
+  const [columnOptions, setColumnOptions] = useState<ColumnOption[]>(defaultColumnOptions)
+
   const filterOptions: FilterOption[] = [
     {
-      id: "type",
+      id: "product_type",
       label: "產品類型",
       type: "select",
       options: [
-        { value: "all", label: "所有類型" },
-        { value: "standard", label: "標準產品" },
-        { value: "custom", label: "客製產品" },
-        { value: "assembly", label: "組合產品" },
+        { value: "standard", label: "標準品" },
+        { value: "custom", label: "客製品" },
+        { value: "assembly", label: "組裝品" },
+        { value: "raw_material", label: "原材料" },
       ],
     },
     {
-      id: "customer",
-      label: "客戶",
+      id: "material",
+      label: "材質",
       type: "select",
       options: [
-        { value: "all", label: "所有客戶" },
-        // 這裡可以動態加載客戶列表
+        { value: "steel", label: "鋼材" },
+        { value: "stainless_steel", label: "不鏽鋼" },
+        { value: "aluminum", label: "鋁" },
+        { value: "copper", label: "銅" },
+        { value: "plastic", label: "塑膠" },
+        { value: "rubber", label: "橡膠" },
+        { value: "other", label: "其他" },
       ],
     },
     {
@@ -46,150 +80,208 @@ export default function ProductsPage() {
       label: "狀態",
       type: "select",
       options: [
-        { value: "all", label: "所有狀態" },
-        { value: "active", label: "活躍" },
-        { value: "inactive", label: "非活躍" },
+        { value: "active", label: "使用中" },
         { value: "discontinued", label: "已停產" },
+        { value: "development", label: "開發中" },
+        { value: "obsolete", label: "已淘汰" },
       ],
+    },
+    {
+      id: "created_at",
+      label: "建立時間",
+      type: "dateRange",
+    },
+    {
+      id: "updated_at",
+      label: "更新時間",
+      type: "dateRange",
     },
   ]
 
+  const fetchProducts = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      // 從 Supabase 獲取真實的產品資料
+      const { data: productsData, error: fetchError } = await supabase
+        .from("products")
+        .select("*")
+        .order("part_no", { ascending: true })
+
+      if (fetchError) {
+        throw new Error(`獲取產品資料時出錯: ${fetchError.message}`)
+      }
+
+      // 處理產品數據
+      const processedProducts =
+        productsData?.map((product) => {
+          // 處理 sub_part_no
+          let subPartNo = product.sub_part_no
+          try {
+            if (typeof subPartNo === "string" && subPartNo) {
+              subPartNo = JSON.parse(subPartNo)
+            }
+          } catch (e) {
+            console.error("解析 sub_part_no 時出錯:", e)
+            subPartNo = []
+          }
+
+          // 處理 images
+          let images = product.images
+          try {
+            if (typeof images === "string" && images) {
+              images = JSON.parse(images)
+            }
+          } catch (e) {
+            console.error("解析 images 時出錯:", e)
+            images = []
+          }
+
+          // 確保 images 是數組
+          if (!Array.isArray(images)) {
+            images = []
+          }
+
+          // 確保每個圖片對象都有必要的屬性
+          const validImages = images
+            .filter((img) => img && typeof img === "object")
+            .map((img, index) => ({
+              id: img.id || `img-${index}`,
+              url: img.url || "/diverse-products-still-life.png",
+              alt: img.alt || product.component_name || "產品圖片",
+              isThumbnail: img.isThumbnail || false,
+            }))
+
+          return {
+            ...product,
+            sub_part_no: subPartNo,
+            images:
+              validImages.length > 0
+                ? validImages
+                : [
+                    {
+                      id: "default",
+                      url: "/diverse-products-still-life.png",
+                      alt: product.component_name || "產品圖片",
+                      isThumbnail: true,
+                    },
+                  ],
+          }
+        }) || []
+
+      setProducts(processedProducts)
+      setFilteredProducts(processedProducts)
+    } catch (error) {
+      console.error("Failed to fetch products:", error)
+      setError(error instanceof Error ? error.message : "無法載入產品資料，請稍後再試")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+    fetchProducts()
+  }, [])
 
-        // 構建查詢
-        let query = supabase.from("products").select("*")
+  const handleFilterChange = (filters: Record<string, any>) => {
+    let result = [...products]
 
-        // 如果URL參數指定了過濾組合產品
-        if (filterParam === "assembly") {
-          query = query.eq("is_assembly", true)
-        }
+    // Apply search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase()
+      result = result.filter(
+        (product) =>
+          product.part_no?.toLowerCase().includes(searchTerm) ||
+          product.component_name?.toLowerCase().includes(searchTerm) ||
+          product.customer_id?.toLowerCase().includes(searchTerm),
+      )
+    }
 
-        // 應用其他過濾條件
-        if (filters.type && filters.type !== "all") {
-          query = query.eq("product_type", filters.type)
-        }
+    // Apply product_type filter
+    if (filters.product_type) {
+      result = result.filter((product) => product.product_type === filters.product_type)
+    }
 
-        if (filters.customer && filters.customer !== "all") {
-          query = query.eq("customer_id", filters.customer)
-        }
+    // Apply material filter
+    if (filters.material) {
+      result = result.filter((product) => product.material === filters.material)
+    }
 
-        if (filters.status && filters.status !== "all") {
-          query = query.eq("status", filters.status)
-        }
+    // Apply status filter
+    if (filters.status) {
+      result = result.filter((product) => product.status === filters.status)
+    }
 
-        // 執行查詢
-        const { data, error: fetchError } = await query
-
-        if (fetchError) {
-          throw new Error(`獲取產品資料時出錯: ${fetchError.message}`)
-        }
-
-        // 處理產品數據
-        const processedProducts =
-          data?.map((product) => {
-            // 處理 sub_part_no
-            let subPartNo = product.sub_part_no
-            try {
-              if (typeof subPartNo === "string" && subPartNo) {
-                subPartNo = JSON.parse(subPartNo)
-              }
-            } catch (e) {
-              console.error("解析 sub_part_no 時出錯:", e)
-              subPartNo = []
-            }
-
-            // 處理 images
-            let images = product.images
-            try {
-              if (typeof images === "string" && images) {
-                images = JSON.parse(images)
-              }
-            } catch (e) {
-              console.error("解析 images 時出錯:", e)
-              images = []
-            }
-
-            // 確保 images 是數組
-            if (!Array.isArray(images)) {
-              images = []
-            }
-
-            // 確保每個圖片對象都有必要的屬性
-            const validImages = images
-              .filter((img) => img && typeof img === "object")
-              .map((img, index) => ({
-                id: img.id || `img-${index}`,
-                url: img.url || "/diverse-products-still-life.png",
-                alt: img.alt || product.component_name || "產品圖片",
-                isThumbnail: img.isThumbnail || false,
-              }))
-
-            return {
-              ...product,
-              sub_part_no: subPartNo,
-              images:
-                validImages.length > 0
-                  ? validImages
-                  : [
-                      {
-                        id: "default",
-                        url: "/diverse-products-still-life.png",
-                        alt: product.component_name || "產品圖片",
-                        isThumbnail: true,
-                      },
-                    ],
-            }
-          }) || []
-
-        setProducts(processedProducts)
-      } catch (err) {
-        console.error("獲取產品資料時出錯:", err)
-        setError(err instanceof Error ? err.message : "獲取產品資料時出錯")
-      } finally {
-        setLoading(false)
+    // Apply date range filters
+    if (filters.created_at) {
+      const { from, to } = filters.created_at
+      if (from) {
+        result = result.filter((product) => new Date(product.created_at) >= new Date(from))
+      }
+      if (to) {
+        result = result.filter((product) => new Date(product.created_at) <= new Date(to))
       }
     }
 
-    fetchProducts()
-  }, [filterParam, filters, supabase])
+    if (filters.updated_at) {
+      const { from, to } = filters.updated_at
+      if (from) {
+        result = result.filter((product) => new Date(product.updated_at) >= new Date(from))
+      }
+      if (to) {
+        result = result.filter((product) => new Date(product.updated_at) <= new Date(to))
+      }
+    }
 
-  const handleFilterChange = (newFilters: Record<string, any>) => {
-    setFilters(newFilters)
+    setFilteredProducts(result)
   }
 
-  // 根據過濾參數設置頁面標題
-  const pageTitle = filterParam === "assembly" ? "組合產品管理" : "產品管理"
-  const addButtonText = filterParam === "assembly" ? "新增組合產品" : "新增產品"
-  const addButtonLink = filterParam === "assembly" ? "/products/new?type=assembly" : "/products/new"
+  const handleExport = () => {
+    console.log("導出產品資料")
+  }
+
+  const handleImport = () => {
+    console.log("導入產品資料")
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <p className="text-red-500 text-center">{error}</p>
+        <button onClick={fetchProducts} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          重新載入
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{pageTitle}</h1>
-        <div className="flex gap-2">
-          {filterParam !== "assembly" && (
-            <Link href="/products/all?filter=assembly">
-              <Button variant="outline">查看組合產品</Button>
-            </Link>
-          )}
-          <Link href={addButtonLink}>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {addButtonText}
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {error ? (
-        <p className="text-center text-red-500 py-4">{error}</p>
-      ) : (
-        <ProductsTable products={products} isLoading={loading} />
-      )}
-    </div>
+    <ManagementLayout
+      title="產品管理"
+      description="查看和管理所有產品資料"
+      createNewHref="/products/new"
+      createNewLabel="新增產品"
+      filterOptions={filterOptions}
+      extraFilterControls={
+        <ColumnControlDialog
+          columns={columnOptions}
+          onColumnChange={setColumnOptions}
+          defaultColumns={defaultColumnOptions}
+        />
+      }
+      onFilterChange={handleFilterChange}
+      onRefresh={fetchProducts}
+      onExport={handleExport}
+      onImport={handleImport}
+      searchPlaceholder="搜尋產品編號、名稱或客戶..."
+      className="px-0"
+    >
+      <ProductsTable
+        products={filteredProducts}
+        isLoading={isLoading}
+        visibleColumns={columnOptions.filter((col) => col.visible).map((col) => col.id)}
+        columnOrder={columnOptions.map((col) => col.id)}
+      />
+    </ManagementLayout>
   )
 }

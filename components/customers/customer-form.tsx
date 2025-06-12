@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { supabaseClient } from "@/lib/supabase-client"
-import { useToast } from "@/components/ui/use-toast"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -68,7 +67,6 @@ interface Port {
 
 export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const router = useRouter()
-  const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
   const [formError, setFormError] = useState<string | null>(null)
@@ -389,21 +387,17 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         throw new Error(result.error.message)
       }
 
-      toast({
-        title: customerId ? "客戶更新成功" : "客戶創建成功",
-        description: `客戶 ${customerFullName} 已${customerId ? "更新" : "創建"}`,
-      })
+      // 成功訊息
+      console.log(`客戶 ${customerFullName} 已${customerId ? "更新" : "創建"}`)
+      alert(`客戶 ${customerFullName} 已${customerId ? "更新" : "創建"}成功！`)
 
       router.push("/customers/all")
       router.refresh()
     } catch (error) {
       console.error("保存客戶時出錯:", error)
-      setFormError(error instanceof Error ? error.message : "保存客戶失敗，請稍後再試")
-      toast({
-        title: "錯誤",
-        description: `保存客戶失敗: ${error instanceof Error ? error.message : "未知錯誤"}`,
-        variant: "destructive",
-      })
+      const errorMessage = error instanceof Error ? error.message : "保存客戶失敗，請稍後再試"
+      setFormError(errorMessage)
+      alert(`保存客戶失敗: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }

@@ -2,10 +2,12 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { Eye, MoreHorizontal, Pencil, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { MoreHorizontal, Loader2, FileEdit, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,64 +16,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/components/ui/use-toast"
-import { supabaseClient } from "@/lib/supabase-client"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { TeamMemberDetailDialog } from "@/components/ui/team-member-detail-dialog"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// 供應商資料類型 - 對應 factories 表
 interface Factory {
+  id: string | number
   factory_id: string
   factory_name: string
-  factory_full_name: string
-  factory_type: string
-  factory_address?: string
-  factory_phone?: string
-  factory_fax?: string
-  tax_id?: string
-  category1?: string
-  category2?: string
-  category3?: string
-  iso9001_certified?: string
-  iatf16949_certified?: string
-  iso17025_certified?: string
-  cqi9_certified?: string
-  cqi11_certified?: string
-  cqi12_certified?: string
-  status?: boolean
+  factory_type?: string
   location?: string
-  city?: string
   contact_person?: string
-  contact_phone?: string
-  contact_email?: string
-  website?: string
-  notes?: string
+  factory_phone?: string
+  status?: string
   created_at?: string
   updated_at?: string
-  iso9001_expiry?: string
-  iatf16949_expiry?: string
-  iso17025_expiry?: string
-  cqi9_expiry?: string
-  cqi11_expiry?: string
-  cqi12_expiry?: string
-  quality_contact1?: string
-  quality_contact2?: string
-  invoice_address?: string
+  [key: string]: any
 }
-
-// 團隊成員類型
-interface TeamMember {
-  ls_employee_id: string
-  name: string
-}
-
-type SortField = keyof Factory | ""
-type SortDirection = "asc" | "desc"
 
 interface FactoriesTableProps {
-  data?: Factory[]
+  data: Factory[]
   isLoading?: boolean
   visibleColumns?: string[]
   columnOrder?: string[]
@@ -83,402 +53,128 @@ export function FactoriesTable({
   visibleColumns = [],
   columnOrder = [],
 }: FactoriesTableProps) {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [isTeamLoading, setIsTeamLoading] = useState(true)
-  const [sortField, setSortField] = useState<SortField>("factory_id")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
-  const [statusUpdating, setStatusUpdating] = useState<string | null>(null)
-  const { toast } = useToast()
-  const [memberDetailDialog, setMemberDetailDialog] = useState({
-    open: false,
-    employeeId: null as string | null,
-    title: "",
-  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  // 只獲取團隊成員資料
-  const fetchTeamMembers = async () => {
-    try {
-      setIsTeamLoading(true)
-      const { data: teamMembersData, error } = await supabaseClient.from("team_members").select("ls_employee_id, name")
-
-      if (error) {
-        console.warn("獲取團隊成員資料時出錯:", error.message)
-      } else {
-        setTeamMembers(teamMembersData || [])
-      }
-    } catch (err) {
-      console.error("獲取團隊成員資料時出錯:", err)
-    } finally {
-      setIsTeamLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchTeamMembers()
-  }, [])
-
-  // 根據員工ID獲取員工姓名
-  const getEmployeeName = (employeeId: string | undefined) => {
-    if (!employeeId) return ""
-    const member = teamMembers.find((m) => m.ls_employee_id === employeeId)
-    return member ? member.name : employeeId
-  }
-
-  // 處理排序
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    } else {
-      setSortField(field)
-      setSortDirection("asc")
-    }
-  }
-
-  // 排序供應商 - 使用傳入的 data
-  const sortedFactories = [...data].sort((a, b) => {
-    if (!sortField) return 0
-
-    const fieldA = a[sortField as keyof Factory]
-    const fieldB = b[sortField as keyof Factory]
-
-    if (fieldA === undefined || fieldA === null) return sortDirection === "asc" ? -1 : 1
-    if (fieldB === undefined || fieldB === null) return sortDirection === "asc" ? 1 : -1
-
-    if (typeof fieldA === "string" && typeof fieldB === "string") {
-      return sortDirection === "asc" ? fieldA.localeCompare(fieldB, "zh-TW") : fieldB.localeCompare(fieldA, "zh-TW")
-    }
-
-    if (typeof fieldA === "boolean" && typeof fieldB === "boolean") {
-      return sortDirection === "asc"
-        ? fieldA === fieldB
-          ? 0
-          : fieldA
-            ? 1
-            : -1
-        : fieldA === fieldB
-          ? 0
-          : fieldA
-            ? -1
-            : 1
-    }
-
-    return sortDirection === "asc"
-      ? fieldA < fieldB
-        ? -1
-        : fieldA > fieldB
-          ? 1
-          : 0
-      : fieldA > fieldB
-        ? -1
-        : fieldA < fieldB
-          ? 1
-          : 0
-  })
-
-  // 切換供應商狀態
-  const toggleFactoryStatus = async (factoryId: string, currentStatus: boolean | undefined) => {
-    try {
-      setStatusUpdating(factoryId)
-      const newStatus = !currentStatus
-
-      const { error } = await supabaseClient
-        .from("factories")
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("factory_id", factoryId)
-
-      if (error) {
-        throw new Error(`更新供應商狀態時出錯: ${error.message}`)
-      }
-
-      toast({
-        title: "狀態更新成功",
-        description: `供應商已${newStatus ? "啟用" : "停用"}`,
-      })
-
-      // 這裡可以觸發父組件重新獲取資料
-      // 或者可以通過 props 傳入一個 onStatusUpdate 回調函數
-    } catch (err) {
-      console.error("更新供應商狀態時出錯:", err)
-      toast({
-        title: "狀態更新失敗",
-        description: err instanceof Error ? err.message : "更新供應商狀態時出錯",
-        variant: "destructive",
-      })
-    } finally {
-      setStatusUpdating(null)
-    }
-  }
-
-  // 渲染狀態徽章
-  const renderStatusBadge = (factory: Factory) => {
-    const isActive = factory.status === true
-    const isUpdating = statusUpdating === factory.factory_id
-
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleFactoryStatus(factory.factory_id, factory.status)}
-              disabled={isUpdating}
-              className="h-auto p-1"
-            >
-              {isUpdating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Badge
-                  variant={isActive ? "default" : "secondary"}
-                  className={`cursor-pointer ${
-                    isActive
-                      ? "bg-green-100 text-green-800 hover:bg-green-200"
-                      : "bg-red-100 text-red-800 hover:bg-red-200"
-                  }`}
-                >
-                  {isActive ? (
-                    <>
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      啟用
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-3 w-3 mr-1" />
-                      停用
-                    </>
-                  )}
-                </Badge>
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>點擊切換狀態</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
-  // 渲染品管聯絡人（顯示姓名，可點擊）
-  const renderQualityContacts = (factory: Factory) => {
-    const contacts = []
-    if (factory.quality_contact1) {
-      const name = getEmployeeName(factory.quality_contact1)
-      contacts.push({ id: factory.quality_contact1, name })
-    }
-    if (factory.quality_contact2) {
-      const name = getEmployeeName(factory.quality_contact2)
-      contacts.push({ id: factory.quality_contact2, name })
-    }
-
-    return (
-      <div className="text-sm">
-        {contacts.length > 0 ? (
-          <div className="space-y-1">
-            {contacts.map((contact, index) => (
-              <button
-                key={index}
-                onClick={() =>
-                  setMemberDetailDialog({
-                    open: true,
-                    employeeId: contact.id,
-                    title: "負責品管詳情",
-                  })
-                }
-                className="block text-blue-600 hover:underline cursor-pointer text-left"
-              >
-                {contact.name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <span className="text-gray-400">未設定</span>
-        )}
-      </div>
-    )
-  }
-
-  // 渲染供應商類型
-  const renderFactoryType = (type: string) => {
-    const typeMap = {
-      assembly: "組裝廠",
-      production: "生產廠",
-      parts: "零件廠",
-      material: "材料供應商",
-      service: "服務供應商",
-    }
-    return typeMap[type as keyof typeof typeMap] || type || "未分類"
-  }
-
-  // 渲染認證徽章
-  const renderCertificationBadges = (factory: Factory) => {
-    const certifications = [
-      {
-        key: "iso9001",
-        label: "ISO 9001",
-        certified: factory.iso9001_certified,
-        expiry: factory.iso9001_expiry,
-      },
-      {
-        key: "iatf16949",
-        label: "IATF 16949",
-        certified: factory.iatf16949_certified,
-        expiry: factory.iatf16949_expiry,
-      },
-      {
-        key: "iso17025",
-        label: "ISO 17025",
-        certified: factory.iso17025_certified,
-        expiry: factory.iso17025_expiry,
-      },
-      {
-        key: "cqi9",
-        label: "CQI-9",
-        certified: factory.cqi9_certified,
-        expiry: factory.cqi9_expiry,
-      },
-      {
-        key: "cqi11",
-        label: "CQI-11",
-        certified: factory.cqi11_certified,
-        expiry: factory.cqi11_expiry,
-      },
-      {
-        key: "cqi12",
-        label: "CQI-12",
-        certified: factory.cqi12_certified,
-        expiry: factory.cqi12_expiry,
-      },
-    ]
-
-    const validCertifications = certifications.filter((cert) => cert.certified === "Y" || cert.certified === "是")
-
-    const isExpiringSoon = (expiryDate: string) => {
-      if (!expiryDate) return false
-      const expiry = new Date(expiryDate)
-      const today = new Date()
-      const threeMonthsFromNow = new Date()
-      threeMonthsFromNow.setMonth(today.getMonth() + 3)
-      return expiry <= threeMonthsFromNow && expiry >= today
-    }
-
-    const isExpired = (expiryDate: string) => {
-      if (!expiryDate) return false
-      const expiry = new Date(expiryDate)
-      const today = new Date()
-      return expiry < today
-    }
-
-    const formatExpiryDate = (expiryDate: string) => {
-      if (!expiryDate) return ""
-      try {
-        return new Date(expiryDate).toLocaleDateString("zh-TW", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        })
-      } catch {
-        return expiryDate
-      }
-    }
-
-    return (
-      <div className="flex flex-col gap-1 max-w-[200px]">
-        {validCertifications.length > 0 ? (
-          validCertifications.map((cert) => {
-            const expired = isExpired(cert.expiry)
-            const expiringSoon = isExpiringSoon(cert.expiry)
-
-            let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "default"
-            let badgeClass = "text-xs"
-
-            if (expired) {
-              badgeVariant = "destructive"
-              badgeClass += " bg-red-100 text-red-800"
-            } else if (expiringSoon) {
-              badgeVariant = "outline"
-              badgeClass += " bg-yellow-100 text-yellow-800 border-yellow-300"
-            } else {
-              badgeVariant = "default"
-              badgeClass += " bg-green-100 text-green-800"
-            }
-
-            return (
-              <TooltipProvider key={cert.key}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant={badgeVariant} className={badgeClass}>
-                      {cert.label}
-                      {cert.expiry && (
-                        <span className="ml-1 text-xs opacity-75">
-                          {expired ? "已過期" : expiringSoon ? "即將到期" : "有效"}
-                        </span>
-                      )}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs">
-                    <div className="space-y-1">
-                      <div className="font-semibold">{cert.label}</div>
-                      <div className="text-sm">狀態: {expired ? "已過期" : expiringSoon ? "即將到期" : "有效"}</div>
-                      {cert.expiry && <div className="text-sm">到期日: {formatExpiryDate(cert.expiry)}</div>}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )
-          })
-        ) : (
-          <span className="text-xs text-gray-400">無認證</span>
-        )}
-      </div>
-    )
-  }
-
-  // 定義所有可能的欄位渲染函數
+  // 定義欄位渲染函數
   const columnRenderers: Record<string, (factory: Factory) => React.ReactNode> = {
     factory_id: (factory) => (
       <Link
         href={`/factories/all/${factory.factory_id}`}
-        className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
+        className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
       >
         {factory.factory_id}
       </Link>
     ),
-    factory_name: (factory) => (
-      <div>
-        <div className="font-medium">{factory.factory_name}</div>
-        {factory.factory_full_name && factory.factory_full_name !== factory.factory_name && (
-          <div className="text-sm text-gray-500">{factory.factory_full_name}</div>
-        )}
-      </div>
-    ),
-    factory_type: (factory) => (
-      <Badge variant="outline" className="bg-purple-50 text-purple-700">
-        {renderFactoryType(factory.factory_type)}
-      </Badge>
-    ),
-    location: (factory) => <div className="text-sm">{factory.location || "未設定"}</div>,
-    quality_contact1: (factory) => renderQualityContacts(factory),
-    factory_phone: (factory) => <div className="text-sm">{factory.factory_phone || "未設定"}</div>,
-    status: (factory) => renderStatusBadge(factory),
-    certification: (factory) => renderCertificationBadges(factory),
-    // 添加其他所有欄位的渲染函數...
+    factory_name: (factory) => factory.factory_name,
+    factory_type: (factory) => {
+      const typeMap: Record<string, string> = {
+        assembly: "組裝廠",
+        production: "生產廠",
+        parts: "零件廠",
+        material: "材料供應商",
+        service: "服務供應商",
+      }
+      return typeMap[factory.factory_type || ""] || factory.factory_type || "-"
+    },
+    location: (factory) => factory.location || "-",
+    contact_person: (factory) => factory.contact_person || "-",
+    factory_phone: (factory) => factory.factory_phone || "-",
+    status: (factory) => {
+      const statusColorMap: Record<string, string> = {
+        active: "bg-green-500",
+        inactive: "bg-gray-500",
+        pending: "bg-yellow-500",
+      }
+      return (
+        <Badge className={`${statusColorMap[factory.status || ""] || "bg-gray-500"} text-white`}>
+          {factory.status === "active" ? "活躍" : factory.status === "inactive" ? "停用" : factory.status || "未知"}
+        </Badge>
+      )
+    },
+    created_at: (factory) => {
+      if (!factory.created_at) return "-"
+      try {
+        const date = new Date(factory.created_at)
+        return date.toLocaleString("zh-TW")
+      } catch (e) {
+        return factory.created_at
+      }
+    },
+    updated_at: (factory) => {
+      if (!factory.updated_at) return "-"
+      try {
+        const date = new Date(factory.updated_at)
+        return date.toLocaleString("zh-TW")
+      } catch (e) {
+        return factory.updated_at
+      }
+    },
+    factory_full_name: (factory) => factory.factory_full_name || "-",
+    city: (factory) => factory.city || "-",
+    factory_address: (factory) => factory.factory_address || "-",
+    factory_fax: (factory) => factory.factory_fax || "-",
+    tax_id: (factory) => factory.tax_id || "-",
+    contact_email: (factory) => factory.contact_email || "-",
+    website: (factory) => factory.website || "-",
+    quality_contact1: (factory) => factory.quality_contact1 || "-",
+    quality_contact2: (factory) => factory.quality_contact2 || "-",
+    invoice_address: (factory) => factory.invoice_address || "-",
+    category1: (factory) => factory.category1 || "-",
+    category2: (factory) => factory.category2 || "-",
+    category3: (factory) => factory.category3 || "-",
+    iso9001_certified: (factory) => factory.iso9001_certified || "-",
+    iatf16949_certified: (factory) => factory.iatf16949_certified || "-",
+    iso17025_certified: (factory) => factory.iso17025_certified || "-",
+    cqi9_certified: (factory) => factory.cqi9_certified || "-",
+    cqi11_certified: (factory) => factory.cqi11_certified || "-",
+    cqi12_certified: (factory) => factory.cqi12_certified || "-",
+    iso9001_expiry: (factory) => factory.iso9001_expiry || "-",
+    iatf16949_expiry: (factory) => factory.iatf16949_expiry || "-",
+    iso17025_expiry: (factory) => factory.iso17025_expiry || "-",
+    cqi9_expiry: (factory) => factory.cqi9_expiry || "-",
+    cqi11_expiry: (factory) => factory.cqi11_expiry || "-",
+    cqi12_expiry: (factory) => factory.cqi12_expiry || "-",
+    notes: (factory) => factory.notes || "-",
   }
 
   // 欄位標籤映射
   const columnLabels: Record<string, string> = {
-    factory_id: "供應商ID",
+    factory_id: "供應商編號",
     factory_name: "供應商名稱",
     factory_type: "供應商類型",
     location: "國家/地區",
-    quality_contact1: "負責品管",
+    contact_person: "聯絡人",
     factory_phone: "連絡電話",
     status: "狀態",
-    certification: "認證狀態",
-    // 添加其他所有欄位的標籤...
+    created_at: "建立時間",
+    updated_at: "更新時間",
+    factory_full_name: "供應商全名",
+    city: "城市",
+    factory_address: "供應商地址",
+    factory_fax: "傳真",
+    tax_id: "統一編號",
+    contact_email: "聯絡人Email",
+    website: "網站",
+    quality_contact1: "負責品管",
+    quality_contact2: "負責品管2",
+    invoice_address: "發票地址",
+    category1: "產品類別1",
+    category2: "產品類別2",
+    category3: "產品類別3",
+    iso9001_certified: "ISO 9001認證",
+    iatf16949_certified: "IATF 16949認證",
+    iso17025_certified: "ISO 17025認證",
+    cqi9_certified: "CQI-9認證",
+    cqi11_certified: "CQI-11認證",
+    cqi12_certified: "CQI-12認證",
+    iso9001_expiry: "ISO 9001到期日",
+    iatf16949_expiry: "IATF 16949到期日",
+    iso17025_expiry: "ISO 17025到期日",
+    cqi9_expiry: "CQI-9到期日",
+    cqi11_expiry: "CQI-11到期日",
+    cqi12_expiry: "CQI-12到期日",
+    notes: "備註",
   }
 
   // 根據 columnOrder 和 visibleColumns 決定要顯示的欄位及其順序
@@ -486,19 +182,25 @@ export function FactoriesTable({
     .filter((columnId) => visibleColumns.includes(columnId))
     .filter((columnId) => columnRenderers[columnId] && columnLabels[columnId])
 
-  if (isLoading || isTeamLoading) {
+  // 分頁
+  const totalPages = Math.ceil(data.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedData = data.slice(startIndex, startIndex + itemsPerPage)
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">載入供應商資料中...</span>
+      <div className="flex justify-center items-center h-64">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin mb-2" />
+          <p>載入供應商資料中...</p>
+        </div>
       </div>
     )
   }
 
-  // 使用 sortedFactories 而不是 data 來渲染表格
   return (
     <div className="space-y-4">
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -509,9 +211,15 @@ export function FactoriesTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedFactories.length > 0 ? (
-              sortedFactories.map((factory) => (
-                <TableRow key={factory.factory_id}>
+            {paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={displayColumns.length + 1} className="text-center py-8">
+                  沒有找到符合條件的供應商
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedData.map((factory, index) => (
+                <TableRow key={factory.id || index}>
                   {displayColumns.map((columnId) => (
                     <TableCell key={columnId}>{columnRenderers[columnId](factory)}</TableCell>
                   ))}
@@ -525,58 +233,114 @@ export function FactoriesTable({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>操作</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/factories/all/${factory.factory_id}/edit`}>
-                            <FileEdit className="mr-2 h-4 w-4" />
-                            編輯
+                        <DropdownMenuItem>
+                          <Link href={`/factories/all/${factory.factory_id}`} className="flex items-center">
+                            <Eye className="mr-2 h-4 w-4" />
+                            查看詳情
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => toggleFactoryStatus(factory.factory_id, factory.status)}
-                          disabled={statusUpdating === factory.factory_id}
-                        >
-                          {factory.status ? (
-                            <>
-                              <XCircle className="mr-2 h-4 w-4" />
-                              停用供應商
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              啟用供應商
-                            </>
-                          )}
+                        <DropdownMenuItem>
+                          <Link href={`/factories/all/${factory.factory_id}/edit`} className="flex items-center">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            編輯供應商
+                          </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={displayColumns.length + 1} className="text-center py-4">
-                  目前沒有供應商資料
-                </TableCell>
-              </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* {sortedFactories.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">目前沒有供應商資料</p>
+      {data.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            顯示 {data.length} 個供應商中的 {startIndex + 1}-{Math.min(startIndex + itemsPerPage, data.length)} 個
+          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (currentPage > 1) setCurrentPage(currentPage - 1)
+                  }}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNumber = i + 1
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === pageNumber}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setCurrentPage(pageNumber)
+                      }}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+              {totalPages > 5 && (
+                <>
+                  <PaginationItem>
+                    <PaginationLink href="#" onClick={(e) => e.preventDefault()}>
+                      ...
+                    </PaginationLink>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setCurrentPage(totalPages)
+                      }}
+                    >
+                      {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                </>
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (currentPage < totalPages) setCurrentPage(currentPage + 1)
+                  }}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => {
+              setItemsPerPage(Number.parseInt(value))
+              setCurrentPage(1)
+            }}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="每頁顯示" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">每頁 10 筆</SelectItem>
+              <SelectItem value="20">每頁 20 筆</SelectItem>
+              <SelectItem value="50">每頁 50 筆</SelectItem>
+              <SelectItem value="100">每頁 100 筆</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      )} */}
-
-      {/* 團隊成員詳情對話框 */}
-      <TeamMemberDetailDialog
-        open={memberDetailDialog.open}
-        onOpenChange={(open) => setMemberDetailDialog((prev) => ({ ...prev, open }))}
-        employeeId={memberDetailDialog.employeeId}
-        title={memberDetailDialog.title}
-      />
+      )}
     </div>
   )
 }

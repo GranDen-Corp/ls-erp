@@ -15,7 +15,7 @@ export type FilterOption = {
   id: string
   label: string
   options?: { value: string; label: string }[]
-  type: "select" | "text" | "date" | "number"
+  type: "select" | "text" | "date" | "number" | "dateRange"
 }
 
 export type ColumnOption = {
@@ -133,7 +133,32 @@ export function AdvancedFilter({
                     <label htmlFor={option.id} className="text-sm font-medium">
                       {option.label}
                     </label>
-                    {option.type === "select" ? (
+                    {option.type === "dateRange" ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">開始日期</label>
+                        <Input
+                          type="date"
+                          value={activeFilters[option.id]?.from || ""}
+                          onChange={(e) =>
+                            handleFilterChange(option.id, {
+                              ...activeFilters[option.id],
+                              from: e.target.value,
+                            })
+                          }
+                        />
+                        <label className="text-sm font-medium">結束日期</label>
+                        <Input
+                          type="date"
+                          value={activeFilters[option.id]?.to || ""}
+                          onChange={(e) =>
+                            handleFilterChange(option.id, {
+                              ...activeFilters[option.id],
+                              to: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    ) : option.type === "select" ? (
                       <Select
                         value={activeFilters[option.id] || ""}
                         onValueChange={(value) => handleFilterChange(option.id, value)}
@@ -178,7 +203,10 @@ export function AdvancedFilter({
             if (!option) return null
 
             let displayValue = value
-            if (option.type === "select") {
+            if (option.type === "dateRange" && value) {
+              const { from, to } = value
+              displayValue = `${from || ""} ~ ${to || ""}`
+            } else if (option.type === "select") {
               const optionItem = option.options?.find((opt) => opt.value === value)
               displayValue = optionItem?.label || value
             }
