@@ -67,8 +67,18 @@ export default function CustomersPage() {
 
   const filterOptions: FilterOption[] = [
     {
+      id: "created_at",
+      label: "建立時間",
+      type: "dateRange",
+    },
+    {
+      id: "updated_at",
+      label: "更新時間",
+      type: "dateRange",
+    },
+    {
       id: "division_location",
-      label: "地區",
+      label: "分部位置",
       type: "select",
       options: [
         { value: "Taiwan", label: "台灣" },
@@ -76,27 +86,6 @@ export default function CustomersPage() {
         { value: "USA", label: "美國" },
         { value: "Europe", label: "歐洲" },
         { value: "Other", label: "其他" },
-      ],
-    },
-    {
-      id: "group_code",
-      label: "集團",
-      type: "select",
-      options: [
-        { value: "A", label: "A集團" },
-        { value: "B", label: "B集團" },
-        { value: "C", label: "C集團" },
-        { value: "D", label: "D集團" },
-        { value: "Other", label: "其他" },
-      ],
-    },
-    {
-      id: "status",
-      label: "狀態",
-      type: "select",
-      options: [
-        { value: "active", label: "活躍" },
-        { value: "inactive", label: "非活躍" },
       ],
     },
   ]
@@ -151,16 +140,25 @@ export default function CustomersPage() {
       result = result.filter((customer) => customer.division_location === filters.division_location)
     }
 
-    // Apply group_code filter
-    if (filters.group_code) {
-      result = result.filter((customer) => customer.group_code === filters.group_code)
+    // Apply date range filters
+    if (filters.created_at) {
+      const { from, to } = filters.created_at
+      if (from) {
+        result = result.filter((customer) => new Date(customer.created_at) >= new Date(from))
+      }
+      if (to) {
+        result = result.filter((customer) => new Date(customer.created_at) <= new Date(to))
+      }
     }
 
-    // Apply status filter
-    if (filters.status) {
-      result = result.filter((customer) =>
-        filters.status === "active" ? customer.status !== "inactive" : customer.status === "inactive",
-      )
+    if (filters.updated_at) {
+      const { from, to } = filters.updated_at
+      if (from) {
+        result = result.filter((customer) => new Date(customer.updated_at) >= new Date(from))
+      }
+      if (to) {
+        result = result.filter((customer) => new Date(customer.updated_at) <= new Date(to))
+      }
     }
 
     setFilteredCustomers(result)

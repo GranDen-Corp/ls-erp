@@ -1,8 +1,10 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { MoreHorizontal, ArrowUpDown, Loader2, FileEdit, CheckCircle, XCircle } from "lucide-react"
+import { MoreHorizontal, Loader2, FileEdit, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -68,11 +70,21 @@ interface TeamMember {
 type SortField = keyof Factory | ""
 type SortDirection = "asc" | "desc"
 
-export function FactoriesTable() {
-  const [factories, setFactories] = useState<Factory[]>([])
+interface FactoriesTableProps {
+  data?: Factory[]
+  isLoading?: boolean
+  visibleColumns?: string[]
+  columnOrder?: string[]
+}
+
+export function FactoriesTable({
+  data = [],
+  isLoading = false,
+  visibleColumns = [],
+  columnOrder = [],
+}: FactoriesTableProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [isTeamLoading, setIsTeamLoading] = useState(true)
   const [sortField, setSortField] = useState<SortField>("factory_id")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null)
@@ -83,38 +95,26 @@ export function FactoriesTable() {
     title: "",
   })
 
-  // 從Supabase獲取供應商資料和團隊成員資料
-  const fetchData = async () => {
+  // 只獲取團隊成員資料
+  const fetchTeamMembers = async () => {
     try {
-      setIsLoading(true)
-      setError(null)
+      setIsTeamLoading(true)
+      const { data: teamMembersData, error } = await supabaseClient.from("team_members").select("ls_employee_id, name")
 
-      // 並行獲取供應商和團隊成員資料
-      const [factoriesResult, teamMembersResult] = await Promise.all([
-        supabaseClient.from("factories").select("*").order("factory_id", { ascending: true }),
-        supabaseClient.from("team_members").select("ls_employee_id, name"),
-      ])
-
-      if (factoriesResult.error) {
-        throw new Error(`獲取供應商資料時出錯: ${factoriesResult.error.message}`)
+      if (error) {
+        console.warn("獲取團隊成員資料時出錯:", error.message)
+      } else {
+        setTeamMembers(teamMembersData || [])
       }
-
-      if (teamMembersResult.error) {
-        console.warn("獲取團隊成員資料時出錯:", teamMembersResult.error.message)
-      }
-
-      setFactories(factoriesResult.data || [])
-      setTeamMembers(teamMembersResult.data || [])
     } catch (err) {
-      console.error("獲取資料時出錯:", err)
-      setError(err instanceof Error ? err.message : "獲取資料時出錯")
+      console.error("獲取團隊成員資料時出錯:", err)
     } finally {
-      setIsLoading(false)
+      setIsTeamLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchData()
+    fetchTeamMembers()
   }, [])
 
   // 根據員工ID獲取員工姓名
@@ -134,8 +134,8 @@ export function FactoriesTable() {
     }
   }
 
-  // 排序供應商
-  const sortedFactories = [...factories].sort((a, b) => {
+  // 排序供應商 - 使用傳入的 data
+  const sortedFactories = [...data].sort((a, b) => {
     if (!sortField) return 0
 
     const fieldA = a[sortField as keyof Factory]
@@ -179,7 +179,6 @@ export function FactoriesTable() {
   const toggleFactoryStatus = async (factoryId: string, currentStatus: boolean | undefined) => {
     try {
       setStatusUpdating(factoryId)
-
       const newStatus = !currentStatus
 
       const { error } = await supabaseClient
@@ -194,15 +193,13 @@ export function FactoriesTable() {
         throw new Error(`更新供應商狀態時出錯: ${error.message}`)
       }
 
-      // 更新本地狀態
-      setFactories((prev) =>
-        prev.map((factory) => (factory.factory_id === factoryId ? { ...factory, status: newStatus } : factory)),
-      )
-
       toast({
         title: "狀態更新成功",
         description: `供應商已${newStatus ? "啟用" : "停用"}`,
       })
+
+      // 這裡可以觸發父組件重新獲取資料
+      // 或者可以通過 props 傳入一個 onStatusUpdate 回調函數
     } catch (err) {
       console.error("更新供應商狀態時出錯:", err)
       toast({
@@ -440,7 +437,56 @@ export function FactoriesTable() {
     )
   }
 
-  if (isLoading) {
+  // 定義所有可能的欄位渲染函數
+  const columnRenderers: Record<string, (factory: Factory) => React.ReactNode> = {
+    factory_id: (factory) => (
+      <Link
+        href={`/factories/all/${factory.factory_id}`}
+        className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
+      >
+        {factory.factory_id}
+      </Link>
+    ),
+    factory_name: (factory) => (
+      <div>
+        <div className="font-medium">{factory.factory_name}</div>
+        {factory.factory_full_name && factory.factory_full_name !== factory.factory_name && (
+          <div className="text-sm text-gray-500">{factory.factory_full_name}</div>
+        )}
+      </div>
+    ),
+    factory_type: (factory) => (
+      <Badge variant="outline" className="bg-purple-50 text-purple-700">
+        {renderFactoryType(factory.factory_type)}
+      </Badge>
+    ),
+    location: (factory) => <div className="text-sm">{factory.location || "未設定"}</div>,
+    quality_contact1: (factory) => renderQualityContacts(factory),
+    factory_phone: (factory) => <div className="text-sm">{factory.factory_phone || "未設定"}</div>,
+    status: (factory) => renderStatusBadge(factory),
+    certification: (factory) => renderCertificationBadges(factory),
+    // 添加其他所有欄位的渲染函數...
+  }
+
+  // 欄位標籤映射
+  const columnLabels: Record<string, string> = {
+    factory_id: "供應商ID",
+    factory_name: "供應商名稱",
+    factory_type: "供應商類型",
+    location: "國家/地區",
+    quality_contact1: "負責品管",
+    factory_phone: "連絡電話",
+    status: "狀態",
+    certification: "認證狀態",
+    // 添加其他所有欄位的標籤...
+  }
+
+  // 根據 columnOrder 和 visibleColumns 決定要顯示的欄位及其順序
+  const displayColumns = columnOrder
+    .filter((columnId) => visibleColumns.includes(columnId))
+    .filter((columnId) => columnRenderers[columnId] && columnLabels[columnId])
+
+  if (isLoading || isTeamLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -449,157 +495,80 @@ export function FactoriesTable() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-red-600 mb-4">{error}</p>
-        <Button onClick={fetchData} variant="outline">
-          重新載入
-        </Button>
-      </div>
-    )
-  }
-
+  // 使用 sortedFactories 而不是 data 來渲染表格
   return (
     <div className="space-y-4">
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">
-                <Button variant="ghost" onClick={() => handleSort("factory_id")} className="h-auto p-0 font-semibold">
-                  供應商ID
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" onClick={() => handleSort("factory_name")} className="h-auto p-0 font-semibold">
-                  供應商名稱
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" onClick={() => handleSort("factory_type")} className="h-auto p-0 font-semibold">
-                  類型
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button variant="ghost" onClick={() => handleSort("location")} className="h-auto p-0 font-semibold">
-                  國家/地區
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="w-[150px]">
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("quality_contact1")}
-                  className="h-auto p-0 font-semibold"
-                >
-                  負責品管
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("factory_phone")}
-                  className="h-auto p-0 font-semibold"
-                >
-                  連絡電話
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
-              <TableHead className="w-[200px]">認證狀態</TableHead>
-              <TableHead className="text-center">
-                <Button variant="ghost" onClick={() => handleSort("status")} className="h-auto p-0 font-semibold">
-                  狀態
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
+              {displayColumns.map((columnId) => (
+                <TableHead key={columnId}>{columnLabels[columnId]}</TableHead>
+              ))}
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedFactories.map((factory) => (
-              <TableRow key={factory.factory_id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/factories/all/${factory.factory_id}`}
-                    className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
-                  >
-                    {factory.factory_id}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{factory.factory_name}</div>
-                    {factory.factory_full_name && factory.factory_full_name !== factory.factory_name && (
-                      <div className="text-sm text-gray-500">{factory.factory_full_name}</div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                    {renderFactoryType(factory.factory_type)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">{factory.location || "未設定"}</div>
-                </TableCell>
-                <TableCell>{renderQualityContacts(factory)}</TableCell>
-                <TableCell>
-                  <div className="text-sm">{factory.factory_phone || "未設定"}</div>
-                </TableCell>
-                <TableCell>{renderCertificationBadges(factory)}</TableCell>
-                <TableCell className="text-center">{renderStatusBadge(factory)}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">開啟選單</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>操作</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/factories/all/${factory.factory_id}/edit`}>
-                          <FileEdit className="mr-2 h-4 w-4" />
-                          編輯
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => toggleFactoryStatus(factory.factory_id, factory.status)}
-                        disabled={statusUpdating === factory.factory_id}
-                      >
-                        {factory.status ? (
-                          <>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            停用供應商
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            啟用供應商
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {sortedFactories.length > 0 ? (
+              sortedFactories.map((factory) => (
+                <TableRow key={factory.factory_id}>
+                  {displayColumns.map((columnId) => (
+                    <TableCell key={columnId}>{columnRenderers[columnId](factory)}</TableCell>
+                  ))}
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">開啟選單</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>操作</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/factories/all/${factory.factory_id}/edit`}>
+                            <FileEdit className="mr-2 h-4 w-4" />
+                            編輯
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => toggleFactoryStatus(factory.factory_id, factory.status)}
+                          disabled={statusUpdating === factory.factory_id}
+                        >
+                          {factory.status ? (
+                            <>
+                              <XCircle className="mr-2 h-4 w-4" />
+                              停用供應商
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              啟用供應商
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={displayColumns.length + 1} className="text-center py-4">
+                  目前沒有供應商資料
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {sortedFactories.length === 0 && (
+      {/* {sortedFactories.length === 0 && (
         <div className="text-center py-8">
           <p className="text-gray-500">目前沒有供應商資料</p>
         </div>
-      )}
+      )} */}
 
       {/* 團隊成員詳情對話框 */}
       <TeamMemberDetailDialog

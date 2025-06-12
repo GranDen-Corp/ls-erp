@@ -5,12 +5,65 @@ import { FactoriesTable } from "@/components/factories/factories-table"
 import { ManagementLayout } from "@/components/ui/management-layout"
 import type { FilterOption } from "@/components/ui/advanced-filter"
 import { useToast } from "@/components/ui/use-toast"
+import { ColumnControlDialog, type ColumnOption } from "@/components/ui/column-control-dialog"
+import { supabaseClient } from "@/lib/supabase-client"
 
 export default function FactoriesPage() {
   const [factories, setFactories] = useState([])
   const [filteredFactories, setFilteredFactories] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+
+  // 定義預設的供應商欄位配置
+  const defaultColumnOptions: ColumnOption[] = [
+    // 基本資訊
+    { id: "factory_id", label: "供應商ID", visible: true, category: "基本資訊", required: true },
+    { id: "factory_name", label: "供應商名稱", visible: true, category: "基本資訊", required: true },
+    { id: "factory_type", label: "供應商類型", visible: true, category: "基本資訊" },
+    { id: "location", label: "國家/地區", visible: true, category: "基本資訊" },
+    { id: "quality_contact1", label: "負責品管", visible: true, category: "聯絡資訊" },
+    { id: "factory_phone", label: "連絡電話", visible: true, category: "聯絡資訊" },
+    { id: "status", label: "狀態", visible: true, category: "其他資訊" },
+
+    // 其他可選欄位
+    { id: "factory_full_name", label: "供應商全名", visible: false, category: "基本資訊" },
+    { id: "city", label: "城市", visible: false, category: "基本資訊" },
+    { id: "factory_address", label: "供應商地址", visible: false, category: "聯絡資訊" },
+    { id: "factory_fax", label: "傳真", visible: false, category: "聯絡資訊" },
+    { id: "tax_id", label: "統一編號", visible: false, category: "聯絡資訊" },
+    { id: "contact_person", label: "聯絡人", visible: false, category: "聯絡資訊" },
+    { id: "contact_phone", label: "聯絡人電話", visible: false, category: "聯絡資訊" },
+    { id: "contact_email", label: "聯絡人Email", visible: false, category: "聯絡資訊" },
+    { id: "website", label: "網站", visible: false, category: "聯絡資訊" },
+    { id: "quality_contact2", label: "負責品管2", visible: false, category: "聯絡資訊" },
+    { id: "invoice_address", label: "發票地址", visible: false, category: "聯絡資訊" },
+
+    // 產品類別
+    { id: "category1", label: "產品類別1", visible: false, category: "產品類別" },
+    { id: "category2", label: "產品類別2", visible: false, category: "產品類別" },
+    { id: "category3", label: "產品類別3", visible: false, category: "產品類別" },
+
+    // 認證資訊
+    { id: "iso9001_certified", label: "ISO 9001認證", visible: false, category: "認證資訊" },
+    { id: "iatf16949_certified", label: "IATF 16949認證", visible: false, category: "認證資訊" },
+    { id: "iso17025_certified", label: "ISO 17025認證", visible: false, category: "認證資訊" },
+    { id: "cqi9_certified", label: "CQI-9認證", visible: false, category: "認證資訊" },
+    { id: "cqi11_certified", label: "CQI-11認證", visible: false, category: "認證資訊" },
+    { id: "cqi12_certified", label: "CQI-12認證", visible: false, category: "認證資訊" },
+    { id: "iso9001_expiry", label: "ISO 9001到期日", visible: false, category: "認證資訊" },
+    { id: "iatf16949_expiry", label: "IATF 16949到期日", visible: false, category: "認證資訊" },
+    { id: "iso17025_expiry", label: "ISO 17025到期日", visible: false, category: "認證資訊" },
+    { id: "cqi9_expiry", label: "CQI-9到期日", visible: false, category: "認證資訊" },
+    { id: "cqi11_expiry", label: "CQI-11到期日", visible: false, category: "認證資訊" },
+    { id: "cqi12_expiry", label: "CQI-12到期日", visible: false, category: "認證資訊" },
+
+    // 其他資訊
+    { id: "notes", label: "備註", visible: false, category: "其他資訊" },
+    { id: "created_at", label: "建立時間", visible: false, category: "其他資訊" },
+    { id: "updated_at", label: "更新時間", visible: false, category: "其他資訊" },
+  ]
+
+  const [columnOptions, setColumnOptions] = useState<ColumnOption[]>(defaultColumnOptions)
 
   const filterOptions: FilterOption[] = [
     {
@@ -52,55 +105,18 @@ export default function FactoriesPage() {
   const fetchFactories = async () => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // 從 Supabase 獲取真實的供應商資料
+      const { data: factoriesData, error } = await supabaseClient
+        .from("factories")
+        .select("*")
+        .order("factory_id", { ascending: true })
 
-      // Mock data
-      const mockFactories = [
-        {
-          id: "1",
-          name: "台灣精密製造廠",
-          contactPerson: "林經理",
-          phone: "02-23456789",
-          email: "contact@tpmf.com.tw",
-          country: "taiwan",
-          category: "fastener",
-          status: "active",
-        },
-        {
-          id: "2",
-          name: "中國東莞五金廠",
-          contactPerson: "王先生",
-          phone: "+86-769-12345678",
-          email: "sales@dgmetal.com.cn",
-          country: "china",
-          category: "tool",
-          status: "active",
-        },
-        {
-          id: "3",
-          name: "越南河內製造",
-          contactPerson: "Nguyen",
-          phone: "+84-24-87654321",
-          email: "info@hanoifactory.com.vn",
-          country: "vietnam",
-          category: "bearing",
-          status: "new",
-        },
-        {
-          id: "4",
-          name: "泰國曼谷工業",
-          contactPerson: "Somchai",
-          phone: "+66-2-12345678",
-          email: "contact@bangkokindustry.co.th",
-          country: "thailand",
-          category: "raw",
-          status: "inactive",
-        },
-      ]
+      if (error) {
+        throw new Error(`獲取供應商資料時出錯: ${error.message}`)
+      }
 
-      setFactories(mockFactories)
-      setFilteredFactories(mockFactories)
+      setFactories(factoriesData || [])
+      setFilteredFactories(factoriesData || [])
     } catch (error) {
       console.error("Failed to fetch factories:", error)
       toast({
@@ -125,9 +141,10 @@ export default function FactoriesPage() {
       const searchTerm = filters.search.toLowerCase()
       result = result.filter(
         (factory) =>
-          factory.name.toLowerCase().includes(searchTerm) ||
-          factory.contactPerson.toLowerCase().includes(searchTerm) ||
-          factory.email.toLowerCase().includes(searchTerm),
+          factory.factory_name?.toLowerCase().includes(searchTerm) ||
+          factory.factory_id?.toLowerCase().includes(searchTerm) ||
+          factory.contact_person?.toLowerCase().includes(searchTerm) ||
+          factory.contact_email?.toLowerCase().includes(searchTerm),
       )
     }
 
@@ -170,14 +187,26 @@ export default function FactoriesPage() {
       createNewHref="/factories/new"
       createNewLabel="新增供應商"
       filterOptions={filterOptions}
+      extraFilterControls={
+        <ColumnControlDialog
+          columns={columnOptions}
+          onColumnChange={setColumnOptions}
+          defaultColumns={defaultColumnOptions}
+        />
+      }
       onFilterChange={handleFilterChange}
       onRefresh={fetchFactories}
       onExport={handleExport}
       onImport={handleImport}
-      searchPlaceholder="搜尋供應商名稱、聯絡人或電子郵件..."
+      searchPlaceholder="搜尋供應商名稱、ID或聯絡人..."
       className="px-0"
     >
-      <FactoriesTable data={filteredFactories} isLoading={isLoading} />
+      <FactoriesTable
+        data={filteredFactories}
+        isLoading={isLoading}
+        visibleColumns={columnOptions.filter((col) => col.visible).map((col) => col.id)}
+        columnOrder={columnOptions.map((col) => col.id)}
+      />
     </ManagementLayout>
   )
 }
