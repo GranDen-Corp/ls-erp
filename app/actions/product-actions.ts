@@ -42,7 +42,7 @@ export async function saveProduct(formData: any) {
       customer_drawing_version: formData.customerDrawingVersion,
       factory_drawing_version: formData.factoryDrawingVersion,
       images: formData.images,
-      is_assembly: formData.isAssembly,
+      //: formData.isAssembly,
       components: formData.components,
       assembly_time: formData.assemblyTime ? parseFloat(formData.assemblyTime) : null,
       assembly_cost_per_hour: formData.assemblyCostPerHour ? parseFloat(formData.assemblyCostPerHour) : null,
@@ -67,7 +67,7 @@ export async function saveProduct(formData: any) {
       moq: formData.moq ? parseInt(formData.moq) : null,
       lead_time: formData.leadTime ? parseInt(formData.leadTime) : null,
       packaging_requirements: formData.packagingRequirements,
-      sub_part_no: formData.subPartNo ? formData.selectedComponents : null,
+      sub_part_no: formData.subPartNo,
       alias_name: formData.alias_name,
     }
 
