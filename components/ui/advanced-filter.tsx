@@ -18,16 +18,45 @@ export type FilterOption = {
   type: "select" | "text" | "date" | "number"
 }
 
+export type ColumnOption = {
+  id: string
+  label: string
+  visible: boolean
+  sortable?: boolean
+}
+
+export type SortOption = {
+  field: string
+  direction: "asc" | "desc"
+}
+
 type AdvancedFilterProps = {
   options: FilterOption[]
   onFilterChange: (filters: Record<string, any>) => void
   placeholder?: string
+  // 新增的 props
+  columnOptions?: ColumnOption[]
+  onColumnChange?: (columns: ColumnOption[]) => void
+  sortOptions?: SortOption
+  onSortChange?: (sort: SortOption) => void
+  showColumnControl?: boolean
 }
 
-export function AdvancedFilter({ options, onFilterChange, placeholder = "搜尋..." }: AdvancedFilterProps) {
+export function AdvancedFilter({
+  options,
+  onFilterChange,
+  placeholder = "搜尋...",
+  columnOptions,
+  onColumnChange,
+  sortOptions,
+  onSortChange,
+  showColumnControl,
+}: AdvancedFilterProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [columnSettings, setColumnSettings] = useState<ColumnOption[]>(columnOptions || [])
+  const [sortSettings, setSortSettings] = useState<SortOption>(sortOptions || { field: "", direction: "asc" })
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value

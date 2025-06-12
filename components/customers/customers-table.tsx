@@ -58,14 +58,23 @@ interface PaymentTerm {
 interface CustomersTableProps {
   data?: Customer[]
   isLoading?: boolean
+  // 新增的 props
+  visibleColumns?: string[]
+  defaultSort?: { field: string; direction: "asc" | "desc" }
 }
 
 type SortField = keyof Customer | ""
 type SortDirection = "asc" | "desc"
 
-export function CustomersTable({ data = [], isLoading = false }: CustomersTableProps) {
-  const [sortField, setSortField] = useState<SortField>("customer_id")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+export function CustomersTable({
+  data = [],
+  isLoading = false,
+  visibleColumns = [],
+  defaultSort,
+}: CustomersTableProps) {
+  // 使用傳入的預設排序
+  const [sortField, setSortField] = useState<SortField>((defaultSort?.field as SortField) || "customer_id")
+  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSort?.direction || "asc")
   const [teamMembers, setTeamMembers] = useState<Record<string, string>>({})
   const [paymentTerms, setPaymentTerms] = useState<Record<string, string>>({})
   const [loadingTeamMembers, setLoadingTeamMembers] = useState(true)
@@ -74,6 +83,57 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
     employeeId: null as string | null,
     title: "",
   })
+
+  // 定義所有可能的欄位
+  const allColumns = [
+    {
+      id: "customer_id",
+      label: "客戶編號",
+      render: (customer: Customer) => (
+        <Link href={`/customers/all/${customer.customer_id}`} className="text-blue-600 hover:underline cursor-pointer">
+          {customer.customer_id}
+        </Link>
+      ),
+    },
+    {
+      id: "customer_short_name",
+      label: "客戶名稱",
+      render: (customer: Customer) => (
+        <div>
+          <div className="font-medium">{customer.customer_short_name}</div>
+          {customer.customer_full_name && (
+            <div className="text-sm text-muted-foreground">{customer.customer_full_name}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "client_contact_person",
+      label: "聯絡人",
+      render: (customer: Customer) => customer.client_contact_person || "-",
+    },
+    { id: "contact_email", label: "聯絡人Email", render: (customer: Customer) => getContactEmail(customer) },
+    { id: "sales_representative", label: "負責業務", render: (customer: Customer) => getSalesRepresentative(customer) },
+    {
+      id: "logistics_coordinator",
+      label: "負責船務",
+      render: (customer: Customer) => getLogisticsCoordinator(customer),
+    },
+    { id: "trade_terms", label: "貿易條件", render: (customer: Customer) => customer.trade_terms || "-" },
+    { id: "payment_terms", label: "付款條件", render: (customer: Customer) => getPaymentTerms(customer) },
+    {
+      id: "status",
+      label: "活躍度",
+      render: (customer: Customer) => {
+        const activityStatus = getActivityStatus(customer)
+        return <Badge variant={activityStatus.variant}>{activityStatus.label}</Badge>
+      },
+    },
+  ]
+
+  // 根據 visibleColumns 過濾要顯示的欄位
+  const displayColumns =
+    visibleColumns.length > 0 ? allColumns.filter((col) => visibleColumns.includes(col.id)) : allColumns
 
   // 獲取團隊成員資料和付款條件
   useEffect(() => {
@@ -261,15 +321,35 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{renderSortButton("customer_id", "客戶編號")}</TableHead>
-              <TableHead>{renderSortButton("customer_short_name", "客戶名稱")}</TableHead>
-              <TableHead>{renderSortButton("client_contact_person", "聯絡人")}</TableHead>
-              <TableHead>聯絡人Email</TableHead>
-              <TableHead>負責業務</TableHead>
-              <TableHead>負責船務</TableHead>
-              <TableHead>{renderSortButton("trade_terms", "貿易條件")}</TableHead>
-              <TableHead>{renderSortButton("payment_terms", "付款條件")}</TableHead>
-              <TableHead>{renderSortButton("status", "活躍度")}</TableHead>
+              {displayColumns.map((column) => (
+                <TableHead key={column.id}>
+                  {column.id === sortField ? (
+                    <Button
+                      variant="ghost"
+                      className="p-0 font-semibold"
+                      onClick={() => handleSort(column.id as SortField)}
+                    >
+                      {column.label}
+                      <ArrowUpDown
+                        className={`ml-2 h-4 w-4 ${sortField === column.id ? "opacity-100" : "opacity-50"} ${
+                          sortField === column.id && sortDirection === "desc" ? "rotate-180 transform" : ""
+                        }`}
+                      />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="p-0 font-semibold"
+                      onClick={() => handleSort(column.id as SortField)}
+                    >
+                      {column.label}
+                      <ArrowUpDown
+                        className={`ml-2 h-4 w-4 ${sortField === column.id ? "opacity-100" : "opacity-50"}`}
+                      />
+                    </Button>
+                  )}
+                </TableHead>
+              ))}
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -282,34 +362,11 @@ export function CustomersTable({ data = [], isLoading = false }: CustomersTableP
               </TableRow>
             ) : (
               sortedCustomers.map((customer) => {
-                const activityStatus = getActivityStatus(customer)
                 return (
                   <TableRow key={customer.customer_id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/customers/all/${customer.customer_id}`}
-                        className="text-blue-600 hover:underline cursor-pointer"
-                      >
-                        {customer.customer_id}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{customer.customer_short_name}</div>
-                        {customer.customer_full_name && (
-                          <div className="text-sm text-muted-foreground">{customer.customer_full_name}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{customer.client_contact_person || "-"}</TableCell>
-                    <TableCell className="text-sm">{getContactEmail(customer)}</TableCell>
-                    <TableCell>{getSalesRepresentative(customer)}</TableCell>
-                    <TableCell>{getLogisticsCoordinator(customer)}</TableCell>
-                    <TableCell>{customer.trade_terms || "-"}</TableCell>
-                    <TableCell>{getPaymentTerms(customer)}</TableCell>
-                    <TableCell>
-                      <Badge variant={activityStatus.variant}>{activityStatus.label}</Badge>
-                    </TableCell>
+                    {displayColumns.map((column) => (
+                      <TableCell key={column.id}>{column.render(customer)}</TableCell>
+                    ))}
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

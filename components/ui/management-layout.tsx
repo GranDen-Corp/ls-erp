@@ -20,6 +20,7 @@ type ManagementLayoutProps = {
   children: ReactNode
   searchPlaceholder?: string
   actionButtons?: ReactNode
+  className?: string
 }
 
 export function ManagementLayout({
@@ -35,6 +36,7 @@ export function ManagementLayout({
   children,
   searchPlaceholder,
   actionButtons,
+  className,
 }: ManagementLayoutProps) {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -46,7 +48,7 @@ export function ManagementLayout({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className || ""}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>

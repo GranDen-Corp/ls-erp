@@ -4,14 +4,34 @@ import { useState, useEffect } from "react"
 import { CustomersTable } from "@/components/customers/customers-table"
 import { ManagementLayout } from "@/components/ui/management-layout"
 import type { FilterOption } from "@/components/ui/advanced-filter"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { supabaseClient } from "@/lib/supabase-client"
+import { ColumnDisplayControl, type ColumnOption, type SortOption } from "@/components/ui/column-display-control"
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([])
   const [filteredCustomers, setFilteredCustomers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+
+  // 定義欄位選項（以現有欄位為預設）
+  const [columnOptions, setColumnOptions] = useState<ColumnOption[]>([
+    { id: "customer_id", label: "客戶編號", visible: true, sortable: true },
+    { id: "customer_short_name", label: "客戶名稱", visible: true, sortable: true },
+    { id: "client_contact_person", label: "聯絡人", visible: true, sortable: true },
+    { id: "contact_email", label: "聯絡人Email", visible: true, sortable: false },
+    { id: "sales_representative", label: "負責業務", visible: true, sortable: false },
+    { id: "logistics_coordinator", label: "負責船務", visible: true, sortable: false },
+    { id: "trade_terms", label: "貿易條件", visible: true, sortable: true },
+    { id: "payment_terms", label: "付款條件", visible: true, sortable: true },
+    { id: "status", label: "活躍度", visible: true, sortable: true },
+  ])
+
+  // 排序選項（以現有預設排序為準）
+  const [sortOption, setSortOption] = useState<SortOption>({
+    field: "customer_id",
+    direction: "asc",
+  })
 
   const filterOptions: FilterOption[] = [
     {
@@ -77,6 +97,27 @@ export default function CustomersPage() {
     fetchCustomers()
   }, [])
 
+  // 當排序選項變更時，重新排序資料
+  useEffect(() => {
+    if (customers.length > 0) {
+      const sorted = [...filteredCustomers].sort((a, b) => {
+        const fieldA = a[sortOption.field as keyof typeof a]
+        const fieldB = b[sortOption.field as keyof typeof b]
+
+        if (fieldA === undefined || fieldA === null) return sortOption.direction === "asc" ? -1 : 1
+        if (fieldB === undefined || fieldB === null) return sortOption.direction === "asc" ? 1 : -1
+
+        if (typeof fieldA === "string" && typeof fieldB === "string") {
+          return sortOption.direction === "asc" ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA)
+        }
+
+        return sortOption.direction === "asc" ? (fieldA < fieldB ? -1 : 1) : fieldA > fieldB ? -1 : 1
+      })
+
+      setFilteredCustomers(sorted)
+    }
+  }, [sortOption, customers])
+
   const handleFilterChange = (filters: Record<string, any>) => {
     let result = [...customers]
 
@@ -111,6 +152,21 @@ export default function CustomersPage() {
       )
     }
 
+    // Apply sorting
+    result.sort((a, b) => {
+      const fieldA = a[sortOption.field as keyof typeof a]
+      const fieldB = b[sortOption.field as keyof typeof b]
+
+      if (fieldA === undefined || fieldA === null) return sortOption.direction === "asc" ? -1 : 1
+      if (fieldB === undefined || fieldB === null) return sortOption.direction === "asc" ? 1 : -1
+
+      if (typeof fieldA === "string" && typeof fieldB === "string") {
+        return sortOption.direction === "asc" ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA)
+      }
+
+      return sortOption.direction === "asc" ? (fieldA < fieldB ? -1 : 1) : fieldA > fieldB ? -1 : 1
+    })
+
     setFilteredCustomers(result)
   }
 
@@ -140,8 +196,21 @@ export default function CustomersPage() {
       onExport={handleExport}
       onImport={handleImport}
       searchPlaceholder="搜尋客戶名稱、編號或聯絡人..."
+      extraControls={
+        <ColumnDisplayControl
+          columns={columnOptions}
+          onColumnChange={setColumnOptions}
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+        />
+      }
     >
-      <CustomersTable data={filteredCustomers} isLoading={isLoading} />
+      <CustomersTable
+        data={filteredCustomers}
+        isLoading={isLoading}
+        visibleColumns={columnOptions.filter((col) => col.visible).map((col) => col.id)}
+        defaultSort={sortOption}
+      />
     </ManagementLayout>
   )
 }
