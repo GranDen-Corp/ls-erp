@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { supabaseClient } from "@/lib/supabase-client"
 import { useToast } from "@/components/ui/use-toast"
-import { AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface CustomerFormProps {
@@ -96,15 +97,15 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [logisticsCoordinator, setLogisticsCoordinator] = useState("")
 
   // 財務資訊
-  const [currency, setCurrency] = useState("USD") // 預設為USD
+  const [currency, setCurrency] = useState("USD")
   const [exchangeRate, setExchangeRate] = useState(1)
-  const [paymentDays, setPaymentDays] = useState("") // 改為付款天數
+  const [paymentDays, setPaymentDays] = useState("")
   const [paymentTerms, setPaymentTerms] = useState("")
   const [paymentTermsSpecification, setPaymentTermsSpecification] = useState("")
   const [tradeTerms, setTradeTerms] = useState("")
   const [tradeTermsSpecification, setTradeTermsSpecification] = useState("")
 
-  // 付款和交貨條件選項資料
+  // 選項資料
   const [paymentTermOptions, setPaymentTermOptions] = useState<PaymentTerm[]>([])
   const [tradeTermOptions, setTradeTermOptions] = useState<TradeTerm[]>([])
   const [exchangeRateOptions, setExchangeRateOptions] = useState<ExchangeRate[]>([])
@@ -131,7 +132,7 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   const [cbamNote, setCbamNote] = useState("")
   const [legacySystemNote, setLegacySystemNote] = useState("")
 
-  // 在其他狀態變數後面添加
+  // 其他欄位
   const [forwarder, setForwarder] = useState("")
   const [remarks, setRemarks] = useState("")
   const [clientContactPersonEmail, setClientContactPersonEmail] = useState("")
@@ -185,15 +186,17 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
           setTeamMemberOptions(teamData)
         }
 
-        // 載入港口選項
+        // 載入港口選項 - 修正欄位名稱
         const { data: portData, error: portError } = await supabaseClient
           .from("ports")
-          .select("*")
+          .select("id, region, port_name_zh, port_name_en, un_locode, port_type")
           .order("region", { ascending: true })
           .order("port_name_zh", { ascending: true })
 
         if (!portError && portData) {
           setPortOptions(portData)
+        } else if (portError) {
+          console.error("載入港口選項時發生錯誤:", portError)
         }
       } catch (error) {
         console.error("載入選項資料時出錯:", error)
@@ -207,7 +210,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   useEffect(() => {
     if (initialData) {
       console.log("載入的客戶資料:", initialData)
-      // 基本資訊 - 優先使用新的欄位名稱，然後回退到舊的欄位名稱
+
+      // 基本資訊
       setCustomerId(initialData.customer_id || initialData.id || "")
       setCustomerFullName(initialData.customer_full_name || initialData.name || "")
       setCustomerShortName(initialData.customer_short_name || initialData.shortName || initialData.short_name || "")
@@ -231,11 +235,12 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setClientSales(initialData.client_sales || "")
       setSalesRepresentative(initialData.sales_representative || "")
       setLogisticsCoordinator(initialData.logistics_coordinator || "")
+      setClientContactPersonEmail(initialData.client_contact_person_email || "")
 
       // 財務資訊
       setCurrency(initialData.currency || "USD")
       setExchangeRate(Number(initialData.exchange_rate) || 1)
-      setPaymentDays(initialData.payment_due_date || "") // 改為付款天數
+      setPaymentDays(initialData.payment_due_date || "")
       setPaymentTerms(initialData.payment_terms || "")
       setPaymentTermsSpecification(initialData.payment_terms_specification || initialData.payment_condition || "")
       setTradeTerms(initialData.trade_terms || initialData.delivery_terms || "")
@@ -252,6 +257,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setMaxCartonWeight(Number(initialData.max_carton_weight) || 0)
       setScShippingMark(initialData.sc_shipping_mark || "")
       setLabels(initialData.labels || "")
+      setForwarder(initialData.forwarder || "")
+      setPortOfDischargeDefault(initialData.port_of_discharge_default || "")
 
       // 品質與報告
       setQtyAllowancePercent(Number(initialData.qty_allowance_percent) || 0)
@@ -260,16 +267,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       setRequireReport(initialData.require_report === true || initialData.require_report === "true")
       setCbamNote(initialData.cbam_note || "")
       setLegacySystemNote(initialData.legacy_system_note || "")
-
-      // 在其他欄位初始化後面添加
-      setClientContactPersonEmail(initialData.client_contact_person_email || "")
-      // 確保正確設定預設到貨港的 UN/LOCODE
-      setPortOfDischargeDefault(initialData.port_of_discharge_default || "")
-      // 在其他欄位初始化後面添加
-      setForwarder(initialData.forwarder || "")
       setRemarks(initialData.remarks || "")
 
-      // 添加調試日誌
       console.log("設定預設到貨港:", initialData.port_of_discharge_default)
     }
   }, [initialData])
@@ -277,8 +276,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
   // 處理幣別變更
   const handleCurrencyChange = (selectedCurrency: string) => {
     setCurrency(selectedCurrency)
-
-    // 自動設定匯率
     const selectedRate = exchangeRateOptions.find((rate) => rate.currency_code === selectedCurrency)
     if (selectedRate) {
       setExchangeRate(selectedRate.rate_to_usd)
@@ -313,8 +310,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         group_code: groupCode,
         division_location: divisionLocation,
         use_group_setting: useGroupSetting,
-
-        // 聯絡資訊
         customer_phone: customerPhone,
         customer_fax: customerFax,
         report_email: reportEmail,
@@ -328,19 +323,14 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         client_sales: clientSales,
         sales_representative: salesRepresentative,
         logistics_coordinator: logisticsCoordinator,
-        // 在 logistics_coordinator 後面添加
         client_contact_person_email: clientContactPersonEmail,
-
-        // 財務資訊
         currency,
         exchange_rate: exchangeRate,
-        payment_due_date: paymentDays, // 改為付款天數
+        payment_due_date: paymentDays,
         payment_terms: paymentTerms,
         payment_terms_specification: paymentTermsSpecification,
         trade_terms: tradeTerms,
         trade_terms_specification: tradeTermsSpecification,
-
-        // 包裝與出貨
         group_packaging_default: groupPackagingDefault,
         order_packaging_display: orderPackagingDisplay,
         customer_packaging: customerPackaging,
@@ -351,17 +341,13 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
         max_carton_weight: maxCartonWeight,
         sc_shipping_mark: scShippingMark,
         labels,
-        // 在 labels 後面添加
         port_of_discharge_default: portOfDischargeDefault,
-
-        // 品質與報告
         qty_allowance_percent: qtyAllowancePercent,
         acceptance_percent: acceptancePercent,
         report_type: reportType,
         require_report: requireReport,
         cbam_note: cbamNote,
         legacy_system_note: legacySystemNote,
-        // 在 legacy_system_note 後面添加
         forwarder,
         remarks,
       }
@@ -369,10 +355,8 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
       let result
 
       if (customerId) {
-        // 更新現有客戶
         result = await supabaseClient.from("customers").update(customerData).eq("customer_id", customerId)
       } else {
-        // 新增客戶
         result = await supabaseClient.from("customers").insert([
           {
             ...customerData,
@@ -487,7 +471,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                   </div>
                   <p className="text-sm text-muted-foreground">啟用後將使用集團的預設設定</p>
                 </div>
-                {/* 在 "basic" TabsContent 中（約第 400 行附近），在最後一個 div 後面添加備註欄位： */}
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="remarks">備註</Label>
                   <Textarea
@@ -495,258 +478,6 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                     placeholder="例如: 特殊要求或注意事項"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="contact" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>聯絡資訊</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customerPhone">客戶電話</Label>
-                  <Input
-                    id="customerPhone"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="例如: 02-12345678"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="customerFax">客戶傳真</Label>
-                  <Input
-                    id="customerFax"
-                    value={customerFax}
-                    onChange={(e) => setCustomerFax(e.target.value)}
-                    placeholder="例如: 02-87654321"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reportEmail">報告 Email</Label>
-                  <Input
-                    id="reportEmail"
-                    type="email"
-                    value={reportEmail}
-                    onChange={(e) => setReportEmail(e.target.value)}
-                    placeholder="例如: report@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="invoiceEmail">發票 Email</Label>
-                  <Input
-                    id="invoiceEmail"
-                    type="email"
-                    value={invoiceEmail}
-                    onChange={(e) => setInvoiceEmail(e.target.value)}
-                    placeholder="例如: invoice@example.com"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="customerAddress">客戶地址</Label>
-                  <Input
-                    id="customerAddress"
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="例如: 台北市信義區信義路五段7號"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="invoiceAddress">發票地址</Label>
-                  <Input
-                    id="invoiceAddress"
-                    value={invoiceAddress}
-                    onChange={(e) => setInvoiceAddress(e.target.value)}
-                    placeholder="例如: 台北市信義區信義路五段7號"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="shipToAddress">Ship to 地址</Label>
-                  <Input
-                    id="shipToAddress"
-                    value={shipToAddress}
-                    onChange={(e) => setShipToAddress(e.target.value)}
-                    placeholder="例如: 台北市信義區信義路五段7號"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientLeadPerson">客戶負責人</Label>
-                  <Input
-                    id="clientLeadPerson"
-                    value={clientLeadPerson}
-                    onChange={(e) => setClientLeadPerson(e.target.value)}
-                    placeholder="例如: 張三"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientContactPerson">客戶聯絡人</Label>
-                  <Input
-                    id="clientContactPerson"
-                    value={clientContactPerson}
-                    onChange={(e) => setClientContactPerson(e.target.value)}
-                    placeholder="例如: 李四"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientContactPersonEmail">客戶聯絡人 Email</Label>
-                  <Input
-                    id="clientContactPersonEmail"
-                    type="email"
-                    value={clientContactPersonEmail}
-                    onChange={(e) => setClientContactPersonEmail(e.target.value)}
-                    placeholder="例如: lisi@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientProcurement">客戶採購</Label>
-                  <Input
-                    id="clientProcurement"
-                    value={clientProcurement}
-                    onChange={(e) => setClientProcurement(e.target.value)}
-                    placeholder="例如: 王五"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientSales">客戶業務</Label>
-                  <Input
-                    id="clientSales"
-                    value={clientSales}
-                    onChange={(e) => setClientSales(e.target.value)}
-                    placeholder="例如: 趙六"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salesRepresentative">負責業務</Label>
-                  <Select value={salesRepresentative} onValueChange={setSalesRepresentative}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇負責業務" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teamMemberOptions.map((member) => (
-                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id || ""}>
-                          {member.name} ({member.ls_employee_id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logisticsCoordinator">負責船務</Label>
-                  <Select value={logisticsCoordinator} onValueChange={setLogisticsCoordinator}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇負責船務" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teamMemberOptions.map((member) => (
-                        <SelectItem key={member.ls_employee_id} value={member.ls_employee_id || ""}>
-                          {member.name} ({member.ls_employee_id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="financial" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>財務資訊</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currency">幣別</Label>
-                  <Select value={currency} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇幣別" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {exchangeRateOptions.map((option) => (
-                        <SelectItem key={option.currency_code} value={option.currency_code || ""}>
-                          {option.currency_name} ({option.currency_code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="exchangeRate">匯率 (對美元)</Label>
-                  <Input
-                    id="exchangeRate"
-                    type="number"
-                    step="0.0001"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(Number.parseFloat(e.target.value) || 1)}
-                    placeholder="例如: 30.5"
-                  />
-                  <p className="text-sm text-muted-foreground">選擇幣別後會自動填入當前匯率，仍可手動修改</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentDays">付款天數</Label>
-                  <Input
-                    id="paymentDays"
-                    type="number"
-                    value={paymentDays}
-                    onChange={(e) => setPaymentDays(e.target.value)}
-                    placeholder="例如: 30"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentTerms">付款方式</Label>
-                  <Select value={paymentTerms} onValueChange={setPaymentTerms}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇付款方式" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {paymentTermOptions.map((option) => (
-                        <SelectItem key={option.code} value={option.code || ""}>
-                          {option.name_zh} ({option.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentTermsSpecification">付款條件</Label>
-                  <Textarea
-                    id="paymentTermsSpecification"
-                    value={paymentTermsSpecification}
-                    onChange={(e) => setPaymentTermsSpecification(e.target.value)}
-                    placeholder="例如: 月結30天"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tradeTerms">交貨方式</Label>
-                  <Select value={tradeTerms} onValueChange={setTradeTerms}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇交貨方式" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tradeTermOptions.map((option) => (
-                        <SelectItem key={option.code} value={option.code || ""}>
-                          {option.name_zh} ({option.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tradeTermsSpecification">交貨條件</Label>
-                  <Textarea
-                    id="tradeTermsSpecification"
-                    value={tradeTermsSpecification}
-                    onChange={(e) => setTradeTermsSpecification(e.target.value)}
-                    placeholder="例如: 指定港口交貨"
                     rows={3}
                   />
                 </div>
@@ -763,75 +494,50 @@ export function CustomerForm({ initialData, customerId }: CustomerFormProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="groupPackagingDefault">集團包裝要求(代入)</Label>
-                  <Input
-                    id="groupPackagingDefault"
-                    value={groupPackagingDefault}
-                    onChange={(e) => setGroupPackagingDefault(e.target.value)}
-                    placeholder="例如: 標準包裝"
-                  />
+                  <Label htmlFor="portOfDischargeDefault">預設到貨港</Label>
+                  <Select value={portOfDischargeDefault} onValueChange={setPortOfDischargeDefault}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇預設到貨港" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">-- 請選擇港口 --</SelectItem>
+                      {portOptions.map((port) => (
+                        <SelectItem key={port.un_locode} value={port.un_locode}>
+                          {port.port_name_zh} ({port.un_locode}) - {port.region}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">選擇客戶的預設到貨港口</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orderPackagingDisplay">訂單包裝要求(顯示)</Label>
-                  <Input
-                    id="orderPackagingDisplay"
-                    value={orderPackagingDisplay}
-                    onChange={(e) => setOrderPackagingDisplay(e.target.value)}
-                    placeholder="例如: 標準包裝"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="customerPackaging">客戶包裝要求</Label>
-                  <Textarea
-                    id="customerPackaging"
-                    value={customerPackaging}
-                    onChange={(e) => setCustomerPackaging(e.target.value)}
-                    placeholder="例如: 每箱不超過20kg，需使用防潮包裝"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="packagingDetails">包裝資訊</Label>
-                  <Textarea
-                    id="packagingDetails"
-                    value={packagingDetails}
-                    onChange={(e) => setPackagingDetails(e.target.value)}
-                    placeholder="例如: 每箱需標示產品編號、數量、重量"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="packingInfo">Packing info</Label>
-                  <Textarea
-                    id="packingInfo"
-                    value={packingInfo}
-                    onChange={(e) => setPackingInfo(e.target.value)}
-                    placeholder="例如: 每箱需標示產品編號、數量、重量"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="palletFormat">棧板格式</Label>
-                  <Input
-                    id="palletFormat"
-                    value={palletFormat}
-                    onChange={(e) => setPalletFormat(e.target.value)}
-                    placeholder="例如: 歐規棧板"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cartonFormat">紙箱格式</Label>
-                  <Input
-                    id="cartonFormat"
-                    value={cartonFormat}
-                    onChange={(e) => setCartonFormat(e.target.value)}
-                    placeholder="例如: 五層瓦楞紙箱"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxCartonWeight">整箱重量 max (kg)</Label>
-                  <Input
-                    id="maxCartonWeight"
-                    type="number"
-                    value={maxCartonWeight}
-                    onChange={(e) => setMaxCarton
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={() => router.push("/customers/all")} disabled={isSubmitting}>
+          取消
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              處理中...
+            </>
+          ) : customerId ? (
+            "更新客戶"
+          ) : (
+            "創建客戶"
+          )}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+// 命名導出
+
+// 預設導出
+export default CustomerForm
