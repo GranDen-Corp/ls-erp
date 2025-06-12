@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { supabaseClient } from "@/lib/supabase-client"
 
 interface Order {
-  id: string
+  order_id: string // 修改: 從 id 改為 order_id
   order_number: string
   order_date: string
   status: string
@@ -55,9 +55,10 @@ export default function CustomerOrderHistory({ customerId }: CustomerOrderHistor
         setIsLoading(true)
         setError(null)
 
+        // 修改: 使用正確的欄位名稱 order_id 而非 id
         const { data, error } = await supabaseClient
           .from("orders")
-          .select("id, order_number, order_date, status, total_amount, currency, customer_id")
+          .select("order_id, order_number, order_date, status, total_amount, currency, customer_id")
           .eq("customer_id", customerId)
           .order("order_date", { ascending: false })
 
@@ -145,13 +146,13 @@ export default function CustomerOrderHistory({ customerId }: CustomerOrderHistor
             </TableHeader>
             <TableBody>
               {orders.map((order) => (
-                <TableRow key={order.id}>
+                <TableRow key={order.order_id}>
                   <TableCell className="font-medium">{order.order_number}</TableCell>
                   <TableCell>{formatDate(order.order_date)}</TableCell>
                   <TableCell>{formatCurrency(order.total_amount, order.currency)}</TableCell>
                   <TableCell>{getStatusBadge(order.status)}</TableCell>
                   <TableCell>
-                    <Link href={`/orders/${order.id}`}>
+                    <Link href={`/orders/${order.order_id}`}>
                       <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4" />
                       </Button>

@@ -20,6 +20,7 @@ type ManagementLayoutProps = {
   children: ReactNode
   searchPlaceholder?: string
   actionButtons?: ReactNode
+  extraFilterControls?: ReactNode
   className?: string
 }
 
@@ -36,6 +37,7 @@ export function ManagementLayout({
   children,
   searchPlaceholder,
   actionButtons,
+  extraFilterControls,
   className,
 }: ManagementLayoutProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -95,7 +97,16 @@ export function ManagementLayout({
             <CardTitle className="text-base">搜尋與篩選</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <AdvancedFilter options={filterOptions} onFilterChange={onFilterChange} placeholder={searchPlaceholder} />
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-1">
+                <AdvancedFilter
+                  options={filterOptions}
+                  onFilterChange={onFilterChange}
+                  placeholder={searchPlaceholder}
+                />
+              </div>
+              {extraFilterControls && <div className="flex items-center">{extraFilterControls}</div>}
+            </div>
           </CardContent>
         </Card>
       )}
