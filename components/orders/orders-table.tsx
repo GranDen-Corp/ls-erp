@@ -18,6 +18,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ChevronLeft,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { supabaseClient } from "@/lib/supabase-client"
@@ -89,6 +90,10 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
   // 排序狀態
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+
+  // 分頁狀態
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   // 獲取訂單、客戶和產品資料
   useEffect(() => {
@@ -359,6 +364,21 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
 
     setFilteredOrders(filtered)
     setSearchTerm(search || "")
+  }
+
+  // 分頁相關函數
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentOrders = filteredOrders.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1) // 重置到第一頁
   }
 
   // 排序功能
@@ -890,7 +910,7 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => {
+                  {currentOrders.map((order, index) => {
                     const status = getOrderStatus(order)
                     const isAssembly = hasAssemblyProduct(order)
                     const isExpanded = expandedOrders[order.order_id] || false
@@ -898,7 +918,7 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
 
                     return (
                       <React.Fragment key={order.order_sid || order.order_id}>
-                        <TableRow className="hover:bg-muted/30">
+                        <TableRow className={`hover:bg-muted/30 ${index % 2 === 0 ? "bg-white" : "bg-muted/50"}`}>
                           <TableCell className="font-medium">{order.order_id || "-"}</TableCell>
                           <TableCell>{order.po_id || "-"}</TableCell>
                           <TableCell>{getCustomerName(order.customer_id)}</TableCell>
@@ -964,7 +984,7 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
                           </TableCell>
                         </TableRow>
                         {isExpanded && componentsList && (
-                          <TableRow className="bg-muted/20">
+                          <TableRow className={`${index % 2 === 0 ? "bg-white" : "bg-muted/50"}`}>
                             <TableCell colSpan={8} className="py-1">
                               {componentsList}
                             </TableCell>
@@ -975,6 +995,59 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
                   })}
                 </TableBody>
               </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 分頁控制 */}
+      {filteredOrders.length > 0 && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between space-x-6 lg:space-x-8">
+              <div className="text-sm text-muted-foreground">
+                顯示 {startIndex + 1} 到 {Math.min(endIndex, filteredOrders.length)} 筆，共 {filteredOrders.length}{" "}
+                筆資料
+              </div>
+              <div className="flex items-center space-x-6 lg:space-x-8">
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium">每頁顯示</p>
+                  <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent side="top">
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm font-medium">筆</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                  >
+                    <span className="sr-only sm:not-sr-only">上一頁</span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="text-sm font-medium">
+                    第 {currentPage} 頁，共 {totalPages} 頁
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                  >
+                    <span className="sr-only sm:not-sr-only">下一頁</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

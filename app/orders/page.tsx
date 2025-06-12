@@ -100,10 +100,16 @@ export default function OrdersPage() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-0">
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className={`grid w-full grid-cols-${gridCols}`}>
-              <TabsTrigger value="all">全部</TabsTrigger>
+            <TabsList className="grid-cols-none flex w-full overflow-x-auto scrollbar-hide space-x-1">
+              <TabsTrigger value="all" className="whitespace-nowrap flex-shrink-0">
+                全部
+              </TabsTrigger>
               {orderStatuses.map((status) => (
-                <TabsTrigger key={status.status_code} value={status.status_code}>
+                <TabsTrigger
+                  key={status.status_code}
+                  value={status.status_code}
+                  className="whitespace-nowrap flex-shrink-0"
+                >
                   {status.name_zh}
                 </TabsTrigger>
               ))}
