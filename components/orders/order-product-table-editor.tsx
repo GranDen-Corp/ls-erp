@@ -128,7 +128,7 @@ ${deliveryLines.join("\n")}
 
 4. QUANTITY ALLOWANCE PLUS ${customer.qty_allowance_percent || "10"}% / MINUS ${customer.qty_allowance_percent || "10"}%
 
-5. FORWARDER AGENT: -
+5. FORWARDER AGENT: ${customer?.forwarder || "TBD"}
 
 6. MATERIAL CERTS, INSPECTED REPORT REQUIRED
 
@@ -174,7 +174,7 @@ ${deliveryTerms}
 
 4. QUANTITY ALLOWANCE PLUS ${customer?.qty_allowance_percent || "10"}% / MINUS ${customer?.qty_allowance_percent || "10"}%
 
-5. FORWARDER AGENT: -
+5. FORWARDER AGENT: ${customer?.forwarder || "TBD"}
 
 6. MATERIAL CERTS, INSPECTED REPORT REQUIRED
 

@@ -105,8 +105,8 @@ export function EnhancedProductList({
 
   // 生成訂單產品編號
   const generateOrderProductNumber = (orderNumber: string) => {
-    if (!orderNumber || !orderNumber.startsWith("L-")) return ""
-    return orderNumber.replace("L-", "LS-")
+    if (!orderNumber || typeof orderNumber !== "string") return ""
+    return orderNumber.startsWith("L-") ? orderNumber.replace("L-", "LS-") : orderNumber
   }
 
   // 生成個別產品編號
@@ -141,7 +141,9 @@ export function EnhancedProductList({
             <CardTitle>訂單產品列表</CardTitle>
           </div>
           {orderProductNumber && (
-            <div className="text-base font-medium text-blue-600 mb-2">訂單產品編號: {orderProductNumber}</div>
+            <div className="text-base font-medium text-blue-600 border border-blue-200 bg-blue-50 px-2 py-1 rounded inline-block mb-2">
+              訂單產品編號: {orderProductNumber}
+            </div>
           )}
           <CardDescription>管理訂單中的產品資訊和批次設定</CardDescription>
         </div>
@@ -192,14 +194,19 @@ export function EnhancedProductList({
                     </TableCell>
                   )}
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {item.productPartNo}
-                      {item.isAssembly && (
-                        <Badge className="bg-purple-500 text-white">
-                          <LucideLayers className="h-3 w-3 mr-1" />
-                          組件
-                        </Badge>
-                      )}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {item.productPartNo}
+                        {item.isAssembly && (
+                          <Badge className="bg-purple-500 text-white">
+                            <LucideLayers className="h-3 w-3 mr-1" />
+                            組件
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-blue-600 font-medium">
+                        {generateIndividualProductNumber(orderNumber, item.orderSequence)}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>

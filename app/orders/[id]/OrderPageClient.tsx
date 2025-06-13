@@ -95,7 +95,7 @@ export default function OrderPageClient({
   orderId,
 }: {
   orderId: string
-}) {  
+}) {
   const [order, setOrder] = useState<any>(null)
   const [orderStatuses, setOrderStatuses] = useState<any[]>([])
   const [statusHistory, setStatusHistory] = useState<any[]>([])
@@ -388,10 +388,29 @@ function OrderDetailsTab({ order, orderStatuses, currentStatus, statusHistory }:
 
 // 訂單產品列表分頁組件
 function OrderProductsTab({ order }: any) {
+  // Generate the order product number (LS-prefixed)
+  const generateOrderProductNumber = (orderNumber: string) => {
+    if (!orderNumber || typeof orderNumber !== "string") return ""
+    return orderNumber.startsWith("L-") ? orderNumber.replace("L-", "LS-") : orderNumber
+  }
+
+  // Generate individual product number with sequence
+  const generateIndividualProductNumber = (orderNumber: string, sequence: string) => {
+    const baseNumber = generateOrderProductNumber(orderNumber)
+    return baseNumber ? `${baseNumber}-${sequence}` : ""
+  }
+
+  const orderProductNumber = generateOrderProductNumber(order.order_id)
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>產品列表</CardTitle>
+        {orderProductNumber && (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+            訂單產品編號: {orderProductNumber}
+          </Badge>
+        )}
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -408,27 +427,34 @@ function OrderProductsTab({ order }: any) {
               </tr>
             </thead>
             <tbody>
-              {order.batch_items?.map((item: any) => (
-                <tr key={item.order_batch_id} className="border-b">
-                  <td className="px-4 py-2">
-                    <div className="font-medium">{item.part_no}</div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="text-sm">{item.description}</div>
-                  </td>
-                  <td className="px-4 py-2">
-                    {item.product_index}-{item.batch_number}
-                  </td>
-                  <td className="px-4 py-2 text-right">{item.quantity}</td>
-                  <td className="px-4 py-2 text-right">${item.unit_price}</td>
-                  <td className="px-4 py-2 text-right">
-                    ${(item.total_price || item.quantity * item.unit_price).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Badge variant="outline">{item.status}</Badge>
-                  </td>
-                </tr>
-              )) || (
+              {order.batch_items?.map((item: any, index: number) => {
+                // Generate a sequence letter (A, B, C...) based on index
+                const sequence = String.fromCharCode(65 + (index % 26))
+                const productNumber = generateIndividualProductNumber(order.order_id, sequence)
+
+                return (
+                  <tr key={item.order_batch_id} className="border-b">
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{item.part_no}</div>
+                      {productNumber && <div className="text-sm text-blue-600 mt-1">{productNumber}</div>}
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="text-sm">{item.description}</div>
+                    </td>
+                    <td className="px-4 py-2">
+                      {item.product_index}-{item.batch_number}
+                    </td>
+                    <td className="px-4 py-2 text-right">{item.quantity}</td>
+                    <td className="px-4 py-2 text-right">${item.unit_price}</td>
+                    <td className="px-4 py-2 text-right">
+                      ${(item.total_price || item.quantity * item.unit_price).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <Badge variant="outline">{item.status}</Badge>
+                    </td>
+                  </tr>
+                )
+              }) || (
                 <tr>
                   <td colSpan={7} className="px-4 py-2 text-center">
                     無產品項目

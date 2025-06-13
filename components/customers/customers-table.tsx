@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import {
@@ -100,16 +100,12 @@ export function CustomersTable({
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  // 計算分頁資料
-  const totalItems = data.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentData = data.slice(startIndex, endIndex)
+  // Replace the existing filteredCustomers state with this
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
 
-  // 重置頁面當資料變更時
+  // Replace or add this useEffect to properly handle data changes
   useEffect(() => {
-    setCurrentPage(1)
+    setFilteredCustomers(data)
   }, [data])
 
   // 定義所有可能的欄位渲染函數
@@ -365,13 +361,13 @@ export function CustomersTable({
     return { label: "活躍", variant: "default" as const }
   }
 
-  // Add this sortData function inside the CustomersTable function component
-  const sortData = (data: Customer[], column: string | null, direction: "asc" | "desc") => {
-    if (!column) return data
+  // Replace the existing sorting effect with this one
+  const sortedData = useMemo(() => {
+    if (!sortColumn) return filteredCustomers
 
-    return [...data].sort((a, b) => {
-      let valueA = a[column as keyof Customer]
-      let valueB = b[column as keyof Customer]
+    return [...filteredCustomers].sort((a, b) => {
+      let valueA = a[sortColumn as keyof Customer]
+      let valueB = b[sortColumn as keyof Customer]
 
       // Handle undefined values
       if (valueA === undefined) valueA = ""
@@ -379,15 +375,15 @@ export function CustomersTable({
 
       // Handle string comparisons
       if (typeof valueA === "string" && typeof valueB === "string") {
-        return direction === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA)
+        return sortDirection === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA)
       }
 
       // Handle numeric and other comparisons
-      if (valueA < valueB) return direction === "asc" ? -1 : 1
-      if (valueA > valueB) return direction === "asc" ? 1 : -1
+      if (valueA < valueB) return sortDirection === "asc" ? -1 : 1
+      if (valueA > valueB) return sortDirection === "asc" ? 1 : -1
       return 0
     })
-  }
+  }, [filteredCustomers, sortColumn, sortDirection])
 
   // Add this click handler inside the CustomersTable function component
   const handleSort = (column: string) => {
@@ -409,20 +405,11 @@ export function CustomersTable({
     setCurrentPage(1) // 重置到第一頁
   }
 
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>(data)
-
-  useEffect(() => {
-    setFilteredCustomers(data)
-  }, [data])
-
-  // Update the effect that applies filters to also handle sorting
-  // Add this after the handleFilterChange function
-  useEffect(() => {
-    if (sortColumn && filteredCustomers.length > 0) {
-      const sortedData = sortData(filteredCustomers, sortColumn, sortDirection)
-      setFilteredCustomers(sortedData)
-    }
-  }, [sortColumn, sortDirection, filteredCustomers])
+  // Update the pagination calculation to use sortedData:
+  const totalItems = sortedData.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
 
   if (isLoading || loadingData) {
     return (
@@ -470,14 +457,14 @@ export function CustomersTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCustomers.length === 0 ? (
+            {sortedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={displayColumns.length + 1} className="h-24 text-center">
                   沒有找到客戶資料
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCustomers.map((customer, index) => (
+              sortedData.slice(startIndex, endIndex).map((customer, index) => (
                 <TableRow key={customer.customer_id} className={index % 2 === 1 ? "bg-muted/50" : ""}>
                   {displayColumns.map((columnId) => (
                     <TableCell key={columnId}>{columnRenderers[columnId](customer)}</TableCell>
