@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       customer_drawing_version: data.customerDrawingVersion,
       factory_drawing_version: data.factoryDrawingVersion,
       images: data.images,
-      is_assembly: data.isAssembly,
+      //is_assembly: data.isAssembly,
       components: data.components,
       assembly_time: data.assemblyTime,
       assembly_cost_per_hour: data.assemblyCostPerHour,

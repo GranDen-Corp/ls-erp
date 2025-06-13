@@ -60,7 +60,7 @@ export function ProductsTable({
         >
           {product.part_no}
         </Link>
-        {product.is_assembly && (
+        {product.product_type === "組合件" && (
           <Badge className="bg-purple-500 text-white">
             <Layers className="h-3 w-3 mr-1" />
             組合
@@ -73,7 +73,7 @@ export function ProductsTable({
       return (
         <div>
           {product.component_name}
-          {product.is_assembly && assemblyParts.length > 0 && (
+          {product.product_type === "組合件" && assemblyParts.length > 0 && (
             <div className="text-xs text-gray-500 mt-1">
               {assemblyParts
                 .filter((part) => part.partNo)
@@ -124,7 +124,7 @@ export function ProductsTable({
     moq: (product) => product.moq || "-",
     lead_time: (product) => product.lead_time || "-",
     packaging: (product) => product.packaging || "-",
-    is_assembly: (product) => (product.is_assembly ? "是" : "否"),
+    is_assembly: (product) => (product.product_type==="組合件" ? "是" : "否"),
     created_at: (product) => product.created_at || "-",
     updated_at: (product) => product.updated_at || "-",
     notes: (product) => product.notes || "-",
@@ -242,7 +242,7 @@ export function ProductsTable({
 
   // 解析組合件的零件編號和名稱
   const parseAssemblyParts = (product: Product) => {
-    if (!product.is_assembly || !product.sub_part_no) return []
+    if (product.product_type !== "組合件" || !product.sub_part_no) return []
 
     let components: Array<{ part_no?: string; description?: string }> = []
 
@@ -382,7 +382,7 @@ export function ProductsTable({
                         <DropdownMenuItem>
                           <Link
                             href={
-                              product.is_assembly
+                              product.product_type === "組合件"
                                 ? `/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}/assembly-inquiry`
                                 : `/products/all/${encodeURIComponent(product.customer_id)}/${encodeURIComponent(product.part_no)}/inquiry`
                             }

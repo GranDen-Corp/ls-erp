@@ -58,7 +58,7 @@ export default async function ProductDetailPage({
     customerDrawingVersion: product.customer_drawing_version || "",
     factoryDrawingVersion: product.factory_drawing_version || "",
     images: product.images || [],
-    isAssembly: product.is_assembly || false,
+    //isAssembly: product.is_assembly || false,
     components: product.components || [],
     subPartNo: product.sub_part_no || [],
     assemblyTime: product.assembly_time || 30,
@@ -125,7 +125,7 @@ export default async function ProductDetailPage({
           <ProductReadOnlyForm
             productId={productId}
             initialValues={formattedProduct}
-            isAssembly={product.is_assembly}
+            //isAssembly={product.is_assembly}
             defaultTab="basic"
           />
         </CardContent>

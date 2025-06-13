@@ -117,7 +117,7 @@ const productTypeMap: Record<string, string> = {}
 export function ProductReadOnlyForm({
   productId,
   initialValues,
-  isAssembly = false,
+  //isAssembly = false,
   defaultTab = "basic",
 }: ProductReadOnlyFormProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || "basic")
@@ -126,7 +126,7 @@ export function ProductReadOnlyForm({
   const [factories, setFactories] = useState<Factory[]>([])
   const [componentDetails, setComponentDetails] = useState<{ [key: string]: string }>({})
   const [selectedComponents, setSelectedComponents] = useState<ProductComponent[]>([])
-  const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.is_assembly || isAssembly || false)
+  const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.product_type === "組合件" || false)
   const [productTypeMapState, setProductTypeMapState] = useState<Record<string, string>>(productTypeMap)
 
   const supabase = createClientComponentClient()
@@ -135,7 +135,7 @@ export function ProductReadOnlyForm({
   useEffect(() => {
     if (initialValues && JSON.stringify(initialValues) !== JSON.stringify(product)) {
       setProduct(initialValues)
-      setIsCompositeProduct(initialValues.is_assembly || false)
+      setIsCompositeProduct(initialValues.product_type === "組合件" || false)
     }
   }, [initialValues, product])
 
@@ -238,7 +238,7 @@ export function ProductReadOnlyForm({
   // 初始化組合產品部件
   useEffect(() => {
     // 如果是組合產品，處理部件資料
-    if (initialValues?.isAssembly || initialValues?.is_assembly) {
+    if (initialValues?.productType === "組合件" || initialValues?.product_type === "組合件") {
       setIsCompositeProduct(true)
 
       // 如果有部件資料，解析並顯示

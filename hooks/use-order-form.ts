@@ -32,7 +32,7 @@ interface Product {
   part_no: string
   component_name: string
   description: string
-  is_assembly: boolean
+  //is_assembly: boolean
   customer_id: string
   unit_price: number
   last_price: number
@@ -344,8 +344,8 @@ export function useOrderForm() {
       }
 
       const products = data || []
-      const regular = products.filter((p) => !p.is_assembly)
-      const assembly = products.filter((p) => p.is_assembly)
+      const regular = products.filter((p) => p.product_type !== "組合件")
+      const assembly = products.filter((p) => p.product_type === "組合件")
 
       setRegularProducts(regular)
       setAssemblyProducts(assembly)
@@ -497,31 +497,31 @@ export function useOrderForm() {
         const product = [...regularProducts, ...assemblyProducts].find((p) => p.part_no === partNo)
         if (product && !checkIsProductAdded(partNo)) {
           // 使用產品的歷史數據作為預設值
-          const defaultQuantity = product.last_quantity || 1000
-          const defaultUnit = product.last_unit || defaultUnit
-          const defaultPrice = product.last_price || product.unit_price || 0
+          const _defaultQuantity = product.last_quantity || 1000
+          const _defaultUnit = product.last_unit || defaultUnit
+          const _defaultPrice = product.last_price || product.unit_price || 0
 
-          const actualQuantityInPcs = defaultQuantity * getUnitMultiplier(defaultUnit)
+          const _actualQuantityInPcs = _defaultQuantity * getUnitMultiplier(_defaultUnit)
 
           // 設定預設交貨日期為30天後
-          const defaultDeliveryDate = new Date()
-          defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 30)
+          const _defaultDeliveryDate = new Date()
+          _defaultDeliveryDate.setDate(_defaultDeliveryDate.getDate() + 30)
 
-          const newItem: OrderItem = {
+          const _newItem: OrderItem = {
             id: `${Date.now()}-${Math.random()}`,
             orderSequence: "", // 稍後會重新分配
             productKey: `${product.customer_id}-${product.part_no}`,
             productName: product.component_name || product.part_no,
             productPartNo: product.part_no,
-            quantity: defaultQuantity,
-            unit: defaultUnit,
-            unitPrice: defaultPrice,
-            isAssembly: product.is_assembly || false,
+            quantity: _defaultQuantity,
+            unit: _defaultUnit,
+            unitPrice: _defaultPrice,
+            isAssembly: product.product_type === "組合件" || false,
             shipmentBatches: [
               {
                 id: `batch-${Date.now()}`,
                 batchNumber: 1,
-                quantity: actualQuantityInPcs,
+                quantity: _actualQuantityInPcs,
                 plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
                 status: "pending",
                 notes: "",
@@ -530,9 +530,9 @@ export function useOrderForm() {
             specifications: product.specification || "",
             currency: customerCurrency, // 使用客戶貨幣
             product: product,
-            expectedDeliveryDate: defaultDeliveryDate.toISOString().split("T")[0],
+            expectedDeliveryDate: _defaultDeliveryDate.toISOString().split("T")[0],
           }
-          newItems.push(newItem)
+          newItems.push(_newItem)
         }
       })
 
@@ -565,29 +565,29 @@ export function useOrderForm() {
     const product = assemblyProducts.find((p) => p.part_no === selectedProductPartNo)
     if (product && !checkIsProductAdded(selectedProductPartNo)) {
       // 使用產品的歷史數據作為預設值
-      const defaultQuantity = product.last_quantity || 1000
-      const defaultUnit = product.last_unit || defaultUnit
-      const defaultPrice = product.last_price || product.unit_price || 0
+      const _defaultQuantity = product.last_quantity || 1000
+      const _defaultUnit = product.last_unit || defaultUnit
+      const _defaultPrice = product.last_price || product.unit_price || 0
 
       // 設定預設交貨日期為30天後
-      const defaultDeliveryDate = new Date()
-      defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 30)
+      const _defaultDeliveryDate = new Date()
+      _defaultDeliveryDate.setDate(_defaultDeliveryDate.getDate() + 30)
 
-      const newItem: OrderItem = {
+      const _newItem: OrderItem = {
         id: `${Date.now()}-${Math.random()}`,
         orderSequence: "", // 稍後會重新分配
         productKey: `${product.customer_id}-${product.part_no}`,
         productName: product.component_name || product.part_no,
         productPartNo: product.part_no,
-        quantity: defaultQuantity,
-        unit: defaultUnit,
-        unitPrice: defaultPrice,
+        quantity: _defaultQuantity,
+        unit: _defaultUnit,
+        unitPrice: _defaultPrice,
         isAssembly: true,
         shipmentBatches: [
           {
             id: `batch-${Date.now()}`,
             batchNumber: 1,
-            quantity: defaultQuantity,
+            quantity: _defaultQuantity,
             plannedShipDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             status: "pending",
           },
@@ -595,11 +595,11 @@ export function useOrderForm() {
         specifications: product.specification || "",
         currency: customerCurrency, // 使用客戶貨幣
         product: product,
-        expectedDeliveryDate: defaultDeliveryDate.toISOString().split("T")[0],
+        expectedDeliveryDate: _defaultDeliveryDate.toISOString().split("T")[0],
       }
 
       setOrderItems((prev) => {
-        const updatedItems = [...prev, newItem]
+        const updatedItems = [...prev, _newItem]
         return reassignOrderSequences(updatedItems)
       })
       setSelectedProductPartNo("")
@@ -887,7 +887,7 @@ ${deliveryLines.join("\n")}
   }, [])
 
   const isProductAssembly = useCallback((product: Product) => {
-    return product.is_assembly || false
+    return product.product_type === "組合件" || false
   }, [])
 
   const parseSubPartNo = useCallback((product: Product) => {

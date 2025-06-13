@@ -115,7 +115,7 @@ export interface Product {
   customer_drawing_version: string
   factory_drawing_version: string
   images: string[]
-  is_assembly: boolean
+  //is_assembly: boolean
   components: string[]
   assembly_time: number
   assembly_cost_per_hour: number

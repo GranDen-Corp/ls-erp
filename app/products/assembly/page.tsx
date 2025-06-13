@@ -24,7 +24,7 @@ export default function AssemblyProductsPage() {
         const { data: assemblyProducts, error: assemblyError } = await supabase
           .from("products")
           .select("*")
-          .eq("is_assembly", true)
+          .eq("product_type", "組合件")
 
         if (assemblyError) {
           throw new Error(`獲取組合產品資料時出錯: ${assemblyError.message}`)

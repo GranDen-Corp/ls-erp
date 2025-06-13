@@ -51,11 +51,11 @@ export function ProductForm({
   onSubmit,
   initialValues,
   isSubmitting = false,
-  isAssembly = false,
+  //isAssembly = false,
   defaultTab = "basic",
 }: ProductFormProps) {
   // Initialize default product data
-  const defaultProduct = getDefaultProduct(isAssembly)
+  const defaultProduct = getDefaultProduct(initialValues.productType === "組合件")
 
   // If there are initial values, use them, otherwise use default values
   const initialProduct = initialValues || (productId ? { ...defaultProduct, id: productId } : defaultProduct)
@@ -140,7 +140,7 @@ export function ProductForm({
   const supabase = createClientComponentClient()
 
   // Composite product related states
-  const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.is_assembly || isAssembly || false)
+  const [isCompositeProduct, setIsCompositeProduct] = useState(initialValues?.productType === "組合件" || false)
   const [selectedComponents, setSelectedComponents] = useState<ProductComponent[]>([])
   const [isComponentSelectorOpen, setIsComponentSelectorOpen] = useState(false)
   const [componentSearchTerm, setComponentSearchTerm] = useState("")
@@ -199,7 +199,7 @@ export function ProductForm({
       }
 
       setProduct(updatedProduct)
-      setIsCompositeProduct(initialValues.is_assembly || false)
+      setIsCompositeProduct(initialValues.productType === "組合件" || false)
 
       prevCustomerId.current = initialValues.customer_id || null
       prevFactoryId.current = initialValues.factory_id || null
@@ -212,15 +212,10 @@ export function ProductForm({
   useEffect(() => {
     if (!initialValues && !productId && !product.processData?.length) {
       console.log("Setting default processes for new product")
-      setProduct((prev) => {
-        if (!prev.processData || prev.processData.length === 0) {
-          return {
-            ...prev,
-            processData: [...defaultProcesses],
-          }
-        }
-        return prev
-      })
+      setProduct((prev: Product) => ({
+        ...prev,
+        processData: [...defaultProcesses],
+      }))
     }
   }, [initialValues, productId, product.processData?.length])
 
@@ -233,6 +228,8 @@ export function ProductForm({
     if (currentCustomerId && currentCustomerId !== prevCustomerId.current) {
       setSelectedComponents([])
       setComponentDetails({})
+      setSelectedComponentIds([])
+      setIsCompositeProduct(false)
       prevCustomerId.current = currentCustomerId
     }
 
@@ -240,9 +237,38 @@ export function ProductForm({
     if (currentFactoryId && currentFactoryId !== prevFactoryId.current) {
       setSelectedComponents([])
       setComponentDetails({})
+      setSelectedComponentIds([])
+      setIsCompositeProduct(false)
       prevFactoryId.current = currentFactoryId
     }
   }, [product.customer_id, product.factory_id])
+
+  // 監控產品類型的變更
+  useEffect(() => {
+    if (product.productType !== "組合件") {
+      // 清空組合件相關資料
+      setSelectedComponents([])
+      setComponentDetails({})
+      setSelectedComponentIds([])
+      setIsCompositeProduct(false)
+      
+      // 更新產品資料
+      setProduct((prev: Product) => ({
+        ...prev,
+        subPartNo: [],
+        sub_part_no: []
+      }))
+    } else {
+      setIsCompositeProduct(true)
+    }
+  }, [product.productType])
+
+  // 監控selectedComponents
+  useEffect(() => {
+    if (selectedComponents.length > 0 && product.productType !== "組合件") {
+      handleInputChange("productType", "組合件")
+    }
+  }, [selectedComponents])
 
   // Load customer and factory data
   useEffect(() => {
@@ -316,7 +342,7 @@ export function ProductForm({
   // Initialize composite product components
   useEffect(() => {
     // If it's a composite product, automatically check the checkbox
-    if (initialValues?.isAssembly || initialValues?.is_assembly) {
+    if (initialValues?.productType === "組合件" || initialValues?.product_type === "組合件") {
       setIsCompositeProduct(true)
 
       // If there is component data, parse and display it
@@ -350,7 +376,7 @@ export function ProductForm({
               .map((comp): ProductComponent => {
                 if (typeof comp === "object") {
                   return {
-                    part_no: comp.part_no || comp.part_number || "",
+                    part_no: comp.part_no || "",
                     description: comp.description || comp.component_name || "",
                   }
                 } else if (typeof comp === "string") {
@@ -445,7 +471,7 @@ export function ProductForm({
         .from("products")
         .select("*")
         .eq("customer_id", product.customer_id)
-        .eq("is_assembly", false)
+        .eq("product_type", "組合件")
         .ilike("part_no", `%${componentSearchTerm}%`)
         .order("part_no")
         .limit(50)
@@ -915,7 +941,7 @@ export function ProductForm({
         images: product.images,
 
         // Assembly information
-        isAssembly: isCompositeProduct,
+        //isAssembly: isCompositeProduct,
         components: product.components,
         assemblyTime: product.assemblyTime,
         assemblyCostPerHour: product.assemblyCostPerHour,
