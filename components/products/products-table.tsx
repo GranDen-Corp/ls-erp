@@ -3,7 +3,17 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { FileText, Loader2, MoreHorizontal, Pencil, Copy, Layers, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  FileText,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Copy,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+} from "lucide-react"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -41,6 +51,8 @@ export function ProductsTable({
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [processedProducts, setProcessedProducts] = useState<Product[]>([])
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   // 產品類別映射
   const [productTypeMap, setProductTypeMap] = useState<Record<string, string>>({})
@@ -48,6 +60,40 @@ export function ProductsTable({
   const handleCloneProduct = (product: Product) => {
     localStorage.setItem("clonedProduct", JSON.stringify(product))
     return "/products/new?clone=true"
+  }
+
+  const sortData = (data: Product[], column: string | null, direction: "asc" | "desc") => {
+    if (!column) return data
+
+    return [...data].sort((a, b) => {
+      let valueA = a[column as keyof Product]
+      let valueB = b[column as keyof Product]
+
+      // Handle special cases
+      if (column === "last_price") {
+        valueA = Number(a.last_price || 0)
+        valueB = Number(b.last_price || 0)
+      }
+
+      // Handle string comparisons
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return direction === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA)
+      }
+
+      // Handle numeric and other comparisons
+      if (valueA < valueB) return direction === "asc" ? -1 : 1
+      if (valueA > valueB) return direction === "asc" ? 1 : -1
+      return 0
+    })
+  }
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortColumn(column)
+      setSortDirection("asc")
+    }
   }
 
   // 定義所有可能的欄位渲染函數
@@ -124,7 +170,7 @@ export function ProductsTable({
     moq: (product) => product.moq || "-",
     lead_time: (product) => product.lead_time || "-",
     packaging: (product) => product.packaging || "-",
-    is_assembly: (product) => (product.product_type==="組合件" ? "是" : "否"),
+    is_assembly: (product) => (product.product_type === "組合件" ? "是" : "否"),
     created_at: (product) => product.created_at || "-",
     updated_at: (product) => product.updated_at || "-",
     notes: (product) => product.notes || "-",
@@ -191,7 +237,7 @@ export function ProductsTable({
       return
     }
 
-    const processed = products.map((product) => {
+    let processed = products.map((product) => {
       let images = []
       try {
         if (product.images) {
@@ -237,8 +283,38 @@ export function ProductsTable({
       }
     })
 
+    // Apply sorting if needed
+    if (sortColumn) {
+      processed = sortData(processed, sortColumn, sortDirection)
+    }
+
     setProcessedProducts(processed)
-  }, [products])
+  }, [products, sortColumn, sortDirection])
+
+  // Add a function to handle delete action
+  const handleDeleteProduct = async (product: Product) => {
+    if (!confirm(`確定要刪除產品 ${product.part_no} 嗎？`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("part_no", product.part_no)
+        .eq("customer_id", product.customer_id)
+
+      if (error) {
+        throw error
+      }
+
+      // Refresh the product list
+      window.location.reload()
+    } catch (error) {
+      console.error("刪除產品時出錯:", error)
+      alert("刪除產品失敗，請稍後再試")
+    }
+  }
 
   // 解析組合件的零件編號和名稱
   const parseAssemblyParts = (product: Product) => {
@@ -307,7 +383,21 @@ export function ProductsTable({
             <TableRow>
               <TableHead className="w-12"></TableHead>
               {displayColumns.map((columnId) => (
-                <TableHead key={columnId}>{columnLabels[columnId]}</TableHead>
+                <TableHead
+                  key={columnId}
+                  onClick={() => handleSort(columnId)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-1">
+                    {columnLabels[columnId]}
+                    {sortColumn === columnId &&
+                      (sortDirection === "asc" ? (
+                        <ChevronLeft className="h-4 w-4 rotate-90" />
+                      ) : (
+                        <ChevronLeft className="h-4 w-4 -rotate-90" />
+                      ))}
+                  </div>
+                </TableHead>
               ))}
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
@@ -391,6 +481,11 @@ export function ProductsTable({
                             <FileText className="mr-2 h-4 w-4" />
                             生成詢價單
                           </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onSelect={() => handleDeleteProduct(product)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          刪除產品
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

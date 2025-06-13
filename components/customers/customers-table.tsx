@@ -92,6 +92,10 @@ export function CustomersTable({
     title: "",
   })
 
+  // Add these state variables inside the CustomersTable function component, right after existing state declarations
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+
   // 分頁狀態
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -361,6 +365,40 @@ export function CustomersTable({
     return { label: "活躍", variant: "default" as const }
   }
 
+  // Add this sortData function inside the CustomersTable function component
+  const sortData = (data: Customer[], column: string | null, direction: "asc" | "desc") => {
+    if (!column) return data
+
+    return [...data].sort((a, b) => {
+      let valueA = a[column as keyof Customer]
+      let valueB = b[column as keyof Customer]
+
+      // Handle undefined values
+      if (valueA === undefined) valueA = ""
+      if (valueB === undefined) valueB = ""
+
+      // Handle string comparisons
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return direction === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA)
+      }
+
+      // Handle numeric and other comparisons
+      if (valueA < valueB) return direction === "asc" ? -1 : 1
+      if (valueA > valueB) return direction === "asc" ? 1 : -1
+      return 0
+    })
+  }
+
+  // Add this click handler inside the CustomersTable function component
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortColumn(column)
+      setSortDirection("asc")
+    }
+  }
+
   // 分頁控制函數
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -370,6 +408,21 @@ export function CustomersTable({
     setItemsPerPage(Number(value))
     setCurrentPage(1) // 重置到第一頁
   }
+
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>(data)
+
+  useEffect(() => {
+    setFilteredCustomers(data)
+  }, [data])
+
+  // Update the effect that applies filters to also handle sorting
+  // Add this after the handleFilterChange function
+  useEffect(() => {
+    if (sortColumn && filteredCustomers.length > 0) {
+      const sortedData = sortData(filteredCustomers, sortColumn, sortDirection)
+      setFilteredCustomers(sortedData)
+    }
+  }, [sortColumn, sortDirection, filteredCustomers])
 
   if (isLoading || loadingData) {
     return (
@@ -397,20 +450,34 @@ export function CustomersTable({
           <TableHeader>
             <TableRow>
               {displayColumns.map((columnId) => (
-                <TableHead key={columnId}>{columnLabels[columnId]}</TableHead>
+                <TableHead
+                  key={columnId}
+                  onClick={() => handleSort(columnId)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-1">
+                    {columnLabels[columnId]}
+                    {sortColumn === columnId &&
+                      (sortDirection === "asc" ? (
+                        <ChevronLeft className="h-4 w-4 rotate-90" />
+                      ) : (
+                        <ChevronLeft className="h-4 w-4 -rotate-90" />
+                      ))}
+                  </div>
+                </TableHead>
               ))}
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentData.length === 0 ? (
+            {filteredCustomers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={displayColumns.length + 1} className="h-24 text-center">
                   沒有找到客戶資料
                 </TableCell>
               </TableRow>
             ) : (
-              currentData.map((customer, index) => (
+              filteredCustomers.map((customer, index) => (
                 <TableRow key={customer.customer_id} className={index % 2 === 1 ? "bg-muted/50" : ""}>
                   {displayColumns.map((columnId) => (
                     <TableCell key={columnId}>{columnRenderers[columnId](customer)}</TableCell>

@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Eye, MoreHorizontal, Pencil, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { MoreHorizontal, Pencil, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -60,6 +60,9 @@ export function FactoriesTable({
   const [isTeamLoading, setIsTeamLoading] = useState(true)
   const supabase = createClientComponentClient()
 
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+
   // 獲取團隊成員資料
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -87,6 +90,70 @@ export function FactoriesTable({
     if (!employeeId) return ""
     const member = teamMembers.find((m) => m.ls_employee_id === employeeId)
     return member ? member.name : employeeId
+  }
+
+  const sortData = (data: Factory[], column: string | null, direction: "asc" | "desc") => {
+    if (!column) return data
+
+    return [...data].sort((a, b) => {
+      let valueA = a[column as keyof Factory]
+      let valueB = b[column as keyof Factory]
+
+      // Handle undefined values
+      if (valueA === undefined) valueA = ""
+      if (valueB === undefined) valueB = ""
+
+      // Handle special cases
+      if (column === "quality_contacts") {
+        const contactsA = [a.quality_contact1 || "", a.quality_contact2 || ""].join(" ")
+        const contactsB = [b.quality_contact1 || "", b.quality_contact2 || ""].join(" ")
+        return direction === "asc" ? contactsA.localeCompare(contactsB) : contactsB.localeCompare(contactsA)
+      }
+
+      // Handle string comparisons
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return direction === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA)
+      }
+
+      // Handle boolean values
+      if (typeof valueA === "boolean" && typeof valueB === "boolean") {
+        return direction === "asc" ? Number(valueA) - Number(valueB) : Number(valueB) - Number(valueA)
+      }
+
+      // Handle numeric and other comparisons
+      if (valueA < valueB) return direction === "asc" ? -1 : 1
+      if (valueA > valueB) return direction === "asc" ? 1 : -1
+      return 0
+    })
+  }
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortColumn(column)
+      setSortDirection("asc")
+    }
+  }
+
+  const handleDeleteFactory = async (factoryId: string) => {
+    if (!confirm(`確定要刪除供應商 ${factoryId} 嗎？`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase.from("factories").delete().eq("factory_id", factoryId)
+
+      if (error) {
+        throw error
+      }
+
+      // Refresh the page
+      window.location.reload()
+    } catch (error) {
+      console.error("刪除供應商時出錯:", error)
+      alert("刪除供應商失敗，請稍後再試")
+    }
   }
 
   // 定義欄位渲染函數
@@ -267,7 +334,11 @@ export function FactoriesTable({
   const totalPages = Math.ceil(data.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = Math.min(startIndex + itemsPerPage, data.length)
-  const paginatedData = data.slice(startIndex, endIndex)
+  let sortedData = [...data]
+  if (sortColumn) {
+    sortedData = sortData(data, sortColumn, sortDirection)
+  }
+  const paginatedData = sortedData.slice(startIndex, endIndex)
 
   if (isLoading || isTeamLoading) {
     return (
@@ -287,7 +358,21 @@ export function FactoriesTable({
           <TableHeader>
             <TableRow>
               {displayColumns.map((columnId) => (
-                <TableHead key={columnId}>{columnLabels[columnId]}</TableHead>
+                <TableHead
+                  key={columnId}
+                  onClick={() => handleSort(columnId)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-1">
+                    {columnLabels[columnId]}
+                    {sortColumn === columnId &&
+                      (sortDirection === "asc" ? (
+                        <ChevronLeft className="h-4 w-4 rotate-90" />
+                      ) : (
+                        <ChevronLeft className="h-4 w-4 -rotate-90" />
+                      ))}
+                  </div>
+                </TableHead>
               ))}
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
@@ -316,17 +401,18 @@ export function FactoriesTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>操作</DropdownMenuLabel>
                         <DropdownMenuItem>
-                          <Link href={`/factories/all/${factory.factory_id}`} className="flex items-center">
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看詳情
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
                           <Link href={`/factories/all/${factory.factory_id}/edit`} className="flex items-center">
                             <Pencil className="mr-2 h-4 w-4" />
                             編輯供應商
                           </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onSelect={() => handleDeleteFactory(factory.factory_id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          刪除供應商
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
