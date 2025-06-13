@@ -773,7 +773,7 @@ export function ProductReadOnlyForm({
                           <div key={key} className="space-y-2 border-t pt-4">
                             <div className="flex justify-between items-center">
                               <Input
-                                value={(doc as any).title || key}
+                                value={(doc as any).title}
                                 readOnly
                                 className="w-48 bg-gray-50 cursor-not-allowed"
                               />

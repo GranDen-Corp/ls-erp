@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Plus, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 
 
 interface DocumentsTabProps {
@@ -47,6 +48,7 @@ export function DocumentsTab({
   const [isEditingNote, setIsEditingNote] = useState(false)
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null)
   const [editNote, setEditNote] = useState({ content: "", date: "", user: "" })
+  const [documentErrors, setDocumentErrors] = useState<Record<string, boolean>>({})
 
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldType: string) => {
@@ -236,6 +238,29 @@ export function DocumentsTab({
         important_documents: newDocs,
       }
       onDocumentDataChange(updatedData)
+    }
+  }
+
+  // 處理文件標題變更
+  const handleDocumentTitleChange = (key: string, value: string) => {
+    if (!isReadOnly) {
+      // 更新錯誤狀態
+      setDocumentErrors(prev => ({
+        ...prev,
+        [key]: !value.trim()
+      }))
+
+      // 更新文件資料
+      setProduct((prev: any) => ({
+        ...prev,
+        importantDocuments: {
+          ...(prev.importantDocuments || {}),
+          [key]: {
+            ...(prev.importantDocuments?.[key] || {}),
+            title: value,
+          },
+        },
+      }))
     }
   }
 
@@ -448,30 +473,21 @@ export function DocumentsTab({
                           <div className="flex items-center gap-2">
                             <Input
                               type="text"
-                              value={(doc as any).title || key}
-                              onChange={(e) => {
-                                if (!isReadOnly) {
-                                  setProduct((prev: any) => ({
-                                    ...prev,
-                                    importantDocuments: {
-                                      ...(prev.importantDocuments || {}),
-                                      [key]: {
-                                        ...((prev.importantDocuments || {})[key] || {}),
-                                        title: e.target.value,
-                                      },
-                                    },
-                                  }))
-                                }
-                              }}
-                              className="w-48"
-                              placeholder="文件標題"
-                              disabled={isReadOnly}
+                              value={(doc as any).title}
+                              onChange={(e) => handleDocumentTitleChange(key, e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   e.preventDefault()
                                 }
                               }}
+                              className={cn(
+                                documentErrors[key] ? "border-red-500" : "",
+                                isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                              )}
                             />
+                            {documentErrors[key] && (
+                              <p className="text-sm text-red-500 mt-1">請輸入文件名稱</p>
+                            )}
                           </div>
                           {!isReadOnly && (
                             <Button
