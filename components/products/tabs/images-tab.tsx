@@ -138,6 +138,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       value={product.originalDrawingVersion || ""}
                       onChange={(e) => handleInputChange("originalDrawingVersion", e.target.value)}
                       placeholder="輸入原圖版次"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
                   </div>
 
@@ -149,8 +154,18 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                         id="customerOriginalDrawing"
                         onChange={(e) => handleFileUpload(e, "customerOriginalDrawing")}
                         className="hidden"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                          }
+                        }}
                       />
-                      <Input readOnly value={product.customerOriginalDrawing?.filename || "未選擇圖面"} className="flex-1" />
+                      <Input readOnly value={product.customerOriginalDrawing?.filename || "未選擇圖面"} className="flex-1" 
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}/>
                       <Button
                         type="button"
                         variant="outline"
@@ -175,6 +190,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                             }
                           }))
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                          }
+                        }}
                         placeholder="請輸入完整的檔案路徑 (例如: Y:\資料夾\檔案.jpg)"
                       />
                     </div>
@@ -190,6 +210,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       value={product.vehicleDrawingNo || ""}
                       readOnly
                       className="bg-gray-50"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
                   </div>
 
@@ -200,6 +225,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       value={product.customerDrawingNo || ""}
                       readOnly
                       className="bg-gray-50"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -222,6 +252,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                     value={product.customerDrawingVersion || ""}
                     onChange={(e) => handleInputChange("customerDrawingVersion", e.target.value)}
                     placeholder="輸入客戶圖版次"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                      }
+                    }}
                   />
                 </div>
 
@@ -232,6 +267,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                     value={product.factoryDrawingVersion || ""}
                     onChange={(e) => handleInputChange("factoryDrawingVersion", e.target.value)}
                     placeholder="輸入工廠圖版次"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -245,8 +285,18 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       id="customerDrawing"
                       onChange={(e) => handleFileUpload(e, "customerDrawing")}
                       className="hidden"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
-                    <Input readOnly value={product.customerDrawing?.filename || "未選擇圖面"} className="flex-1" />
+                    <Input readOnly value={product.customerDrawing?.filename || "未選擇圖面"} className="flex-1" 
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                      }
+                    }}/>
                     <Button
                       type="button"
                       variant="outline"
@@ -271,6 +321,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                           }
                         }))
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                       placeholder="請輸入完整的檔案路徑 (例如: Y:\資料夾\檔案.jpg)"
                     />
                   </div>
@@ -285,8 +340,18 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                       id="factoryDrawing"
                       onChange={(e) => handleFileUpload(e, "factoryDrawing")}
                       className="hidden"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
-                    <Input readOnly value={product.factoryDrawing?.filename || "未選擇圖面"} className="flex-1" />
+                    <Input readOnly value={product.factoryDrawing?.filename || "未選擇圖面"} className="flex-1" 
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                      }
+                    }}/>
                     <Button
                       type="button"
                       variant="outline"
@@ -310,6 +375,11 @@ export function ImagesTab({ product, handleInputChange, setProduct }: ImagesTabP
                             originalPath: newPath
                           }
                         }))
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
                       }}
                       placeholder="請輸入完整的檔案路徑 (例如: Y:\資料夾\檔案.jpg)"
                     />

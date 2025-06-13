@@ -286,6 +286,11 @@ export function DocumentsTab({
                         placeholder="請輸入完整資料夾路徑"
                         className="flex-1"
                         disabled={isReadOnly}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                          }
+                        }}
                       />
                       {isReadOnly && product.importantDocuments?.PPAP?.document && (
                         <Button
@@ -329,6 +334,11 @@ export function DocumentsTab({
                         placeholder="請輸入完整檔案路徑"
                         className="flex-1"
                         disabled={isReadOnly}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                          }
+                        }}
                       />
                       {!isReadOnly && (
                         <>
@@ -337,6 +347,11 @@ export function DocumentsTab({
                             id="PSW"
                             onChange={(e) => handleFileUpload(e, "PSW")}
                             className="hidden"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault()
+                              }
+                            }}
                           />
                           <Button
                             type="button"
@@ -375,6 +390,11 @@ export function DocumentsTab({
                         placeholder="請輸入完整檔案路徑"
                         className="flex-1"
                         disabled={isReadOnly}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                          }
+                        }}
                       />
                       {!isReadOnly && (
                         <>
@@ -383,6 +403,11 @@ export function DocumentsTab({
                             id="capacityAnalysis"
                             onChange={(e) => handleFileUpload(e, "capacityAnalysis")}
                             className="hidden"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault()
+                              }
+                            }}
                           />
                           <Button
                             type="button"
@@ -441,6 +466,11 @@ export function DocumentsTab({
                               className="w-48"
                               placeholder="文件標題"
                               disabled={isReadOnly}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault()
+                                }
+                              }}
                             />
                           </div>
                           {!isReadOnly && (
@@ -471,6 +501,11 @@ export function DocumentsTab({
                             placeholder="請輸入完整檔案路徑"
                             className="flex-1"
                             disabled={isReadOnly}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault()
+                              }
+                            }}
                           />
                           {isReadOnly && (doc as any).document && (
                             <Button
@@ -618,6 +653,11 @@ export function DocumentsTab({
                           }
                           placeholder="含有物質"
                           disabled={isReadOnly}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                            }
+                          }}
                         />
                       </div>
 
@@ -630,6 +670,11 @@ export function DocumentsTab({
                           }
                           placeholder="理由"
                           disabled={isReadOnly}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                            }
+                          }}
                         />
                       </div>
 
@@ -641,6 +686,11 @@ export function DocumentsTab({
                           placeholder="請輸入完整檔案路徑"
                           className="flex-1"
                           disabled={isReadOnly}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                            }
+                          }}
                         />
                         {isReadOnly && data.document && (
                           <Button
@@ -800,6 +850,11 @@ export function DocumentsTab({
                       value={editNote.date}
                       onChange={(e) => setEditNote({ ...editNote, date: e.target.value })}
                       placeholder="YYYY/MM/DD"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
@@ -809,6 +864,11 @@ export function DocumentsTab({
                       value={editNote.user}
                       onChange={(e) => setEditNote({ ...editNote, user: e.target.value })}
                       placeholder="輸入使用者名稱"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                        }
+                      }}
                     />
                   </div>
                 </div>

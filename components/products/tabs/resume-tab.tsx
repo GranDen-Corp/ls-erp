@@ -212,6 +212,11 @@ export function ResumeTab({
                   disabled={!product.hasMold || isReadOnly}
                   className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
                   readOnly={isReadOnly}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -227,6 +232,11 @@ export function ResumeTab({
                   disabled={!product.hasMold || isReadOnly}
                   className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
                   readOnly={isReadOnly}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                    }
+                  }}
                 />
               </div>
             </div>

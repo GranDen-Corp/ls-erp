@@ -163,6 +163,11 @@ export function BasicInfoTab({
             id="componentName"
             value={product.componentName || ""}
             onChange={(e) => handleInputChange("componentName", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入零件名稱"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -178,6 +183,11 @@ export function BasicInfoTab({
             id="componentNameEn"
             value={product.componentNameEn || ""}
             onChange={(e) => handleInputChange("componentNameEn", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入英文零件名稱"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -193,6 +203,11 @@ export function BasicInfoTab({
             id="partNo"
             value={product.partNo || ""}
             onChange={(e) => handleInputChange("partNo", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入PN"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -205,6 +220,11 @@ export function BasicInfoTab({
             id="customsCode"
             value={product.customsCode || ""}
             onChange={(e) => handleInputChange("customsCode", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入海關碼"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -217,6 +237,11 @@ export function BasicInfoTab({
             id="endCustomer"
             value={product.endCustomer || ""}
             onChange={(e) => handleInputChange("endCustomer", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入終端客戶"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -254,6 +279,11 @@ export function BasicInfoTab({
             id="classificationCode"
             value={product.classificationCode || ""}
             onChange={(e) => handleInputChange("classificationCode", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入今湛分類碼"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -266,6 +296,11 @@ export function BasicInfoTab({
             id="vehicleDrawingNo"
             value={product.vehicleDrawingNo || ""}
             onChange={(e) => handleInputChange("vehicleDrawingNo", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入車廠圖號"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -278,6 +313,11 @@ export function BasicInfoTab({
             id="customerDrawingNo"
             value={product.customerDrawingNo || ""}
             onChange={(e) => handleInputChange("customerDrawingNo", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入客戶圖號"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -449,6 +489,11 @@ export function BasicInfoTab({
             id="aliasName"
             value={product.alias_name || ""}
             onChange={(e) => handleInputChange("alias_name", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入產品別稱"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -461,6 +506,11 @@ export function BasicInfoTab({
             id="specification"
             value={product.specification || ""}
             onChange={(e) => handleInputChange("specification", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+              }
+            }}
             placeholder="輸入規格"
             readOnly={isReadOnly}
             className={isReadOnly ? "bg-gray-50 cursor-not-allowed" : ""}
@@ -476,6 +526,11 @@ export function BasicInfoTab({
           id="description"
           value={product.description || ""}
           onChange={(e) => handleInputChange("description", e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+            }
+          }}
           placeholder="輸入產品描述"
           rows={4}
           readOnly={isReadOnly}
