@@ -801,13 +801,9 @@ export function ProductReadOnlyForm({
 
                   <div className="space-y-2">
                     {Object.entries(product.partManagement || {}).map(([key, value]) => (
-                      <div key={key} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                        <div className="col-span-2">
-                          <Label>{key}</Label>
-                        </div>
-                        <div className="flex justify-end">
-                          <ReadOnlyCheckbox label="" checked={value === true} />
-                        </div>
+                      <div key={key} className="flex items-center border-b pb-2">
+                        <ReadOnlyCheckbox label="" checked={value === true} className="mr-2" />
+                        <Label>{key}</Label>
                       </div>
                     ))}
                   </div>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Plus, X } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -21,7 +21,7 @@ interface DocumentsTabProps {
   setIsPartManagementDialogOpen?: (open: boolean) => void
   setIsComplianceDialogOpen?: (open: boolean) => void
   handlePartManagementChange?: (field: string, value: boolean) => void
-  handleComplianceStatusChange?: (regulation: string, status: boolean) => void
+  handleComplianceStatusChange?: (regulation: string, status: boolean | null) => void
   handleComplianceFieldChange?: (regulation: string, field: string, value: string) => void
   form?: any
   documentData?: any
@@ -49,6 +49,111 @@ export function DocumentsTab({
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null)
   const [editNote, setEditNote] = useState({ content: "", date: "", user: "" })
   const [documentErrors, setDocumentErrors] = useState<Record<string, boolean>>({})
+
+  // 添加狀態來控制每個RadioGroup的值
+  const [radioValues, setRadioValues] = useState<{ [key: string]: string }>({})
+
+  // 初始化radioValues
+  useEffect(() => {
+    const initialValues: { [key: string]: string } = {}
+    product.complianceStatus?.forEach((item: any) => {
+      initialValues[item.regulation] = item.status === null ? "" : item.status ? "Yes" : "No"
+    })
+    setRadioValues(initialValues)
+  }, [product.complianceStatus])
+
+  // 設置預設的compliance status
+  useEffect(() => {
+    if (Array.isArray(product.complianceStatus) && product.complianceStatus.length === 0) {
+      const defaultComplianceStatus = [
+        {
+          regulation: "CP65",
+          regulationType: "standard",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "RoHS",
+          regulationType: "standard",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "TSCA",
+          regulationType: "standard",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "EU POP",
+          regulationType: "standard",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "REACH",
+          regulationType: "standard",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "PFAS",
+          regulationType: "containment",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "CMRT",
+          regulationType: "containment",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        },
+        {
+          regulation: "EMRT",
+          regulationType: "containment",
+          status: null,
+          substances: "",
+          reason: "",
+          document: ""
+        }
+      ]
+      setProduct((prev) => ({
+        ...prev,
+        complianceStatus: defaultComplianceStatus
+      }))
+    }
+  }, [product.complianceStatus])
+
+  // 設置預設的part management
+  useEffect(() => {
+    // 只在第一次新增時設置預設值
+    if (!product.partManagement || Object.keys(product.partManagement).length === 0) {
+      const defaultPartManagement = {
+        "安全件": false,
+        "汽車件": false,
+        "CBAM件": false,
+        "熔鑄地要求": false,
+      }
+      setProduct((prev) => ({
+        ...prev,
+        partManagement: defaultPartManagement
+      }))
+    }
+  }, []) // 只在組件掛載時執行一次,不依賴 product.partManagement
 
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldType: string) => {
@@ -263,6 +368,8 @@ export function DocumentsTab({
       }))
     }
   }
+
+  const radioRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
 
   return (
     <div>
@@ -561,24 +668,41 @@ export function DocumentsTab({
                   </Button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {Object.entries(product.partManagement || {}).map(([key, value]) => (
-                    <div key={key} className="grid grid-cols-3 gap-4 items-center border-b pb-2">
-                      <div className="col-span-2">
-                        <Label htmlFor={key}>{key}</Label>
-                      </div>
-                      <div className="flex justify-end">
+                    <div key={key} className="flex items-center justify-between border-b pb-2">
+                      <div className="flex items-center space-x-2">
                         <Checkbox
-                          id={key}
-                          checked={value === true}
-                          onCheckedChange={(checked) =>
-                            !isReadOnly &&
-                            handlePartManagementChange &&
-                            handlePartManagementChange(key, checked === true)
-                          }
+                          id={`part-management-${key}`}
+                          checked={value as boolean}
+                          onCheckedChange={(checked) => {
+                            if (!isReadOnly && handlePartManagementChange) {
+                              handlePartManagementChange(key, checked as boolean)
+                            }
+                          }}
                           disabled={isReadOnly}
                         />
+                        <Label htmlFor={`part-management-${key}`}>{key}</Label>
                       </div>
+                      {!isReadOnly && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-500 hover:text-gray-700"
+                          onClick={() => {
+                            setProduct((prev) => {
+                              const newPartManagement = { ...prev.partManagement }
+                              delete newPartManagement[key]
+                              return {
+                                ...prev,
+                                partManagement: newPartManagement
+                              }
+                            })
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -604,62 +728,105 @@ export function DocumentsTab({
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="grid grid-cols-5 gap-4">
-                    <div>
-                      <Label>法規</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>符合狀態</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>含有物質</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>理由</Label>
-                    </div>
-                    <div className="text-center">
-                      <Label>文件</Label>
-                    </div>
-                  </div>
-
-                  {product.complianceStatus && Object.entries(product.complianceStatus).map(([idx,data]: any) => (
-                    <div key={data.regulation} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
-                      <div><Label>{data.regulation}</Label></div>
-
-                      <RadioGroup
-                        value={data.status ? "Yes" : "No"}
-                        onValueChange={(value) =>
-                          !isReadOnly && handleComplianceStatusChange && handleComplianceStatusChange(data.regulation, value === "Yes")
-                        }
-                        className="flex justify-center space-x-4"
-                        disabled={isReadOnly}
-                      >
+                <div className="space-y-4">
+                  {product.complianceStatus?.map((data: any, index: number) => (
+                    <div key={index} className="grid grid-cols-5 gap-4 items-center border-b pb-2">
+                      <div>
+                        <Label>{data.regulation}</Label>
+                      </div>
+                      <div className="flex justify-center space-x-4">
                         {data.regulationType === "containment" ? (
                           <>
                             <div className="flex items-center space-x-1">
-                              <RadioGroupItem value="Yes" id={`${data.regulation}-has`} />
+                              <input
+                                type="radio"
+                                id={`${data.regulation}-has`}
+                                name={data.regulation}
+                                checked={data.status === true}
+                                onClick={() => {
+                                  if (!isReadOnly && handleComplianceStatusChange) {
+                                    if (data.status === true) {
+                                      handleComplianceStatusChange(data.regulation, null)
+                                    } else {
+                                      handleComplianceStatusChange(data.regulation, true)
+                                    }
+                                  }
+                                }}
+                                onChange={() => {}}
+                                disabled={isReadOnly}
+                                className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                              />
                               <Label htmlFor={`${data.regulation}-has`} className="text-sm">含有</Label>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <RadioGroupItem value="No" id={`${data.regulation}-not-has`} />
+                              <input
+                                type="radio"
+                                id={`${data.regulation}-not-has`}
+                                name={data.regulation}
+                                checked={data.status === false}
+                                onClick={() => {
+                                  if (!isReadOnly && handleComplianceStatusChange) {
+                                    if (data.status === false) {
+                                      handleComplianceStatusChange(data.regulation, null)
+                                    } else {
+                                      handleComplianceStatusChange(data.regulation, false)
+                                    }
+                                  }
+                                }}
+                                onChange={() => {}}
+                                disabled={isReadOnly}
+                                className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                              />
                               <Label htmlFor={`${data.regulation}-not-has`} className="text-sm">不含有</Label>
                             </div>
                           </>
                         ) : (
                           <>
                             <div className="flex items-center space-x-1">
-                              <RadioGroupItem value="Yes" id={`${data.regulation}-comply`} />
+                              <input
+                                type="radio"
+                                id={`${data.regulation}-comply`}
+                                name={data.regulation}
+                                checked={data.status === true}
+                                onClick={() => {
+                                  if (!isReadOnly && handleComplianceStatusChange) {
+                                    if (data.status === true) {
+                                      handleComplianceStatusChange(data.regulation, null)
+                                    } else {
+                                      handleComplianceStatusChange(data.regulation, true)
+                                    }
+                                  }
+                                }}
+                                onChange={() => {}}
+                                disabled={isReadOnly}
+                                className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                              />
                               <Label htmlFor={`${data.regulation}-comply`} className="text-sm">符合</Label>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <RadioGroupItem value="No" id={`${data.regulation}-not-comply`} />
+                              <input
+                                type="radio"
+                                id={`${data.regulation}-not-comply`}
+                                name={data.regulation}
+                                checked={data.status === false}
+                                onClick={() => {
+                                  if (!isReadOnly && handleComplianceStatusChange) {
+                                    if (data.status === false) {
+                                      handleComplianceStatusChange(data.regulation, null)
+                                    } else {
+                                      handleComplianceStatusChange(data.regulation, false)
+                                    }
+                                  }
+                                }}
+                                onChange={() => {}}
+                                disabled={isReadOnly}
+                                className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                              />
                               <Label htmlFor={`${data.regulation}-not-comply`} className="text-sm">不符</Label>
                             </div>
                           </>
                         )}
-                      </RadioGroup>
-
+                      </div>
                       <div>
                         <Input
                           type="text"
@@ -676,7 +843,6 @@ export function DocumentsTab({
                           }}
                         />
                       </div>
-
                       <div>
                         <Input
                           type="text"
@@ -693,7 +859,6 @@ export function DocumentsTab({
                           }}
                         />
                       </div>
-
                       <div className="flex items-center gap-2">
                         <Input
                           type="text"
@@ -718,6 +883,24 @@ export function DocumentsTab({
                             )}
                           >
                             下載並開啟
+                          </Button>
+                        )}
+                        {!isReadOnly && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-gray-500 hover:text-gray-700"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const newComplianceStatus = product.complianceStatus.filter((item: any) => item.regulation !== data.regulation)
+                              setProduct((prev) => ({
+                                ...prev,
+                                complianceStatus: newComplianceStatus
+                              }))
+                            }}
+                          >
+                            <X className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

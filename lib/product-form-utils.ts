@@ -85,12 +85,7 @@ export const getDefaultProduct = (isAssembly = false) => ({
     capacityAnalysis: emptyDocumentRecord,
   },
   // Part management characteristics related fields
-  partManagement: {
-    "安全件": false,
-    "汽車件": false,
-    "CBAM件": false,
-    "熔鑄地要求": false,
-  },
+  partManagement: {},
   // Edit notes related fields
   editNotes: [],
   // Process data related fields

@@ -1117,14 +1117,15 @@ export function ProductForm({
             
             handleComplianceStatusChange={(regulation, status) => {
               setProduct((prev) => {
-                const exists = (prev.complianceStatus || []).some((item: any) => item.regulation === regulation)
+                const newComplianceStatus = prev.complianceStatus.map((item) => {
+                  if (item.regulation === regulation) {
+                    return { ...item, status }
+                  }
+                  return item
+                })
                 return {
                   ...prev,
-                  complianceStatus: exists
-                    ? prev.complianceStatus.map((item: any) =>
-                        item.regulation === regulation ? { ...item, status } : item
-                      )
-                    : [...(prev.complianceStatus || []), { regulation, status, regulationType: "standard" }],
+                  complianceStatus: newComplianceStatus
                 }
               })
             }}

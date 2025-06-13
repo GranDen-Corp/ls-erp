@@ -8,7 +8,7 @@ export interface DocumentRecord {
 // Compliance status type
 export interface ComplianceStatus {
   regulation: string
-  status: boolean
+  status: boolean | null
   regulationType: string
   substances: string
   reason: string
