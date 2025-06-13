@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase-client"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
 
 // 狀態顏色映射
@@ -34,7 +34,6 @@ export function PurchaseStatusUpdate({ purchase }: PurchaseStatusUpdateProps) {
   const [status, setStatus] = useState(purchase.status)
   const [notes, setNotes] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
-  const { toast } = useToast()
 
   // 格式化日期顯示
   const formatDate = (dateString: string) => {

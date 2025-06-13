@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 interface ProductReadOnlyFormProps {
   productId?: string
   initialValues?: any
-  isAssembly?: boolean
+  //isAssembly?: boolean
   defaultTab?: string
 }
 

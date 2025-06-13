@@ -4,11 +4,10 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { initLocksureData } from "@/app/actions/init-locksure-data"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"
 
 export function InitLocksureDataButton() {
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const handleInitData = async () => {
     if (loading) return

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { FileText, Download, Eye, Upload } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 
@@ -16,7 +16,6 @@ interface PurchaseDocumentsProps {
 export function PurchaseDocuments({ purchaseId }: PurchaseDocumentsProps) {
   const [documents, setDocuments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
 
   // 模擬文件數據 - 實際應用中應從數據庫獲取
   useEffect(() => {

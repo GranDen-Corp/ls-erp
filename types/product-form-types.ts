@@ -79,7 +79,7 @@ export interface ProductFormProps {
   onSubmit?: (data: any) => void
   initialValues?: any
   isSubmitting?: boolean
-  isAssembly?: boolean
+  //isAssembly?: boolean
   defaultTab?: string
 }
 
@@ -153,7 +153,7 @@ export interface Product {
   packaging_requirements: string
   sub_part_no?: ProductComponent[] | string
 }
-
+/*
 // Product form values type
 export interface ProductFormValues {
   customer_id: string
@@ -224,7 +224,8 @@ export interface ProductFormValues {
   lead_time: string
   packaging_requirements: string
 }
-
+*/
+/*
 // Form state type for ProductForm
 export interface ProductFormState {
   product: any
@@ -267,4 +268,4 @@ export interface ProductFormState {
   selectedComponentIds: string[]
   loadingComponents: boolean
   componentDetails: { [key: string]: string }
-}
+}*/

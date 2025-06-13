@@ -47,7 +47,7 @@ export const generateRequirements = (processData: ProcessRecord[]) => {
 }
 
 // Default product data
-export const getDefaultProduct = (isAssembly = false) => ({
+export const getDefaultProduct = () => ({
   componentName: "",
   componentNameEn: "",
   specification: "",
@@ -71,7 +71,7 @@ export const getDefaultProduct = (isAssembly = false) => ({
   customerDrawingVersion: "",
   factoryDrawingVersion: "",
   images: [],
-  isAssembly: isAssembly || false,
+  //isAssembly: isAssembly || false,
   components: [],
   assemblyTime: 30,
   assemblyCostPerHour: 10,

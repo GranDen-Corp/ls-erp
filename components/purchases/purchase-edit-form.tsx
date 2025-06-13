@@ -11,7 +11,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase-client"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
 interface PurchaseEditFormProps {

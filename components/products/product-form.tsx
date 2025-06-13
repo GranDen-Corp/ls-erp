@@ -55,7 +55,7 @@ export function ProductForm({
   defaultTab = "basic",
 }: ProductFormProps) {
   // Initialize default product data
-  const defaultProduct = getDefaultProduct(initialValues?.productType === "組合件")
+  const defaultProduct = getDefaultProduct()
 
   // If there are initial values, use them, otherwise use default values
   const initialProduct = initialValues || (productId ? { ...defaultProduct, id: productId } : defaultProduct)
