@@ -54,10 +54,7 @@ export function ResumeTab({
           .from("purchase_items")
           .select(`
             quantity,
-            purchases!fk_purchase (
-              *,
-              updated_at
-            )
+            updated_at
           `)
           .eq("product_part_no", product.partNo)
           //.order("purchases.updated_at", { ascending: false })
