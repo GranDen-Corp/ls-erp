@@ -279,18 +279,37 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
             // 處理訂單資料
             const processedOrders = [...ordersData]
 
-            // 為每個訂單獲取批次項目
-            for (const order of processedOrders) {
-              try {
-                const batchResult = await getOrderBatchItemsByOrderId(order.order_id)
-                if (batchResult.success && batchResult.data) {
-                  order.batch_items = batchResult.data
+            // 優化後的程式碼 - 一次性批量查詢
+            try {
+              const { data: batchItemsData, error: batchItemsError } = await supabaseClient
+                .from("order_batch")
+                .select("*")
+                .in("order_id", processedOrders.map(order => order.order_id))
+                .order("product_index", { ascending: true })
+                .order("batch_number", { ascending: true })
+
+              if (batchItemsError) {
+                console.error("獲取批次項目失敗:", batchItemsError)
+              } else if (batchItemsData) {
+                // 按 order_id 分組批次項目
+                const batchItemsByOrder = batchItemsData.reduce((acc, item) => {
+                  if (!acc[item.order_id]) {
+                    acc[item.order_id] = []
+                  }
+                  acc[item.order_id].push(item)
+                  return acc
+                }, {})
+
+                // 更新每個訂單的批次項目和計算總數
+                processedOrders.forEach(order => {
+                  const batchItems = batchItemsByOrder[order.order_id] || []
+                  order.batch_items = batchItems
 
                   // 計算訂單總數量和總金額
                   let totalQuantity = 0
                   let totalAmount = 0
 
-                  batchResult.data.forEach((item) => {
+                  batchItems.forEach(item => {
                     totalQuantity += item.quantity || 0
                     totalAmount += item.total_price || item.quantity * item.unit_price || 0
                   })
@@ -299,10 +318,10 @@ export function OrdersTable({ statusFilter }: OrdersTableProps) {
                   if (!order.amount) {
                     order.amount = totalAmount
                   }
-                }
-              } catch (err) {
-                console.error(`獲取訂單 ${order.order_id} 的批次項目失敗:`, err)
+                })
               }
+            } catch (err) {
+              console.error("獲取批次項目時出錯:", err)
             }
 
             setOrders(processedOrders)
