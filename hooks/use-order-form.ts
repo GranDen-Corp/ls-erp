@@ -107,7 +107,7 @@ interface ProductUnit {
   sort_order: number
 }
 
-interface ProductTableItem {
+export interface ProductTableItem {
   part_no: string
   description: string
   quantity: number
@@ -900,10 +900,27 @@ ${deliveryLines.join("\n")}
 
   const handleOrderTableDataChange = useCallback((tableData: ProductTableItem[]) => {
     setOrderTableData(tableData)
-    setOrderInfo((prev) => ({
-      ...prev,
-      product_table: tableData,
-    }))
+    setOrderInfo((prev) => {
+      // 更新每個 orderInfo 項目
+      const updatedOrderInfo = prev.map((item: any) => {
+        // 在 tableData 中尋找對應的項目
+        const matchingTableItem = tableData.find(tableItem => tableItem.part_no === item.part_no)
+        
+        if (matchingTableItem) {
+          // 如果找到匹配的項目，添加 description 和 total_price
+          return {
+            ...item,
+            description: matchingTableItem.description,
+            total_price: matchingTableItem.total_price
+          }
+        }
+        
+        // 如果沒有找到匹配的項目，保持原樣
+        return item
+      })
+
+      return updatedOrderInfo
+    })
   }, [])
 
   const handleItemChange = useCallback((id: string, field: string, value: any) => {

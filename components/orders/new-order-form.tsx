@@ -683,6 +683,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               getUnitDisplayName={orderForm.getUnitDisplayName}
               calculateItemTotal={orderForm.calculateItemTotal}
               orderData={preparePrintData()}
+              onTableDataChange={orderForm.handleOrderTableDataChange}
             />
 
             <MemoizedProductProcurementInfo

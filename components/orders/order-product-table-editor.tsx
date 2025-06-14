@@ -7,15 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw, Save, Eye, Printer } from "lucide-react"
 import { formatProductDescription } from "@/lib/product-description-formatter"
-
-interface ProductTableItem {
-  part_no: string
-  description: string
-  quantity: number
-  unit_price: number
-  total_price: number
-  unit: string
-}
+import type { ProductTableItem } from "@/hooks/use-order-form"
 
 interface OrderItem {
   id: string

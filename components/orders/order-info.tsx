@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { FileText } from "lucide-react"
 import { OrderProductTableEditor } from "@/components/orders/order-product-table-editor"
+import type { ProductTableItem } from "@/hooks/use-order-form"
 
 interface OrderItem {
   id: string
@@ -43,6 +44,7 @@ interface OrderInfoProps {
   getUnitDisplayName?: (unit: string) => string
   calculateItemTotal?: (item: any) => number
   orderData?: any
+  onTableDataChange?:  (tableData: ProductTableItem[]) => void
 }
 
 export function OrderInfo({
@@ -59,6 +61,7 @@ export function OrderInfo({
   getUnitDisplayName = (unit) => unit,
   calculateItemTotal = (item) => item.quantity * item.unitPrice,
   orderData = {},
+  onTableDataChange = () => {}
 }: OrderInfoProps) {
   return (
     <div className="space-y-6">
@@ -69,7 +72,7 @@ export function OrderInfo({
             orderItems={orderItems}
             orderId={orderId}
             customerCurrency={customerCurrency}
-            onTableDataChange={() => {}}
+            onTableDataChange={onTableDataChange}
             isVisible={true}
             isProductSettingsConfirmed={isProductSettingsConfirmed}
             getUnitDisplayName={getUnitDisplayName}
