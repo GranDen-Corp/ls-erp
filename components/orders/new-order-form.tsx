@@ -31,6 +31,7 @@ import { OrderInfo } from "./order-info"
 import { EnhancedBatchManagement } from "./enhanced-batch-management"
 import { ProcurementProductList } from "./procurement-product-list"
 import { ProductProcurementInfo } from "./product-procurement-info"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 interface NewOrderFormProps {
   onSubmit: (createPurchaseOrder?: boolean) => void
@@ -228,7 +229,28 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
     }
 
     // Create stable callback functions
-    const handleGoToProcurement = () => {
+    const handleGoToProcurement = async () => {
+      console.log('###orderForm:',orderForm)
+      
+      try {
+        // 更新 remarks
+        const supabase = createClientComponentClient()
+        const { error } = await supabase
+          .from("orders")
+          .update({ remarks: orderForm.remarks })
+          .eq("order_id", orderForm.createdOrderId)
+
+        if (error) {
+          console.error("更新備註失敗:", error)
+          throw error
+        }
+
+        console.log("備註更新成功")
+      } catch (error) {
+        console.error("更新備註時發生錯誤:", error)
+        return
+      }
+      
       console.log("前往設定採購資料 - 設置狀態")
       orderForm.setActiveTab("procurement")
       orderForm.setIsProcurementReady(true) // 確保設置採購準備狀態

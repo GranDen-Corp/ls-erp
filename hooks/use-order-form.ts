@@ -868,11 +868,13 @@ ${deliveryLines.join("\n")}
       unit_price: item.unitPrice
     }))
 
+    setOrderInfo(orderItemsInfo)
+
     try {
       const supabase = createClient()
       const { error } = await supabase
         .from("orders")
-        .update({ order_info: orderItemsInfo })
+        .update({ order_info: orderItemsInfo})
         .eq("order_id", createdOrderId)
 
       if (error) {
