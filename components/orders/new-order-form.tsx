@@ -601,6 +601,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               productUnits={orderForm.productUnits || []}
               getUnitMultiplier={orderForm.getUnitMultiplier}
               disabled={orderForm.isProcurementSettingsConfirmed}
+              orderNumber={orderForm.createdOrderId}
             />
 
             {/* 採購設定確認按鈕 */}

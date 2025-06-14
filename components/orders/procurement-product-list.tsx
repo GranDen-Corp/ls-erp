@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Truck, Package, DollarSign, ArrowRight } from "lucide-react"
 import { DatePicker } from "@/components/ui/date-picker"
 import { supabaseClient } from "@/lib/supabase-client"
+import { generateIndividualProductNumber } from "@/lib/order-batch-utils"
 
 interface OrderItem {
   id: string
@@ -411,15 +412,12 @@ export function ProcurementProductList({
                         )
 
                         return (
-                          <TableRow key={batch.id}>
+                          <TableRow key={batch.id} className="relative">
                             <TableCell className="text-center">
                               <div className="flex flex-col items-center gap-1">
                                 <Badge variant="outline" className="bg-green-100 text-green-800">
                                   #{batch.orderBatchNumber}
                                 </Badge>
-                                {purchaseBatchNumber && (
-                                  <div className="text-sm font-medium text-blue-600 mt-1">{purchaseBatchNumber}</div>
-                                )}
                               </div>
                             </TableCell>
                             <TableCell className="font-medium">{batch.productPartNo}</TableCell>
@@ -526,6 +524,12 @@ export function ProcurementProductList({
                                 disabled={disabled}
                               />
                             </TableCell>
+                            
+                            <div className="absolute left-4 bottom-0 text-xs text-gray-500">
+                              {
+                                generateIndividualProductNumber(orderNumber, orderSequence)+'-'+batch.orderBatchNumber
+                              }
+                            </div>
                           </TableRow>
                         )
                       })}
