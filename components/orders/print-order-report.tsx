@@ -46,12 +46,14 @@ interface PrintOrderReportProps {
     remarks: string
     created_at?: string
     order_date?: string
+    delivery_date?: string
     customer_name?: string
     customer_address?: string
     customer_contact?: string
     amount?: number
     currency?: string
     batch_items?: any[]
+    order_info?: string
   }
   customer?: Customer | null
   orderItems?: OrderItem[]

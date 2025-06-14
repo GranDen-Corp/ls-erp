@@ -436,7 +436,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
                         ) : (
                           <>
                             <LucideCheckCircle className="h-5 w-5 mr-2" />
-                            確認產品設定完成
+                            確認產品設定完成並更新
                           </>
                         )}
                       </Button>

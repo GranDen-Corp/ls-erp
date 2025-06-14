@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase-client"
 import { generateOrderNumber, validateOrderNumber } from "@/lib/order-number-generator"
+import { generateOrderProductId } from "@/lib/order-batch-utils"
 
 interface Customer {
   customer_id: string
@@ -140,6 +141,24 @@ export interface Purchase {
   total_amount: number
   notes?: string
   items: PurchaseItem[]
+}
+
+interface BatchInfo {
+  date: string
+  status: string
+  quantity: number
+  remarks: string
+  batch_no: number
+}
+
+interface OrderItemInfo {
+  id: string
+  unit: string
+  batches: Record<string, BatchInfo>
+  part_no: string
+  currency: string
+  quantity: number
+  unit_price: number
 }
 
 // 輔助函數：獲取單位乘數（需要根據實際的單位系統調整）
@@ -803,7 +822,7 @@ ${deliveryLines.join("\n")}
     return remarks
   }, [customers, selectedCustomerId, orderItems, getUnitDisplayName])
 
-  const confirmProductsReady = useCallback(() => {
+  const confirmProductsReady = useCallback(async () => {
     if (isProductSettingsConfirmed) {
       // 如果已確認，則重置為可編輯狀態
       setIsProductSettingsConfirmed(false)
@@ -825,9 +844,59 @@ ${deliveryLines.join("\n")}
     const generatedRemarks = generateOrderRemarks()
     setRemarks(generatedRemarks)
 
-    setIsProductSettingsConfirmed(true)
-    console.log("產品設定已確認")
-  }, [orderItems, generateOrderRemarks, isProductSettingsConfirmed])
+    // 準備要存檔的資料
+    const orderItemsInfo: OrderItemInfo[] = orderItems.map(item => ({
+      id: generateOrderProductId(createdOrderId,item.orderSequence),
+      unit: item.unit,
+      batches: item.shipmentBatches.reduce((acc, batch) => ({
+        ...acc,
+        [batch.batchNumber]: {
+          date: new Date(batch.plannedShipDate).toLocaleDateString('zh-TW', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).replace(/\//g, '-'),
+          quantity: batch.quantity || 0,
+          status: batch.status || "",
+          remarks: batch.notes || "",
+          batch_no: batch.batchNumber
+        }
+      }), {}),
+      part_no: item.productPartNo,
+      currency: item.currency,
+      quantity: item.quantity,
+      unit_price: item.unitPrice
+    }))
+
+    console.log('###orderItemsInfo:',orderItemsInfo)
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("orders")
+        .update({ order_info: orderItemsInfo })
+        .eq("order_id", createdOrderId)
+
+      if (error) {
+        console.error("更新訂單資訊失敗:", error)
+        throw error
+      }
+
+      console.log("訂單資訊更新成功")
+      setIsProductSettingsConfirmed(true)
+    } catch (error) {
+      console.error("更新訂單資訊時發生錯誤:", error)
+      alert("更新訂單資訊失敗，請稍後再試")
+      return
+    }
+  }, [
+    orderItems,
+    generateOrderRemarks,
+    isProductSettingsConfirmed,
+    useCustomOrderNumber,
+    customOrderNumber,
+    orderNumber
+  ])
 
   const handleOrderTableDataChange = useCallback((tableData: ProductTableItem[]) => {
     setOrderTableData(tableData)

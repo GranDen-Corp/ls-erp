@@ -1,3 +1,4 @@
+
 /**
  * 生成產品索引字母 (A, B, C, ...)
  * @param index 產品索引 (0-based)
@@ -52,4 +53,18 @@ export function parseBatchNumberFromBatchId(orderBatchId: string): number | null
   // 格式: LS-{orderId}{productIndex}-{batchNumber}
   const match = orderBatchId.match(/^LS-[A-Z0-9-]+[A-Z]-(\d+)$/)
   return match ? Number.parseInt(match[1], 10) : null
+}
+
+/**
+ * 從訂單生成訂單產品ID
+ * @param orderId 訂單
+ * @param productIndex 產品索引字母 (A, B, C, ...)
+ * @returns 訂單批次ID
+ */
+export function generateOrderProductId(orderId: string, productIndex: string): string {
+  // 格式: LS-{orderId}{productIndex}
+  // 例如: LS-250500001-A
+  // orderID: L-2506XXXX
+  const sequence = orderId.replace('L-', '')
+  return `LS-${sequence}-${productIndex}`
 }
