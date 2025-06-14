@@ -868,8 +868,6 @@ ${deliveryLines.join("\n")}
       unit_price: item.unitPrice
     }))
 
-    console.log('###orderItemsInfo:',orderItemsInfo)
-
     try {
       const supabase = createClient()
       const { error } = await supabase

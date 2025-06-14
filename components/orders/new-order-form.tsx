@@ -401,6 +401,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
               getUnitMultiplier={orderForm.getUnitMultiplier}
               calculateActualQuantity={orderForm.calculateActualQuantity}
               calculateActualUnitPrice={orderForm.calculateActualUnitPrice}
+              orderNumber={orderForm.createdOrderId}
             />
 
             {/* 產品設定總結和操作區 */}

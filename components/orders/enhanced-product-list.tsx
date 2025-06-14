@@ -180,16 +180,13 @@ export function EnhancedProductList({
             </TableHeader>
             <TableBody>
               {orderItems.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} className="relative">
                   {showSequenceColumn && (
                     <TableCell className="font-bold text-center">
                       <div className="flex flex-col items-center gap-1">
                         <Badge variant="outline" className="bg-blue-100 text-blue-800 font-bold">
                           {item.orderSequence}
                         </Badge>
-                        <div className="text-sm font-medium text-blue-600 mt-1">
-                          {generateIndividualProductNumber(orderNumber, item.orderSequence)}
-                        </div>
                       </div>
                     </TableCell>
                   )}
@@ -203,9 +200,6 @@ export function EnhancedProductList({
                             組件
                           </Badge>
                         )}
-                      </div>
-                      <div className="text-sm text-blue-600 font-medium">
-                        {generateIndividualProductNumber(orderNumber, item.orderSequence)}
                       </div>
                     </div>
                   </TableCell>
@@ -318,6 +312,9 @@ export function EnhancedProductList({
                       </Button>
                     )}
                   </TableCell>
+                  <div className="absolute left-4 bottom-0 text-xs text-gray-500">
+                    {generateIndividualProductNumber(orderNumber, item.orderSequence)}
+                  </div>
                 </TableRow>
               ))}
               <TableRow>
