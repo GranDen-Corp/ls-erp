@@ -525,11 +525,11 @@ export function ProcurementProductList({
                               />
                             </TableCell>
                             
-                            <div className="absolute left-4 bottom-0 text-xs text-gray-500">
-                              {
-                                generateIndividualProductNumber(orderNumber, orderSequence)+'-'+batch.orderBatchNumber
-                              }
-                            </div>
+                            <TableCell className="p-0 border-0">
+                              <div className="absolute left-4 bottom-0 text-xs text-gray-500">
+                                {generateIndividualProductNumber(orderNumber, orderSequence)+'-'+batch.orderBatchNumber}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         )
                       })}

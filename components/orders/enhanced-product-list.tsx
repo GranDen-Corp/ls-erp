@@ -302,9 +302,11 @@ export function EnhancedProductList({
                       </Button>
                     )}
                   </TableCell>
-                  <div className="absolute left-4 bottom-0 text-xs text-gray-500">
-                    {generateIndividualProductNumber(orderNumber, item.orderSequence)}
-                  </div>
+                  <TableCell className="p-0 border-0">
+                    <div className="absolute left-4 bottom-0 text-xs text-gray-500">
+                      {generateIndividualProductNumber(orderNumber, item.orderSequence)}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               <TableRow>

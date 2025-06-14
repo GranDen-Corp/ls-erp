@@ -405,11 +405,12 @@ export function EnhancedBatchManagement({
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
-                        <div className="absolute left-4 bottom-0 text-xs text-gray-500">
-                          {
-                            generateIndividualProductNumber(orderNumber, orderItem.orderSequence)+'-'+batch.batchNumber
-                          }
-                        </div>
+                        
+                        <TableCell className="p-0 border-0">
+                          <div className="absolute left-4 bottom-0 text-xs text-gray-500">
+                            {generateIndividualProductNumber(orderNumber, orderItem.orderSequence)+'-'+batch.batchNumber}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
