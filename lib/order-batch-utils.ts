@@ -68,3 +68,15 @@ export function generateOrderProductId(orderId: string, productIndex: string): s
   const sequence = orderId.replace('L-', '')
   return `LS-${sequence}-${productIndex}`
 }
+
+// 生成訂單產品編號
+export function generateOrderProductNumber(orderNumber: string):string {
+  if (!orderNumber || typeof orderNumber !== "string") return ""
+  return orderNumber.startsWith("L-") ? orderNumber.replace("L-", "LS-") : orderNumber
+}
+
+// 生成個別產品編號
+export function generateIndividualProductNumber(orderNumber: string, sequence: string):string {
+  const baseNumber = generateOrderProductNumber(orderNumber)
+  return baseNumber ? `${baseNumber}-${sequence}` : ""
+}

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2, Package, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { DatePicker } from "@/components/ui/date-picker"
+import { generateIndividualProductNumber } from "@/lib/order-batch-utils"
 
 interface ShipmentBatch {
   id: string
@@ -32,6 +33,7 @@ interface OrderItem {
   productName: string
   quantity: number
   unit: string
+  orderSequence: string
   unitPrice: number
   shipmentBatches: ShipmentBatch[]
 }
@@ -42,6 +44,7 @@ interface EnhancedBatchManagementProps {
   orderItem: OrderItem | null
   onUpdateBatches: (productPartNo: string, batches: ShipmentBatch[]) => void
   getUnitMultiplier?: (unit: string) => number
+  orderNumber: string
 }
 
 export function EnhancedBatchManagement({
@@ -50,6 +53,7 @@ export function EnhancedBatchManagement({
   orderItem,
   onUpdateBatches,
   getUnitMultiplier,
+  orderNumber
 }: EnhancedBatchManagementProps) {
   const [batches, setBatches] = useState<ShipmentBatch[]>([])
   const [loading, setLoading] = useState(false)
@@ -248,7 +252,7 @@ export function EnhancedBatchManagement({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            批次出貨管理 - {orderItem.productPartNo}
+            批次出貨管理 - {generateIndividualProductNumber(orderNumber, orderItem.orderSequence)}
           </DialogTitle>
         </DialogHeader>
 
@@ -344,7 +348,7 @@ export function EnhancedBatchManagement({
                   </TableHeader>
                   <TableBody>
                     {batches.map((batch, index) => (
-                      <TableRow key={batch.id}>
+                      <TableRow key={batch.id} className="relative">
                         <TableCell>
                           <Badge variant="outline">#{batch.batchNumber}</Badge>
                         </TableCell>
@@ -401,6 +405,11 @@ export function EnhancedBatchManagement({
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
+                        <div className="absolute left-4 bottom-0 text-xs text-gray-500">
+                          {
+                            generateIndividualProductNumber(orderNumber, orderItem.orderSequence)+'-'+batch.batchNumber
+                          }
+                        </div>
                       </TableRow>
                     ))}
                   </TableBody>

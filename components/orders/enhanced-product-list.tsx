@@ -17,6 +17,8 @@ import {
   LucidePackage,
 } from "lucide-react"
 import { formatCurrencyAmount } from "@/lib/currency-utils"
+import { generateOrderProductNumber } from "@/lib/order-batch-utils"
+import { generateIndividualProductNumber } from "@/lib/order-batch-utils"
 
 interface OrderItem {
   id: string
@@ -101,18 +103,6 @@ export function EnhancedProductList({
     const totalBatchQuantity = getTotalBatchQuantity(item)
     const actualQuantity = calculateActualQuantity(item.quantity, item.unit)
     return Math.abs(totalBatchQuantity - actualQuantity) > 0.01
-  }
-
-  // 生成訂單產品編號
-  const generateOrderProductNumber = (orderNumber: string) => {
-    if (!orderNumber || typeof orderNumber !== "string") return ""
-    return orderNumber.startsWith("L-") ? orderNumber.replace("L-", "LS-") : orderNumber
-  }
-
-  // 生成個別產品編號
-  const generateIndividualProductNumber = (orderNumber: string, sequence: string) => {
-    const baseNumber = generateOrderProductNumber(orderNumber)
-    return baseNumber ? `${baseNumber}-${sequence}` : ""
   }
 
   const orderProductNumber = generateOrderProductNumber(orderNumber)

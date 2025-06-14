@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { generateOrderProductNumber } from "@/lib/order-batch-utils"
+import { generateIndividualProductNumber } from "@/lib/order-batch-utils"
 
 // 從 Supabase 獲取訂單數據
 async function getOrder(orderId: string) {
@@ -388,18 +390,6 @@ function OrderDetailsTab({ order, orderStatuses, currentStatus, statusHistory }:
 
 // 訂單產品列表分頁組件
 function OrderProductsTab({ order }: any) {
-  // Generate the order product number (LS-prefixed)
-  const generateOrderProductNumber = (orderNumber: string) => {
-    if (!orderNumber || typeof orderNumber !== "string") return ""
-    return orderNumber.startsWith("L-") ? orderNumber.replace("L-", "LS-") : orderNumber
-  }
-
-  // Generate individual product number with sequence
-  const generateIndividualProductNumber = (orderNumber: string, sequence: string) => {
-    const baseNumber = generateOrderProductNumber(orderNumber)
-    return baseNumber ? `${baseNumber}-${sequence}` : ""
-  }
-
   const orderProductNumber = generateOrderProductNumber(order.order_id)
 
   return (

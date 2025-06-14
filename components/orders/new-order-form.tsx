@@ -687,6 +687,7 @@ const NewOrderForm = forwardRef<any, NewOrderFormProps>(
             )
           }}
           getUnitMultiplier={orderForm.getUnitMultiplier}
+          orderNumber={orderForm.createdOrderId}
         />
       </div>
     )
