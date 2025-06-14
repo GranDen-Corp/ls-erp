@@ -652,10 +652,10 @@ export function useOrderForm() {
         }
 
         // 檢查訂單編號是否已存在
-        const exists = await checkOrderNumberExists(finalOrderNumber)
-        if (exists) {
-          throw new Error(`訂單編號 ${finalOrderNumber} 已存在，請使用其他編號`)
-        }
+        //const exists = await checkOrderNumberExists(finalOrderNumber)
+        //if (exists) {
+        //  throw new Error(`訂單編號 ${finalOrderNumber} 已存在，請使用其他編號`)
+        //}
 
         const supabase = createClient()
 
@@ -672,7 +672,7 @@ export function useOrderForm() {
           remarks: remarks || "",
           order_info: orderInfo,
           status: 0,
-          created_at: new Date().toISOString(),
+          created_at: new Date().toISOString()/*,
           order_items: orderItems.map((item) => ({
             order_sequence: item.orderSequence,
             product_part_no: item.productPartNo,
@@ -682,11 +682,11 @@ export function useOrderForm() {
             unit: item.unit,
             is_assembly: item.isAssembly,
             shipment_batches: item.shipmentBatches || [],
-          })),
+          })),*/
         }
 
         // Insert order
-        const { data, error } = await supabase.from("orders").insert([orderData]).select()
+        const { data, error } = await supabase.from("orders").update(orderData).eq("order_id", finalOrderNumber)
 
         if (error) throw error
 
